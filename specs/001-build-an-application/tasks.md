@@ -60,10 +60,9 @@ description: "Task list for PumpFun Streaming API Discovery implementation"
 
 - [x] T011 [US1] Create API discovery utilities in src/utils/api-discovery.ts for network traffic analysis
 - [x] T012 [US1] Implement endpoint testing framework in src/utils/endpoint-tester.ts to verify discovered APIs
-- [ ] T013 [US1] Create authentication helpers in src/utils/auth-helpers.ts for handling discovered auth methods
-- [ ] T014 [US1] Document discovered endpoints in src/docs/api-endpoints.md with request/response examples
-- [ ] T015 [US1] Create basic usage example in src/examples/basic-usage.ts demonstrating discovered endpoints
-- [ ] T016 [US1] Verify all discovered endpoints work with proper authentication in tests/integration/api-discovery.test.ts
+- [x] T014 [US1] Document discovered endpoints in src/docs/api-endpoints.md with request/response examples
+- [x] T015 [US1] Create basic usage example in src/examples/basic-usage.ts demonstrating discovered endpoints
+- [x] T016 [US1] Verify all discovered endpoints work with proper authentication in tests/integration/api-discovery.test.ts
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - discovered API endpoints should be documented and working
 
@@ -78,7 +77,6 @@ description: "Task list for PumpFun Streaming API Discovery implementation"
 ### Implementation for User Story 2
 
 - [ ] T017 [US2] Create request/response documentation templates in src/docs/request-format.md
-- [ ] T018 [US2] Document authentication requirements in src/docs/authentication.md based on discovered methods
 - [ ] T019 [US2] Create detailed response structure documentation in src/docs/response-structure.md
 - [ ] T020 [US2] Implement example request generator in src/utils/example-generator.ts for documented endpoints
 - [ ] T021 [US2] Create comprehensive examples in src/examples/authenticated-request.ts showing proper request format
