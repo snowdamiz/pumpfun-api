@@ -153,8 +153,15 @@ export class HTTPClient {
   private createAPIError(error: AxiosError): APIError {
     const statusCode = error.response?.status || 0;
     const errorCode = error.code || 'UNKNOWN_ERROR';
-    const message = error.response?.data?.message || error.message || 'Unknown error occurred';
-    const details = error.response?.data || { originalError: error.message };
+    let message = 'Unknown error occurred';
+    if (error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data && typeof error.response.data.message === 'string') {
+      message = error.response.data.message;
+    } else if (error instanceof Error && error.message) {
+      message = error.message;
+    } else if ('message' in error && typeof error.message === 'string') {
+      message = error.message;
+    }
+    const details = error.response?.data || { originalError: error instanceof Error ? error.message : String(error) };
 
     return {
       code: errorCode,

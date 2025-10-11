@@ -58,8 +58,8 @@ description: "Task list for PumpFun Streaming API Discovery implementation"
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Create API discovery utilities in src/utils/api-discovery.ts for network traffic analysis
-- [ ] T012 [US1] Implement endpoint testing framework in src/utils/endpoint-tester.ts to verify discovered APIs
+- [x] T011 [US1] Create API discovery utilities in src/utils/api-discovery.ts for network traffic analysis
+- [x] T012 [US1] Implement endpoint testing framework in src/utils/endpoint-tester.ts to verify discovered APIs
 - [ ] T013 [US1] Create authentication helpers in src/utils/auth-helpers.ts for handling discovered auth methods
 - [ ] T014 [US1] Document discovered endpoints in src/docs/api-endpoints.md with request/response examples
 - [ ] T015 [US1] Create basic usage example in src/examples/basic-usage.ts demonstrating discovered endpoints

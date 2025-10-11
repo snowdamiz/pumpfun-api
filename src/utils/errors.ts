@@ -81,19 +81,19 @@ export class NetworkError extends PumpFunError {
     super(message, 'ERROR', 'NETWORK', details);
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'NETWORK_ERROR';
   }
 
-  getStatusCode(): number {
+  override getStatusCode(): number {
     return 0; // Network errors don't have HTTP status codes
   }
 
-  isRetryable(): boolean {
+  override isRetryable(): boolean {
     return true;
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     return 'Network connection failed. Please check your internet connection and try again.';
   }
 }
@@ -106,11 +106,11 @@ export class TimeoutError extends NetworkError {
     super(`Request timed out after ${timeout}ms`, { timeout, url });
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'TIMEOUT_ERROR';
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     return 'The request took too long to complete. Please try again.';
   }
 }
@@ -123,19 +123,19 @@ export class AuthenticationError extends PumpFunError {
     super(message, 'ERROR', 'AUTHENTICATION', details);
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'AUTHENTICATION_ERROR';
   }
 
-  getStatusCode(): number {
+  override getStatusCode(): number {
     return 401;
   }
 
-  isRetryable(): boolean {
+  override isRetryable(): boolean {
     return false; // Auth errors usually require fixing credentials
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     return 'Authentication failed. Please check your API credentials and try again.';
   }
 }
@@ -148,19 +148,19 @@ export class AuthorizationError extends PumpFunError {
     super(message, 'ERROR', 'AUTHENTICATION', details);
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'AUTHORIZATION_ERROR';
   }
 
-  getStatusCode(): number {
+  override getStatusCode(): number {
     return 403;
   }
 
-  isRetryable(): boolean {
+  override isRetryable(): boolean {
     return false;
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     return 'You do not have permission to access this resource.';
   }
 }
@@ -185,19 +185,19 @@ export class RateLimitError extends PumpFunError {
     this.resetTime = details?.resetTime;
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'RATE_LIMIT_ERROR';
   }
 
-  getStatusCode(): number {
+  override getStatusCode(): number {
     return 429;
   }
 
-  isRetryable(): boolean {
+  override isRetryable(): boolean {
     return true;
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     const retryMsg = this.retryAfter
       ? ` Please wait ${this.retryAfter} seconds before trying again.`
       : ' Please wait before trying again.';
@@ -228,19 +228,19 @@ export class ValidationError extends PumpFunError {
     this.value = value;
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'VALIDATION_ERROR';
   }
 
-  getStatusCode(): number {
+  override getStatusCode(): number {
     return 400;
   }
 
-  isRetryable(): boolean {
+  override isRetryable(): boolean {
     return false; // Validation errors require fixing the input
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     const fieldMsg = this.field ? ` in field '${this.field}'` : '';
     return `Invalid input${fieldMsg}: ${this.message}`;
   }
@@ -259,19 +259,19 @@ export class NotFoundError extends PumpFunError {
     );
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'NOT_FOUND_ERROR';
   }
 
-  getStatusCode(): number {
+  override getStatusCode(): number {
     return 404;
   }
 
-  isRetryable(): boolean {
+  override isRetryable(): boolean {
     return false;
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     return 'The requested resource was not found.';
   }
 }
@@ -284,19 +284,19 @@ export class ServerError extends PumpFunError {
     super(message, 'ERROR', 'SERVER', details);
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'SERVER_ERROR';
   }
 
-  getStatusCode(): number {
+  override getStatusCode(): number {
     return 500;
   }
 
-  isRetryable(): boolean {
+  override isRetryable(): boolean {
     return true;
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     return 'The server encountered an error. Please try again later.';
   }
 }
@@ -309,19 +309,19 @@ export class ConfigurationError extends PumpFunError {
     super(message, 'ERROR', 'CONFIGURATION', details);
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'CONFIGURATION_ERROR';
   }
 
-  getStatusCode(): number {
+  override getStatusCode(): number {
     return 500;
   }
 
-  isRetryable(): boolean {
+  override isRetryable(): boolean {
     return false;
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     return 'Configuration error. Please check your settings.';
   }
 }
@@ -334,19 +334,19 @@ export class DiscoveryError extends PumpFunError {
     super(message, 'ERROR', 'DISCOVERY', details);
   }
 
-  getErrorCode(): string {
+  override getErrorCode(): string {
     return 'DISCOVERY_ERROR';
   }
 
-  getStatusCode(): number {
+  override getStatusCode(): number {
     return 500;
   }
 
-  isRetryable(): boolean {
+  override isRetryable(): boolean {
     return true;
   }
 
-  getUserMessage(): string {
+  override getUserMessage(): string {
     return 'Failed to discover API endpoint. Please try again.';
   }
 }
@@ -379,7 +379,7 @@ export class ErrorFactory {
       case 504:
         return new ServerError(message, details);
       default:
-        return new PumpFunError(message, 'ERROR', 'UNKNOWN', details);
+        return new DiscoveryError(message, details);
     }
   }
 
@@ -410,7 +410,7 @@ export class ErrorFactory {
     const message = error.message.toLowerCase();
 
     if (message.includes('timeout') || message.includes('timed out')) {
-      return new TimeoutError();
+      return new TimeoutError(10000);
     }
 
     if (message.includes('network') || message.includes('connection')) {
