@@ -31,7 +31,37 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+### API Reliability & Accuracy
+- [ ] Does the feature involve API interactions that require validation and error handling?
+- [ ] Are there retry mechanisms for network failures with exponential backoff?
+
+### Error Handling
+- [ ] Does the feature handle network failures, timeouts, and rate limiting?
+- [ ] Are errors categorized as retryable vs non-retryable?
+
+### Testing Requirements
+- [ ] Does the feature require mock responses for API testing?
+- [ ] Are integration tests needed for this functionality?
+
+### Documentation
+- [ ] Does the feature introduce new API endpoints that need documentation?
+- [ ] Are there authentication methods that need to be documented?
+
+### Performance Requirements
+- [ ] Is this a latency-critical trading operation?
+- [ ] Does the feature require connection pooling or request batching?
+
+### Security Considerations
+- [ ] Does the feature handle private keys or sensitive data?
+- [ ] Are there API keys or credentials involved?
+
+### TypeScript Interfaces
+- [ ] Does the feature introduce new API response types?
+- [ ] Are interface definitions needed for request/response schemas?
+
+### Maintainability
+- [ ] Does the feature require modular architecture for API client separation?
+- [ ] Is configuration externalized for API endpoint flexibility?
 
 ## Project Structure
 

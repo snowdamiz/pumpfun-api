@@ -1,0 +1,931 @@
+openapi: 3.0.3
+info:
+  title: PumpFun Stream Monitor API
+  description: API for monitoring PumpFun streaming infrastructure and accessing streaming data
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.pumpfun-monitor.com/v1
+    description: Production server
+  - url: https://staging-api.pumpfun-monitor.com/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Development server
+
+paths:
+  /streams:
+    get:
+      summary: List active streams
+      description: Retrieve a list of currently active streams with optional filtering
+      tags:
+        - Streams
+      parameters:
+        - name: status
+          in: query
+          description: Filter streams by status
+          schema:
+            type: string
+            enum: [active, inactive, all]
+            default: active
+        - name: limit
+          in: query
+          description: Maximum number of streams to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          description: Number of streams to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: sort
+          in: query
+          description: Sort order for streams
+          schema:
+            type: string
+            enum: [viewer_count, start_time, duration]
+            default: viewer_count
+        - name: order
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: List of streams retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      streams:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StreamSummary'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /streams/{tokenId}:
+    get:
+      summary: Get stream details by token
+      description: Retrieve detailed information about streams for a specific token
+      tags:
+        - Streams
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          description: Token identifier
+          schema:
+            type: string
+            minLength: 1
+        - name: include_history
+          in: query
+          description: Include historical stream data
+          schema:
+            type: boolean
+            default: false
+        - name: history_limit
+          in: query
+          description: Maximum number of historical streams to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Stream details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/StreamDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /streams/{streamId}/events:
+    get:
+      summary: Get stream events
+      description: Retrieve events for a specific stream
+      tags:
+        - Events
+      parameters:
+        - name: streamId
+          in: path
+          required: true
+          description: Stream identifier
+          schema:
+            type: string
+            minLength: 1
+        - name: event_type
+          in: query
+          description: Filter by event type
+          schema:
+            type: string
+            enum: [STREAM_STARTED, STREAM_ENDED, METADATA_UPDATED, STATUS_CHANGED, ERROR_OCCURRED]
+        - name: limit
+          in: query
+          description: Maximum number of events to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: since
+          in: query
+          description: Return events since this timestamp
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Stream events retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      events:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StreamEvent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /tokens:
+    get:
+      summary: List tokens
+      description: Retrieve a list of tokens with optional filtering
+      tags:
+        - Tokens
+      parameters:
+        - name: search
+          in: query
+          description: Search tokens by name or symbol
+          schema:
+            type: string
+        - name: has_active_stream
+          in: query
+          description: Filter tokens with active streams
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Maximum number of tokens to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          description: Number of tokens to skip for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Token list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      tokens:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Token'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /tokens/{tokenId}/streams:
+    get:
+      summary: Get token streaming history
+      description: Retrieve streaming history for a specific token
+      tags:
+        - Tokens
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          description: Token identifier
+          schema:
+            type: string
+            minLength: 1
+        - name: start_date
+          in: query
+          description: Start date for history query
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: End date for history query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          description: Maximum number of streams to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+      responses:
+        '200':
+          description: Token streaming history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        $ref: '#/components/schemas/Token'
+                      streams:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StreamSummary'
+                      statistics:
+                        $ref: '#/components/schemas/StreamingStatistics'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/{userId}/streams:
+    get:
+      summary: Get user streaming history
+      description: Retrieve streaming history for a specific user
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: User identifier
+          schema:
+            type: string
+            minLength: 1
+        - name: include_active
+          in: query
+          description: Include currently active streams
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          description: Maximum number of streams to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+      responses:
+        '200':
+          description: User streaming history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      active_streams:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StreamSummary'
+                      historical_streams:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StreamSummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /analytics/top-streams:
+    get:
+      summary: Get top streams by metrics
+      description: Retrieve top streams based on various metrics
+      tags:
+        - Analytics
+      parameters:
+        - name: metric
+          in: query
+          required: true
+          description: Metric to rank streams by
+          schema:
+            type: string
+            enum: [viewer_count, duration, peak_viewers]
+        - name: time_range
+          in: query
+          required: true
+          description: Time range for analytics
+          schema:
+            type: string
+            enum: [1h, 24h, 7d, 30d]
+        - name: limit
+          in: query
+          description: Maximum number of streams to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Top streams analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      metric:
+                        type: string
+                      time_range:
+                        type: string
+                      streams:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StreamAnalytics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /analytics/dashboard:
+    get:
+      summary: Get dashboard statistics
+      description: Retrieve overall system statistics for dashboard
+      tags:
+        - Analytics
+      responses:
+        '200':
+          description: Dashboard statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DashboardStats'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /webhooks:
+    post:
+      summary: Register webhook
+      description: Register a webhook endpoint for real-time notifications
+      tags:
+        - Webhooks
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+                - events
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: Webhook URL
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum: [STREAM_STARTED, STREAM_ENDED, METADATA_UPDATED]
+                  description: Events to subscribe to
+                secret:
+                  type: string
+                  description: Optional secret for webhook signature validation
+                active:
+                  type: boolean
+                  default: true
+                  description: Whether webhook is active
+      responses:
+        '201':
+          description: Webhook registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    StreamSummary:
+      type: object
+      properties:
+        streamId:
+          type: string
+          example: "stream_123456789"
+        tokenId:
+          type: string
+          example: "token_abc123"
+        tokenName:
+          type: string
+          example: "MyToken"
+        tokenSymbol:
+          type: string
+          example: "MTK"
+        userId:
+          type: string
+          example: "user_789"
+        username:
+          type: string
+          example: "streamer_user"
+        status:
+          $ref: '#/components/schemas/StreamStatus'
+        startTime:
+          type: string
+          format: date-time
+          example: "2025-10-11T15:30:00Z"
+        currentViewerCount:
+          type: integer
+          example: 1250
+        peakViewerCount:
+          type: integer
+          example: 2100
+        thumbnailUrl:
+          type: string
+          format: uri
+          example: "https://cdn.example.com/thumbnails/stream_123456789.jpg"
+        quality:
+          type: string
+          example: "1080p"
+
+    StreamDetails:
+      allOf:
+        - $ref: '#/components/schemas/StreamSummary'
+        - type: object
+          properties:
+            endTime:
+              type: string
+              format: date-time
+              example: "2025-10-11T17:45:00Z"
+            duration:
+              type: integer
+              example: 8100
+            videoUrl:
+              type: string
+              format: uri
+              example: "https://stream.example.com/live/stream_123456789.m3u8"
+            metadata:
+              $ref: '#/components/schemas/StreamMetadata'
+            historicalEvents:
+              type: array
+              items:
+                $ref: '#/components/schemas/StreamEvent'
+
+    StreamMetadata:
+      type: object
+      properties:
+        bitrate:
+          type: integer
+          example: 4500
+        resolution:
+          type: string
+          example: "1920x1080"
+        frameRate:
+          type: number
+          example: 30.0
+        videoCodec:
+          type: string
+          example: "H.264"
+        audioCodec:
+          type: string
+          example: "AAC"
+        fileSize:
+          type: integer
+          example: 2147483648
+        viewerTimeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/ViewerTimelinePoint'
+        platformData:
+          type: object
+          additionalProperties: true
+
+    ViewerTimelinePoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-10-11T16:00:00Z"
+        viewerCount:
+          type: integer
+          example: 1500
+
+    StreamEvent:
+      type: object
+      properties:
+        eventId:
+          type: string
+          example: "event_987654321"
+        streamId:
+          type: string
+          example: "stream_123456789"
+        eventType:
+          $ref: '#/components/schemas/EventType'
+        previousStatus:
+          $ref: '#/components/schemas/StreamStatus'
+        newStatus:
+          $ref: '#/components/schemas/StreamStatus'
+        eventData:
+          type: object
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-10-11T15:30:00Z"
+
+    StreamStatus:
+      type: string
+      enum: [STARTING, LIVE, ENDING, ENDED, ERROR]
+      example: "LIVE"
+
+    EventType:
+      type: string
+      enum: [STREAM_STARTED, STREAM_ENDED, METADATA_UPDATED, STATUS_CHANGED, ERROR_OCCURRED]
+      example: "STREAM_STARTED"
+
+    Token:
+      type: object
+      properties:
+        tokenId:
+          type: string
+          example: "token_abc123"
+        name:
+          type: string
+          example: "MyToken"
+        symbol:
+          type: string
+          example: "MTK"
+        currentStreamStatus:
+          $ref: '#/components/schemas/StreamStatus'
+        streamHistoryCount:
+          type: integer
+          example: 25
+        lastStreamActivity:
+          type: string
+          format: date-time
+          example: "2025-10-11T15:30:00Z"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-09-01T10:00:00Z"
+
+    User:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "user_789"
+        username:
+          type: string
+          example: "streamer_user"
+        avatarUrl:
+          type: string
+          format: uri
+          example: "https://cdn.example.com/avatars/user_789.jpg"
+        isVerified:
+          type: boolean
+          example: true
+        followerCount:
+          type: integer
+          example: 15000
+        totalStreamCount:
+          type: integer
+          example: 150
+        activeStreamCount:
+          type: integer
+          example: 1
+        lastActivity:
+          type: string
+          format: date-time
+          example: "2025-10-11T15:30:00Z"
+
+    StreamingStatistics:
+      type: object
+      properties:
+        totalStreams:
+          type: integer
+          example: 25
+        totalDuration:
+          type: integer
+          example: 180000
+        averageViewers:
+          type: number
+          example: 850.5
+        peakViewers:
+          type: integer
+          example: 5000
+        currentStreak:
+          type: integer
+          example: 3
+
+    StreamAnalytics:
+      type: object
+      properties:
+        stream:
+          $ref: '#/components/schemas/StreamSummary'
+        value:
+          type: number
+          example: 5000
+        rank:
+          type: integer
+          example: 1
+
+    DashboardStats:
+      type: object
+      properties:
+        activeStreams:
+          type: integer
+          example: 150
+        totalViewers:
+          type: integer
+          example: 45000
+        streamsStarted24h:
+          type: integer
+          example: 1200
+        peakConcurrentViewers:
+          type: integer
+          example: 75000
+        topTokens:
+          type: array
+          items:
+            type: object
+            properties:
+              tokenId:
+                type: string
+              tokenName:
+                type: string
+              activeStreamCount:
+                type: integer
+        topStreamers:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+              username:
+                type: string
+              activeStreamCount:
+                type: integer
+              totalViewers:
+                type: integer
+
+    Webhook:
+      type: object
+      properties:
+        webhookId:
+          type: string
+          example: "webhook_456"
+        url:
+          type: string
+          format: uri
+          example: "https://your-app.com/webhook"
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventType'
+        secret:
+          type: string
+          example: "webhook_secret_123"
+        active:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-10-11T15:30:00Z"
+
+    Pagination:
+      type: object
+      properties:
+        limit:
+          type: integer
+          example: 100
+        offset:
+          type: integer
+          example: 0
+        total:
+          type: integer
+          example: 1500
+        hasMore:
+          type: boolean
+          example: true
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Invalid parameter value"
+        details:
+          type: object
+          additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing authentication
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                $ref: '#/components/schemas/Error'
+
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+tags:
+  - name: Streams
+    description: Stream monitoring and management
+  - name: Tokens
+    description: Token information and streaming history
+  - name: Users
+    description: User profiles and streaming activity
+  - name: Events
+    description: Stream events and notifications
+  - name: Analytics
+    description: Analytics and statistics
+  - name: Webhooks
+    description: Webhook management for real-time notifications

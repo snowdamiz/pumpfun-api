@@ -154,6 +154,17 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
 
+### API-Specific Tasks *(include if feature involves PumpFun API)*
+
+- [ ] TXXX [P] Create TypeScript interfaces for API responses in src/types/
+- [ ] TXXX [P] Implement retry logic with exponential backoff in src/utils/
+- [ ] TXXX [P] Add rate limiting handlers in src/middleware/
+- [ ] TXXX [P] Setup API mock servers for testing in tests/mocks/
+- [ ] TXXX [P] Configure connection pooling for high-frequency operations
+- [ ] TXXX [P] Add comprehensive error logging for API failures
+- [ ] TXXX [P] Implement timeout handling for all API calls
+- [ ] TXXX [P] Add API response validation against TypeScript interfaces
+
 ---
 
 ## Dependencies & Execution Order

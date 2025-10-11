@@ -100,6 +100,23 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+### API Requirements *(include if feature involves PumpFun API)*
+
+- **API-001**: System MUST implement retry logic with exponential backoff for API failures
+- **API-002**: System MUST validate all API responses against TypeScript interfaces
+- **API-003**: System MUST handle rate limiting with intelligent backoff strategies
+- **API-004**: System MUST log all API errors with sufficient context for debugging
+- **API-005**: System MUST use connection pooling for high-frequency operations
+- **API-006**: System MUST implement proper timeout handling for all API calls
+
+### Security Requirements *(include if feature handles sensitive data)*
+
+- **SEC-001**: System MUST store all credentials using environment variables
+- **SEC-002**: System MUST never log or expose private keys or API tokens
+- **SEC-003**: System MUST validate all inputs to prevent injection attacks
+- **SEC-004**: System MUST use HTTPS for all network communications
+- **SEC-005**: System MUST implement proper access controls for sensitive operations
+
 ## Success Criteria *(mandatory)*
 
 <!--
