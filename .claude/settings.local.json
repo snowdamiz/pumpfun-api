@@ -32,7 +32,9 @@
       "mcp__chrome-devtools__get_network_request",
       "mcp__chrome-devtools__evaluate_script",
       "Bash(node:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(TEST_CONFIG_MAX_REQUESTS=6 node:*)"
     ],
     "deny": [],
     "ask": []

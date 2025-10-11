@@ -24,7 +24,7 @@ interface LiveCoin {
 
   // Live streaming specific fields
   is_currently_live: boolean;
-  livestream_title: string;
+  livestream_title?: string;
   num_participants: number;
   reply_count: number;
   thumbnail: string;
@@ -206,7 +206,7 @@ class PumpFunAPIClient {
         coin.name.toLowerCase().includes(keyword.toLowerCase()) ||
         coin.symbol.toLowerCase().includes(keyword.toLowerCase()) ||
         coin.description.toLowerCase().includes(keyword.toLowerCase()) ||
-        coin.livestream_title.toLowerCase().includes(keyword.toLowerCase())
+        (coin.livestream_title && coin.livestream_title.toLowerCase().includes(keyword.toLowerCase()))
       )
     );
 

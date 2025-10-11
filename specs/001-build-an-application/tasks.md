@@ -94,9 +94,8 @@ description: "Task list for PumpFun Streaming API Discovery implementation"
 
 ### Implementation for User Story 3
 
-- [ ] T023 [P] [US3] Create streaming API interfaces in src/types/streaming-api.ts based on discovered responses
-- [ ] T024 [P] [US3] Create authentication interfaces in src/types/authentication.ts for auth-related structures
-- [ ] T025 [P] [US3] Create common response wrapper interfaces in src/types/api-responses.ts
+- [x] T023 [P] [US3] Create streaming API interfaces in src/types/streaming-api.ts based on discovered responses
+- [x] T025 [P] [US3] Create common response wrapper interfaces in src/types/api-responses.ts
 - [ ] T026 [US3] Implement response validation utilities in src/utils/type-validation.ts to verify interfaces match actual responses
 - [ ] T027 [US3] Create comprehensive type definitions in src/types/index.ts exporting all interfaces
 - [ ] T028 [US3] Verify TypeScript interfaces provide accurate type checking in tests/unit/type-validation.test.ts
