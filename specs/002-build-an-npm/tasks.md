@@ -100,12 +100,12 @@
   - Create error hierarchy with retryable/non-retryable categorization and user-friendly messages
   - Story: Shared across all user stories
 
-- [ ] **T013** - Define TypeScript interfaces and types
+- [x] **T013** - Define TypeScript interfaces and types ✅
   - File: `package/src/client/types.ts`
   - Define all TypeScript interfaces for API responses, configuration, and error types
   - Story: Shared across all user stories
 
-- [ ] **T014** - Create base PumpFunAPIClient class structure
+- [x] **T014** - Create base PumpFunAPIClient class structure ✅
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Create main client class with initialization, configuration, and core infrastructure
   - Story: Shared across all user stories
