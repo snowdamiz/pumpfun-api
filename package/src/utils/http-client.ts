@@ -27,7 +27,7 @@ export interface RetryConfig {
   enableJitter?: boolean;
 }
 
-export interface RateLimitConfig {
+export interface ClientRateLimitConfig {
   maxRequestsPerWindow: number;
   windowMs: number;
   enableRetryAfter: boolean;
@@ -54,7 +54,7 @@ export interface HTTPClientConfig {
   timeout?: number;
   headers?: Record<string, string>;
   retryConfig?: Partial<RetryConfig>;
-  rateLimitConfig?: Partial<RateLimitConfig>;
+  rateLimitConfig?: Partial<ClientRateLimitConfig>;
   enablePerformanceMonitoring?: boolean;
   enableLogging?: boolean;
 }
@@ -96,7 +96,7 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 /**
  * Default rate limit configuration
  */
-const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
+const DEFAULT_RATE_LIMIT_CONFIG: ClientRateLimitConfig = {
   maxRequestsPerWindow: 60,
   windowMs: 60000, // 1 minute
   enableRetryAfter: true,
@@ -115,7 +115,7 @@ const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
 export class HTTPClient {
   private client: AxiosInstance;
   private retryConfig: RetryConfig;
-  private rateLimitConfig: RateLimitConfig;
+  private rateLimitConfig: ClientRateLimitConfig;
   private enablePerformanceMonitoring: boolean;
   private enableLogging: boolean;
   private performanceMetrics: PerformanceMetrics;
@@ -138,8 +138,8 @@ export class HTTPClient {
     };
 
     this.client = axios.create({
-      baseURL: config.baseURL || process.env.PUMPFUN_API_BASE_URL,
-      timeout: config.timeout || 10000,
+      baseURL: config.baseURL ?? process.env.PUMPFUN_API_BASE_URL,
+      timeout: config.timeout ?? 10000,
       headers: {
         ...DEFAULT_CONFIG.headers,
         ...config.headers,
@@ -155,7 +155,7 @@ export class HTTPClient {
   private setupInterceptors(): void {
     // Request interceptor for logging, rate limiting, and performance tracking
     this.client.interceptors.request.use(
-      (config) => {
+      config => {
         const startTime = Date.now();
         config.metadata = { startTime };
 
@@ -171,7 +171,7 @@ export class HTTPClient {
 
         return config;
       },
-      (error) => {
+      error => {
         if (this.enableLogging) {
           console.error('[HTTP] Request error:', error);
         }
@@ -181,15 +181,18 @@ export class HTTPClient {
 
     // Response interceptor for logging, error handling, and performance tracking
     this.client.interceptors.response.use(
-      (response) => {
+      response => {
         this.updatePerformanceMetrics(response.config, true);
 
         if (this.enableLogging) {
-          console.debug(`[HTTP] ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`, {
-            status: response.status,
-            headers: response.headers,
-            dataSize: JSON.stringify(response.data).length,
-          });
+          console.debug(
+            `[HTTP] ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`,
+            {
+              status: response.status,
+              headers: response.headers,
+              dataSize: JSON.stringify(response.data).length,
+            }
+          );
         }
         return response;
       },
@@ -297,17 +300,24 @@ export class HTTPClient {
     }
 
     // Update average response time
-    const totalResponseTime = this.performanceMetrics.averageResponseTime * (this.performanceMetrics.totalRequests - 1) + responseTime;
-    this.performanceMetrics.averageResponseTime = totalResponseTime / this.performanceMetrics.totalRequests;
+    const totalResponseTime =
+      this.performanceMetrics.averageResponseTime * (this.performanceMetrics.totalRequests - 1) +
+      responseTime;
+    this.performanceMetrics.averageResponseTime =
+      totalResponseTime / this.performanceMetrics.totalRequests;
 
     // Update error rate
-    this.performanceMetrics.errorRate = this.performanceMetrics.failedRequests / this.performanceMetrics.totalRequests;
+    this.performanceMetrics.errorRate =
+      this.performanceMetrics.failedRequests / this.performanceMetrics.totalRequests;
   }
 
   /**
    * Enhanced retry logic with jitter and adaptive backoff
    */
-  private shouldRetry(error: AxiosError, originalRequest: AxiosRequestConfig & { _retryCount?: number }): boolean {
+  private shouldRetry(
+    error: AxiosError,
+    originalRequest: AxiosRequestConfig & { _retryCount?: number }
+  ): boolean {
     if (!originalRequest._retryCount) {
       originalRequest._retryCount = 0;
     }
@@ -318,7 +328,10 @@ export class HTTPClient {
     }
 
     // Check status code
-    if (error.response?.status && this.retryConfig.retryableStatusCodes.includes(error.response.status)) {
+    if (
+      error.response?.status &&
+      this.retryConfig.retryableStatusCodes.includes(error.response.status)
+    ) {
       return true;
     }
 
@@ -333,11 +346,14 @@ export class HTTPClient {
   /**
    * Enhanced retry with exponential backoff and jitter
    */
-  private async retryRequest(originalRequest: AxiosRequestConfig & { _retryCount?: number }): Promise<AxiosResponse> {
-    originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+  private async retryRequest(
+    originalRequest: AxiosRequestConfig & { _retryCount?: number }
+  ): Promise<AxiosResponse> {
+    originalRequest._retryCount = (originalRequest._retryCount ?? 0) + 1;
 
     let delay = Math.min(
-      this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffFactor, originalRequest._retryCount - 1),
+      this.retryConfig.baseDelay *
+        Math.pow(this.retryConfig.backoffFactor, originalRequest._retryCount - 1),
       this.retryConfig.maxDelay
     );
 
@@ -348,7 +364,9 @@ export class HTTPClient {
     }
 
     if (this.enableLogging) {
-      console.warn(`[HTTP] Retrying request (${originalRequest._retryCount}/${this.retryConfig.maxRetries}) after ${Math.round(delay)}ms`);
+      console.warn(
+        `[HTTP] Retrying request (${originalRequest._retryCount}/${this.retryConfig.maxRetries}) after ${Math.round(delay)}ms`
+      );
     }
 
     await this.sleep(delay);
@@ -360,12 +378,16 @@ export class HTTPClient {
    * Enhanced API error creation with better categorization
    */
   private createAPIError(error: AxiosError): APIError {
-    const statusCode = error.response?.status || 0;
-    const errorCode = error.code || 'UNKNOWN_ERROR';
+    const statusCode = error.response?.status ?? 0;
+    const errorCode = error.code ?? 'UNKNOWN_ERROR';
     let message = 'Unknown error occurred';
 
     // Extract message from response data if available
-    if (error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data) {
+    if (
+      error.response?.data &&
+      typeof error.response.data === 'object' &&
+      'message' in error.response.data
+    ) {
       message = String(error.response.data.message);
     } else if (error instanceof Error && error.message) {
       message = error.message;
@@ -373,7 +395,7 @@ export class HTTPClient {
       message = error.message;
     }
 
-    const details = error.response?.data || {
+    const details = error.response?.data ?? {
       originalError: error instanceof Error ? error.message : String(error),
       url: error.config?.url,
       method: error.config?.method?.toUpperCase(),
@@ -395,7 +417,8 @@ export class HTTPClient {
    */
   private isRetryableError(error: AxiosError): boolean {
     return !!(
-      (error.response?.status && this.retryConfig.retryableStatusCodes.includes(error.response.status)) ||
+      (error.response?.status &&
+        this.retryConfig.retryableStatusCodes.includes(error.response.status)) ||
       (error.code && this.retryConfig.retryableErrors.includes(error.code))
     );
   }
@@ -486,7 +509,7 @@ export class HTTPClient {
   /**
    * Update rate limit configuration
    */
-  updateRateLimitConfig(config: Partial<RateLimitConfig>): void {
+  updateRateLimitConfig(config: Partial<ClientRateLimitConfig>): void {
     this.rateLimitConfig = { ...this.rateLimitConfig, ...config };
   }
 
@@ -500,7 +523,7 @@ export class HTTPClient {
   /**
    * Get current rate limit configuration
    */
-  getRateLimitConfig(): RateLimitConfig {
+  getRateLimitConfig(): ClientRateLimitConfig {
     return { ...this.rateLimitConfig };
   }
 
@@ -536,10 +559,17 @@ export class HTTPClient {
   } {
     const now = Date.now();
     const windowStart = now - this.rateLimitConfig.windowMs;
-    const requestsInWindow = this.requestTimestamps.filter(timestamp => timestamp > windowStart).length;
-    const requestsRemaining = Math.max(0, this.rateLimitConfig.maxRequestsPerWindow - requestsInWindow);
-    const windowResetTime = this.requestTimestamps.length > 0 ?
-      Math.min(...this.requestTimestamps) + this.rateLimitConfig.windowMs : now;
+    const requestsInWindow = this.requestTimestamps.filter(
+      timestamp => timestamp > windowStart
+    ).length;
+    const requestsRemaining = Math.max(
+      0,
+      this.rateLimitConfig.maxRequestsPerWindow - requestsInWindow
+    );
+    const windowResetTime =
+      this.requestTimestamps.length > 0
+        ? Math.min(...this.requestTimestamps) + this.rateLimitConfig.windowMs
+        : now;
 
     return {
       requestsInCurrentWindow: requestsInWindow,

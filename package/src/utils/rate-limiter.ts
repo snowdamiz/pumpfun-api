@@ -218,13 +218,12 @@ export class RateLimiter {
     // Check window-based rate limiting
     if (this.config.enableSlidingWindow) {
       return this.state.requests >= effectiveLimit;
-    } else {
-      // Simple window reset
-      if (now - this.state.windowStart >= this.config.windowMs) {
-        this.resetWindow();
-      }
-      return this.state.requests >= effectiveLimit;
     }
+    // Simple window reset
+    if (now - this.state.windowStart >= this.config.windowMs) {
+      this.resetWindow();
+    }
+    return this.state.requests >= effectiveLimit;
   }
 
   /**
@@ -271,7 +270,8 @@ export class RateLimiter {
     errorRate: number;
     adaptiveRateLimit?: number;
   } {
-    const errorRate = this.state.totalRequests > 0 ? (this.state.totalErrors / this.state.totalRequests) * 100 : 0;
+    const errorRate =
+      this.state.totalRequests > 0 ? (this.state.totalErrors / this.state.totalRequests) * 100 : 0;
 
     return {
       requests: this.state.requests,
@@ -486,7 +486,7 @@ export async function rateLimitMiddleware<T>(
   requestFn: () => Promise<T>,
   customLimiter?: RateLimiter
 ): Promise<T> {
-  const limiter = customLimiter || rateLimiter;
+  const limiter = customLimiter ?? rateLimiter;
 
   // Wait until we can make a request
   await limiter.waitForRequest();
@@ -508,7 +508,9 @@ export async function rateLimitMiddleware<T>(
           retryAfter: (error as any).retryAfter,
           limit: (error as any).limit,
           remaining: (error as any).remaining,
-          resetTime: (error as any).resetTime ? new Date((error as any).resetTime).getTime() : undefined,
+          resetTime: (error as any).resetTime
+            ? new Date((error as any).resetTime).getTime()
+            : undefined,
         });
       }
     }
@@ -534,8 +536,12 @@ export const RateLimitUtils = {
   parseRateLimitHeaders(headers: Record<string, string>): RateLimitInfo {
     return {
       limit: headers['x-ratelimit-limit'] ? parseInt(headers['x-ratelimit-limit'], 10) : undefined,
-      remaining: headers['x-ratelimit-remaining'] ? parseInt(headers['x-ratelimit-remaining'], 10) : undefined,
-      resetTime: headers['x-ratelimit-reset'] ? parseInt(headers['x-ratelimit-reset'], 10) * 1000 : undefined,
+      remaining: headers['x-ratelimit-remaining']
+        ? parseInt(headers['x-ratelimit-remaining'], 10)
+        : undefined,
+      resetTime: headers['x-ratelimit-reset']
+        ? parseInt(headers['x-ratelimit-reset'], 10) * 1000
+        : undefined,
       retryAfter: headers['retry-after'] ? parseInt(headers['retry-after'], 10) : undefined,
     };
   },

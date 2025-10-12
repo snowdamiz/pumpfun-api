@@ -104,7 +104,7 @@ export class Logger {
    * Validate logger configuration
    */
   private validateConfig(): void {
-    if (!Object.values(LOG_LEVELS).includes(this.config.level)) {
+    if (!Object.keys(LOG_LEVELS).includes(this.config.level)) {
       console.warn(`Invalid log level: ${this.config.level}. Using INFO.`);
       this.config.level = 'INFO';
     }
@@ -217,7 +217,7 @@ export class Logger {
    * Check if file logging is available (Node.js environment)
    */
   private isFileLoggingAvailable(): boolean {
-    return typeof process !== 'undefined' && process.versions && process.versions.node;
+    return !!(typeof process !== 'undefined' && process.versions && process.versions.node);
   }
 
   /**
@@ -251,7 +251,9 @@ export class Logger {
    * Output log entry to file (Node.js only)
    */
   private outputToFile(logEntry: LogEntry): void {
-    if (!this.config.logFilePath || !this.isFileLoggingAvailable()) return;
+    if (!this.config.logFilePath || !this.isFileLoggingAvailable()) {
+      return;
+    }
 
     try {
       const fs = require('fs');
@@ -263,7 +265,7 @@ export class Logger {
         fs.mkdirSync(logDir, { recursive: true });
       }
 
-      const formattedMessage = this.formatLogMessage(logEntry, false) + '\n';
+      const formattedMessage = `${this.formatLogMessage(logEntry, false)}\n`;
       fs.appendFileSync(this.config.logFilePath, formattedMessage);
     } catch (error) {
       console.error('Failed to write to log file:', error);
@@ -319,10 +321,10 @@ export class Logger {
    */
   private getColorCode(level: LogLevel): string {
     const colors: Record<LogLevel, string> = {
-      DEBUG: '\x1b[36m',    // Cyan
-      INFO: '\x1b[32m',     // Green
-      WARN: '\x1b[33m',     // Yellow
-      ERROR: '\x1b[31m',    // Red
+      DEBUG: '\x1b[36m', // Cyan
+      INFO: '\x1b[32m', // Green
+      WARN: '\x1b[33m', // Yellow
+      ERROR: '\x1b[31m', // Red
       CRITICAL: '\x1b[35m', // Magenta
     };
 
@@ -360,7 +362,9 @@ export class Logger {
    * Start performance timer
    */
   startTimer(name: string): void {
-    if (!this.config.enablePerformanceLogging) return;
+    if (!this.config.enablePerformanceLogging) {
+      return;
+    }
 
     this.performanceTimers.set(name, Date.now());
   }
@@ -369,7 +373,9 @@ export class Logger {
    * End performance timer and log duration
    */
   endTimer(name: string, message?: string): number {
-    if (!this.config.enablePerformanceLogging) return 0;
+    if (!this.config.enablePerformanceLogging) {
+      return 0;
+    }
 
     const startTime = this.performanceTimers.get(name);
     if (!startTime) {
@@ -389,11 +395,7 @@ export class Logger {
   /**
    * Measure async function execution time
    */
-  async measureAsync<T>(
-    name: string,
-    fn: () => Promise<T>,
-    message?: string
-  ): Promise<T> {
+  async measureAsync<T>(name: string, fn: () => Promise<T>, message?: string): Promise<T> {
     this.startTimer(name);
     try {
       const result = await fn();
@@ -409,18 +411,24 @@ export class Logger {
    * Log HTTP request
    */
   logRequest(method: string, url: string, statusCode?: number, duration?: number): void {
-    if (!this.config.enableRequestLogging) return;
+    if (!this.config.enableRequestLogging) {
+      return;
+    }
 
     this.requestCounter++;
     const requestId = `req_${this.requestCounter}`;
 
-    this.info(`HTTP ${method} ${url}`, {
-      method,
-      url,
-      statusCode,
-      duration,
-      requestId,
-    }, { requestId });
+    this.info(
+      `HTTP ${method} ${url}`,
+      {
+        method,
+        url,
+        statusCode,
+        duration,
+        requestId,
+      },
+      { requestId }
+    );
   }
 
   /**
@@ -428,23 +436,32 @@ export class Logger {
    */
   logAPICall(method: string, endpoint: string, success: boolean, details?: any): void {
     const level: LogLevel = success ? 'INFO' : 'ERROR';
-    this.log(level, `API ${method} ${endpoint}`, {
-      method,
-      endpoint,
-      success,
-      details,
-    }, { component: 'api-client' });
+    this.log(
+      level,
+      `API ${method} ${endpoint}`,
+      {
+        method,
+        endpoint,
+        success,
+        details,
+      },
+      { component: 'api-client' }
+    );
   }
 
   /**
    * Log rate limit events
    */
   logRateLimit(endpoint: string, resetTime?: number, retryAfter?: number): void {
-    this.warn(`Rate limit exceeded for ${endpoint}`, {
-      endpoint,
-      resetTime,
-      retryAfter,
-    }, { component: 'rate-limiter' });
+    this.warn(
+      `Rate limit exceeded for ${endpoint}`,
+      {
+        endpoint,
+        resetTime,
+        retryAfter,
+      },
+      { component: 'rate-limiter' }
+    );
   }
 
   /**
@@ -537,10 +554,7 @@ export const logger = new Logger();
 /**
  * Create a new logger with custom configuration
  */
-export function createLogger(
-  config: Partial<LoggerConfig> = {},
-  context?: LogContext
-): Logger {
+export function createLogger(config: Partial<LoggerConfig> = {}, context?: LogContext): Logger {
   return new Logger(config, context);
 }
 
@@ -577,9 +591,8 @@ export const LoggerUtils = {
       return `${ms}ms`;
     } else if (ms < 60000) {
       return `${(ms / 1000).toFixed(2)}s`;
-    } else {
-      return `${(ms / 60000).toFixed(2)}m`;
     }
+    return `${(ms / 60000).toFixed(2)}m`;
   },
 
   /**
@@ -587,9 +600,11 @@ export const LoggerUtils = {
    */
   formatBytes(bytes: number): string {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) {
+      return '0 Bytes';
+    }
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    return `${Math.round((bytes / Math.pow(1024, i)) * 100) / 100} ${sizes[i]}`;
   },
 
   /**
