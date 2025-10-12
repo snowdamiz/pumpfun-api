@@ -115,7 +115,7 @@
 **Story Goal**: Enable developers to install the package and create a working client instance
 **Independent Test**: Install package, create client instance, verify API connectivity with validateJurisdiction()
 
-- [ ] **T015** - Implement client initialization and configuration [P]
+- [x] **T015** - Implement client initialization and configuration [P] ✅
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Implement constructor with optional configuration, environment variable loading, and validation
   - Story: US1
