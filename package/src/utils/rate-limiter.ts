@@ -1,11 +1,586 @@
 /**
- * Placeholder for Rate Limiter utility
- * This will be implemented in T011
+ * Rate Limiting Utility for PumpFun API Client
+ *
+ * Provides comprehensive rate limiting functionality to respect API limits,
+ * prevent excessive requests, and handle rate limit responses gracefully.
+ * Enhanced version with adaptive backoff and burst protection.
  */
 
+/**
+ * Rate limiting configuration (will be moved to types.ts in T013)
+ */
+export interface RateLimitConfig {
+  maxRequestsPerWindow: number;
+  windowMs: number;
+  enableRetryAfter: boolean;
+  enableSlidingWindow: boolean;
+  enableBurstProtection: boolean;
+  maxBurst?: number;
+  enableBackoff: boolean;
+  baseBackoffMs: number;
+  maxBackoffMs: number;
+  backoffMultiplier: number;
+}
+
+/**
+ * Rate limit information (will be moved to types.ts in T013)
+ */
+export interface RateLimitInfo {
+  limit?: number;
+  remaining?: number;
+  resetTime?: number;
+  retryAfter?: number;
+}
+
+/**
+ * Default rate limiting configuration
+ */
+const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
+  maxRequestsPerWindow: 60,
+  windowMs: 60000, // 1 minute
+  enableRetryAfter: true,
+  enableSlidingWindow: true,
+  enableBurstProtection: true,
+  maxBurst: 10,
+  enableBackoff: true,
+  baseBackoffMs: 1000,
+  maxBackoffMs: 60000,
+  backoffMultiplier: 2,
+};
+
+/**
+ * Rate limiting state tracker
+ */
+interface RateLimitState {
+  requests: number;
+  windowStart: number;
+  lastRequestTime: number;
+  burstCount: number;
+  burstStartTime: number;
+  consecutiveErrors: number;
+  backoffUntil?: number;
+  totalRequests: number;
+  totalErrors: number;
+  adaptiveRateLimit?: number;
+  lastAdaptiveAdjustment?: number;
+}
+
+/**
+ * Rate Limiter class for managing API request rates
+ */
 export class RateLimiter {
-  constructor(config?: any) {
-    // TODO: Implement in T011
-    void config; // Suppress unused parameter warning
+  private config: RateLimitConfig;
+  private state: RateLimitState;
+  private rateLimitInfo?: RateLimitInfo;
+
+  constructor(config: Partial<RateLimitConfig> = {}) {
+    this.config = { ...DEFAULT_RATE_LIMIT_CONFIG, ...config };
+    this.state = {
+      requests: 0,
+      windowStart: Date.now(),
+      lastRequestTime: 0,
+      burstCount: 0,
+      burstStartTime: 0,
+      consecutiveErrors: 0,
+      totalRequests: 0,
+      totalErrors: 0,
+    };
+
+    // Load configuration from environment variables
+    this.loadFromEnvironment();
+  }
+
+  /**
+   * Load rate limit configuration from environment variables
+   */
+  private loadFromEnvironment(): void {
+    if (typeof process !== 'undefined' && process.env) {
+      if (process.env.MAX_REQUESTS_PER_MINUTE) {
+        this.config.maxRequestsPerWindow = parseInt(process.env.MAX_REQUESTS_PER_MINUTE, 10);
+      }
+
+      if (process.env.RATE_LIMIT_DELAY_MS) {
+        this.config.baseBackoffMs = parseInt(process.env.RATE_LIMIT_DELAY_MS, 10);
+      }
+
+      if (process.env.RATE_LIMIT_WINDOW_MS) {
+        this.config.windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10);
+      }
+
+      if (process.env.ENABLE_RATE_LIMIT_BACKOFF) {
+        this.config.enableBackoff = process.env.ENABLE_RATE_LIMIT_BACKOFF === 'true';
+      }
+    }
+  }
+
+  /**
+   * Check if a request can be made immediately
+   */
+  async canMakeRequest(): Promise<boolean> {
+    // Check if we're in backoff period
+    if (this.state.backoffUntil && Date.now() < this.state.backoffUntil) {
+      return false;
+    }
+
+    // Check rate limits
+    if (this.isRateLimited()) {
+      return false;
+    }
+
+    // Check burst protection
+    if (this.isBurstLimited()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Wait until a request can be made
+   */
+  async waitForRequest(): Promise<void> {
+    while (!(await this.canMakeRequest())) {
+      const delay = this.calculateDelay();
+      if (delay > 0) {
+        await this.sleep(delay);
+      }
+    }
+  }
+
+  /**
+   * Record a successful request
+   */
+  recordRequest(): void {
+    const now = Date.now();
+
+    // Reset window if needed
+    if (now - this.state.windowStart >= this.config.windowMs) {
+      this.resetWindow();
+    }
+
+    // Update request count
+    this.state.requests++;
+    this.state.lastRequestTime = now;
+    this.state.totalRequests++;
+
+    // Update burst tracking
+    this.updateBurstTracking(now);
+
+    // Reset error tracking on success
+    this.state.consecutiveErrors = 0;
+    this.state.backoffUntil = undefined;
+
+    // Adaptive rate limit adjustment
+    this.adjustAdaptiveRateLimit(now);
+  }
+
+  /**
+   * Record a rate limit error from the API
+   */
+  recordRateLimitError(response?: {
+    retryAfter?: number;
+    limit?: number;
+    remaining?: number;
+    resetTime?: number;
+  }): void {
+    const now = Date.now();
+
+    // Update rate limit info from response
+    if (response) {
+      this.rateLimitInfo = {
+        limit: response.limit || this.rateLimitInfo?.limit,
+        remaining: response.remaining || 0,
+        resetTime: response.resetTime || now + this.config.windowMs,
+        retryAfter: response.retryAfter || Math.ceil(this.config.windowMs / 1000),
+      };
+    }
+
+    // Update consecutive error count
+    this.state.consecutiveErrors++;
+    this.state.totalErrors++;
+
+    // Apply backoff if enabled
+    if (this.config.enableBackoff) {
+      this.applyBackoff();
+    }
+
+    // Adjust adaptive rate limit based on errors
+    this.adjustAdaptiveRateLimitForErrors(now);
+  }
+
+  /**
+   * Check if we're currently rate limited
+   */
+  isRateLimited(): boolean {
+    const now = Date.now();
+    const effectiveLimit = this.state.adaptiveRateLimit || this.config.maxRequestsPerWindow;
+
+    // Check window-based rate limiting
+    if (this.config.enableSlidingWindow) {
+      return this.state.requests >= effectiveLimit;
+    } else {
+      // Simple window reset
+      if (now - this.state.windowStart >= this.config.windowMs) {
+        this.resetWindow();
+      }
+      return this.state.requests >= effectiveLimit;
+    }
+  }
+
+  /**
+   * Check if burst protection is active
+   */
+  isBurstLimited(): boolean {
+    if (!this.config.enableBurstProtection) {
+      return false;
+    }
+
+    const now = Date.now();
+    const burstWindow = 1000; // 1 second burst window
+
+    // Reset burst window if needed
+    if (now - this.state.burstStartTime >= burstWindow) {
+      this.state.burstCount = 0;
+      this.state.burstStartTime = now;
+    }
+
+    return this.state.burstCount >= this.config.maxBurst!;
+  }
+
+  /**
+   * Get current rate limit information
+   */
+  getRateLimitInfo(): RateLimitInfo | undefined {
+    return this.rateLimitInfo;
+  }
+
+  /**
+   * Get current rate limiting statistics
+   */
+  getStats(): {
+    requests: number;
+    maxRequests: number;
+    windowStart: number;
+    windowEnd: number;
+    burstCount: number;
+    maxBurst: number;
+    consecutiveErrors: number;
+    isBackoffActive: boolean;
+    totalRequests: number;
+    totalErrors: number;
+    errorRate: number;
+    adaptiveRateLimit?: number;
+  } {
+    const errorRate = this.state.totalRequests > 0 ? (this.state.totalErrors / this.state.totalRequests) * 100 : 0;
+
+    return {
+      requests: this.state.requests,
+      maxRequests: this.state.adaptiveRateLimit || this.config.maxRequestsPerWindow,
+      windowStart: this.state.windowStart,
+      windowEnd: this.state.windowStart + this.config.windowMs,
+      burstCount: this.state.burstCount,
+      maxBurst: this.config.maxBurst || 0,
+      consecutiveErrors: this.state.consecutiveErrors,
+      isBackoffActive: !!(this.state.backoffUntil && Date.now() < this.state.backoffUntil),
+      totalRequests: this.state.totalRequests,
+      totalErrors: this.state.totalErrors,
+      errorRate,
+      adaptiveRateLimit: this.state.adaptiveRateLimit,
+    };
+  }
+
+  /**
+   * Reset the rate limiting window
+   */
+  private resetWindow(): void {
+    this.state.requests = 0;
+    this.state.windowStart = Date.now();
+  }
+
+  /**
+   * Update burst tracking
+   */
+  private updateBurstTracking(now: number): void {
+    if (!this.config.enableBurstProtection) {
+      return;
+    }
+
+    const burstWindow = 1000; // 1 second burst window
+
+    // Reset burst window if needed
+    if (now - this.state.burstStartTime >= burstWindow) {
+      this.state.burstCount = 0;
+      this.state.burstStartTime = now;
+    }
+
+    this.state.burstCount++;
+  }
+
+  /**
+   * Apply exponential backoff
+   */
+  private applyBackoff(): void {
+    const now = Date.now();
+
+    // Calculate backoff duration
+    let backoffMs = this.config.baseBackoffMs;
+
+    for (let i = 0; i < this.state.consecutiveErrors - 1; i++) {
+      backoffMs *= this.config.backoffMultiplier;
+      if (backoffMs > this.config.maxBackoffMs) {
+        backoffMs = this.config.maxBackoffMs;
+        break;
+      }
+    }
+
+    // Add jitter to prevent thundering herd
+    const jitter = Math.random() * backoffMs * 0.1; // 10% jitter
+    backoffMs += jitter;
+
+    this.state.backoffUntil = now + backoffMs;
+  }
+
+  /**
+   * Calculate delay until next request can be made
+   */
+  private calculateDelay(): number {
+    const now = Date.now();
+
+    // Check backoff period
+    if (this.state.backoffUntil && now < this.state.backoffUntil) {
+      return this.state.backoffUntil - now;
+    }
+
+    // Check rate limit reset time
+    if (this.rateLimitInfo?.resetTime && now < this.rateLimitInfo.resetTime) {
+      return this.rateLimitInfo.resetTime - now;
+    }
+
+    // Check window reset time
+    if (this.isRateLimited()) {
+      const windowEnd = this.state.windowStart + this.config.windowMs;
+      if (now < windowEnd) {
+        return windowEnd - now;
+      }
+    }
+
+    // Check burst reset time
+    if (this.isBurstLimited()) {
+      const burstEnd = this.state.burstStartTime + 1000;
+      if (now < burstEnd) {
+        return burstEnd - now;
+      }
+    }
+
+    return 0;
+  }
+
+  /**
+   * Sleep utility
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Adjust adaptive rate limit based on success patterns
+   */
+  private adjustAdaptiveRateLimit(now: number): void {
+    if (!this.state.lastAdaptiveAdjustment) {
+      this.state.lastAdaptiveAdjustment = now;
+      return;
+    }
+
+    const timeSinceLastAdjustment = now - this.state.lastAdaptiveAdjustment;
+
+    // Only adjust every 30 seconds
+    if (timeSinceLastAdjustment < 30000) {
+      return;
+    }
+
+    const stats = this.getStats();
+
+    // If error rate is low and we're near the limit, try to increase
+    if (stats.errorRate < 5 && stats.requests >= stats.maxRequests * 0.9) {
+      this.state.adaptiveRateLimit = Math.min(
+        Math.floor(stats.maxRequests * 1.1),
+        this.config.maxRequestsPerWindow * 2 // Never exceed 2x original limit
+      );
+    }
+    // If error rate is high, reduce the limit
+    else if (stats.errorRate > 20) {
+      this.state.adaptiveRateLimit = Math.max(
+        Math.floor(stats.maxRequests * 0.8),
+        Math.floor(this.config.maxRequestsPerWindow * 0.5) // Never go below 50% of original
+      );
+    }
+
+    this.state.lastAdaptiveAdjustment = now;
+  }
+
+  /**
+   * Adjust adaptive rate limit based on errors
+   */
+  private adjustAdaptiveRateLimitForErrors(now: number): void {
+    // Immediate reduction on rate limit errors
+    this.state.adaptiveRateLimit = Math.max(
+      Math.floor((this.state.adaptiveRateLimit || this.config.maxRequestsPerWindow) * 0.7),
+      Math.floor(this.config.maxRequestsPerWindow * 0.3) // Minimum 30% of original
+    );
+
+    this.state.lastAdaptiveAdjustment = now;
+  }
+
+  /**
+   * Update configuration
+   */
+  updateConfig(config: Partial<RateLimitConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Reset all rate limiting state
+   */
+  reset(): void {
+    this.state = {
+      requests: 0,
+      windowStart: Date.now(),
+      lastRequestTime: 0,
+      burstCount: 0,
+      burstStartTime: 0,
+      consecutiveErrors: 0,
+      totalRequests: 0,
+      totalErrors: 0,
+    };
+    this.state.backoffUntil = undefined;
+    this.rateLimitInfo = undefined;
+    this.state.adaptiveRateLimit = undefined;
+    this.state.lastAdaptiveAdjustment = undefined;
+  }
+
+  /**
+   * Get estimated time until next request can be made
+   */
+  getTimeUntilNextRequest(): number {
+    return this.calculateDelay();
+  }
+
+  /**
+   * Check if the limiter is healthy (not in backoff and error rate is acceptable)
+   */
+  isHealthy(): boolean {
+    const stats = this.getStats();
+    return !stats.isBackoffActive && stats.errorRate < 50;
   }
 }
+
+/**
+ * Default rate limiter instance
+ */
+export const rateLimiter = new RateLimiter();
+
+/**
+ * Middleware function for rate limiting HTTP requests
+ */
+export async function rateLimitMiddleware<T>(
+  requestFn: () => Promise<T>,
+  customLimiter?: RateLimiter
+): Promise<T> {
+  const limiter = customLimiter || rateLimiter;
+
+  // Wait until we can make a request
+  await limiter.waitForRequest();
+
+  try {
+    // Make the request
+    const result = await requestFn();
+
+    // Record successful request
+    limiter.recordRequest();
+
+    return result;
+  } catch (error) {
+    // Handle rate limit errors
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const statusCode = (error as any).statusCode;
+      if (statusCode === 429) {
+        limiter.recordRateLimitError({
+          retryAfter: (error as any).retryAfter,
+          limit: (error as any).limit,
+          remaining: (error as any).remaining,
+          resetTime: (error as any).resetTime ? new Date((error as any).resetTime).getTime() : undefined,
+        });
+      }
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Create a rate limiter with custom configuration
+ */
+export function createRateLimiter(config: Partial<RateLimitConfig>): RateLimiter {
+  return new RateLimiter(config);
+}
+
+/**
+ * Rate limiting utilities
+ */
+export const RateLimitUtils = {
+  /**
+   * Convert rate limit headers to RateLimitInfo
+   */
+  parseRateLimitHeaders(headers: Record<string, string>): RateLimitInfo {
+    return {
+      limit: headers['x-ratelimit-limit'] ? parseInt(headers['x-ratelimit-limit'], 10) : undefined,
+      remaining: headers['x-ratelimit-remaining'] ? parseInt(headers['x-ratelimit-remaining'], 10) : undefined,
+      resetTime: headers['x-ratelimit-reset'] ? parseInt(headers['x-ratelimit-reset'], 10) * 1000 : undefined,
+      retryAfter: headers['retry-after'] ? parseInt(headers['retry-after'], 10) : undefined,
+    };
+  },
+
+  /**
+   * Calculate optimal delay between requests
+   */
+  calculateOptimalDelay(requestsPerSecond: number): number {
+    return Math.max(1000 / requestsPerSecond, 100); // Minimum 100ms
+  },
+
+  /**
+   * Estimate requests remaining in current window
+   */
+  estimateRequestsRemaining(limiter: RateLimiter): number {
+    const stats = limiter.getStats();
+    return Math.max(0, stats.maxRequests - stats.requests);
+  },
+
+  /**
+   * Create a rate limiter optimized for high-frequency requests
+   */
+  createHighFrequencyLimiter(requestsPerSecond: number): RateLimiter {
+    return new RateLimiter({
+      maxRequestsPerWindow: Math.floor(requestsPerSecond * 60), // Convert to per-minute
+      windowMs: 60000,
+      enableBurstProtection: true,
+      maxBurst: Math.ceil(requestsPerSecond * 2), // Allow 2-second bursts
+      enableBackoff: true,
+      baseBackoffMs: 500,
+      maxBackoffMs: 30000,
+    });
+  },
+
+  /**
+   * Create a rate limiter optimized for low-frequency requests
+   */
+  createLowFrequencyLimiter(requestsPerMinute: number): RateLimiter {
+    return new RateLimiter({
+      maxRequestsPerWindow: requestsPerMinute,
+      windowMs: 60000,
+      enableBurstProtection: false,
+      enableBackoff: true,
+      baseBackoffMs: 2000,
+      maxBackoffMs: 120000,
+    });
+  },
+};
