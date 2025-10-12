@@ -150,7 +150,7 @@
   - Test real API connectivity with mocked responses for jurisdiction validation
   - Story: US1
 
-- [ ] **T022** - Add documentation for installation and setup
+- [x] **T022** - Add documentation for installation and setup ✅
   - File: `package/docs/getting-started.md`
   - Create comprehensive documentation for installation, configuration, and first steps
   - Story: US1
