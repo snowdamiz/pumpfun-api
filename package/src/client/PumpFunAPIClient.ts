@@ -289,10 +289,11 @@ export class PumpFunAPIClient {
   }
 
   /**
-   * Validate configuration parameters
+   * Validate configuration parameters with comprehensive error handling
    */
   private validateConfig(config: Partial<ClientConfig>): void {
     const errors: string[] = [];
+    const warnings: string[] = [];
 
     // Validate baseURL
     if (config.baseURL) {
@@ -301,75 +302,171 @@ export class PumpFunAPIClient {
         if (!['http:', 'https:'].includes(url.protocol)) {
           errors.push(`Invalid baseURL protocol: ${url.protocol}. Only http: and https: are allowed.`);
         }
+        if (url.hostname.includes('localhost') || url.hostname.includes('127.0.0.1')) {
+          warnings.push(`Using localhost address: ${url.hostname}. This may not work in production.`);
+        }
       } catch (error) {
-        errors.push(`Invalid baseURL format: ${config.baseURL}`);
+        errors.push(`Invalid baseURL format: "${config.baseURL}". Expected format: "https://api.example.com"`);
       }
     }
 
     // Validate timeout
     if (config.timeout !== undefined) {
-      if (typeof config.timeout !== 'number' || config.timeout <= 0) {
-        errors.push(`Invalid timeout: ${config.timeout}. Must be a positive number.`);
-      }
-      if (config.timeout > 60000) {
-        errors.push(`Timeout too high: ${config.timeout}ms. Maximum recommended timeout is 60000ms (60 seconds).`);
-      }
-      if (config.timeout < 1000) {
-        errors.push(`Timeout too low: ${config.timeout}ms. Minimum recommended timeout is 1000ms (1 second).`);
+      if (typeof config.timeout !== 'number' || isNaN(config.timeout)) {
+        errors.push(`Invalid timeout: ${config.timeout}. Must be a valid number.`);
+      } else if (config.timeout <= 0) {
+        errors.push(`Invalid timeout: ${config.timeout}ms. Must be a positive number greater than 0.`);
+      } else if (config.timeout > 60000) {
+        warnings.push(`Timeout very high: ${config.timeout}ms. Consider reducing to 30000ms (30 seconds) for better responsiveness.`);
+      } else if (config.timeout < 1000) {
+        warnings.push(`Timeout very low: ${config.timeout}ms. Consider increasing to at least 5000ms (5 seconds) to avoid timeouts.`);
       }
     }
 
     // Validate retry configuration
     if (config.retryConfig) {
-      if (config.retryConfig.maxRetries !== undefined && (config.retryConfig.maxRetries < 0 || config.retryConfig.maxRetries > 10)) {
-        errors.push(`Invalid maxRetries: ${config.retryConfig.maxRetries}. Must be between 0 and 10.`);
+      const retryConfig = config.retryConfig;
+
+      if (retryConfig.maxRetries !== undefined) {
+        if (typeof retryConfig.maxRetries !== 'number' || isNaN(retryConfig.maxRetries)) {
+          errors.push(`Invalid maxRetries: ${retryConfig.maxRetries}. Must be a valid number.`);
+        } else if (retryConfig.maxRetries < 0) {
+          errors.push(`Invalid maxRetries: ${retryConfig.maxRetries}. Cannot be negative.`);
+        } else if (retryConfig.maxRetries > 10) {
+          errors.push(`Invalid maxRetries: ${retryConfig.maxRetries}. Maximum allowed is 10 to prevent excessive retries.`);
+        }
       }
-      if (config.retryConfig.baseDelay !== undefined && (config.retryConfig.baseDelay < 100 || config.retryConfig.baseDelay > 10000)) {
-        errors.push(`Invalid baseDelay: ${config.retryConfig.baseDelay}ms. Must be between 100 and 10000ms.`);
+
+      if (retryConfig.baseDelay !== undefined) {
+        if (typeof retryConfig.baseDelay !== 'number' || isNaN(retryConfig.baseDelay)) {
+          errors.push(`Invalid baseDelay: ${retryConfig.baseDelay}. Must be a valid number.`);
+        } else if (retryConfig.baseDelay < 100) {
+          errors.push(`Invalid baseDelay: ${retryConfig.baseDelay}ms. Minimum is 100ms to prevent spam.`);
+        } else if (retryConfig.baseDelay > 10000) {
+          errors.push(`Invalid baseDelay: ${retryConfig.baseDelay}ms. Maximum is 10000ms (10 seconds).`);
+        }
       }
-      if (config.retryConfig.maxDelay !== undefined && (config.retryConfig.maxDelay < 1000 || config.retryConfig.maxDelay > 300000)) {
-        errors.push(`Invalid maxDelay: ${config.retryConfig.maxDelay}ms. Must be between 1000 and 300000ms.`);
+
+      if (retryConfig.maxDelay !== undefined) {
+        if (typeof retryConfig.maxDelay !== 'number' || isNaN(retryConfig.maxDelay)) {
+          errors.push(`Invalid maxDelay: ${retryConfig.maxDelay}. Must be a valid number.`);
+        } else if (retryConfig.maxDelay < 1000) {
+          errors.push(`Invalid maxDelay: ${retryConfig.maxDelay}ms. Minimum is 1000ms (1 second).`);
+        } else if (retryConfig.maxDelay > 300000) {
+          errors.push(`Invalid maxDelay: ${retryConfig.maxDelay}ms. Maximum is 300000ms (5 minutes).`);
+        }
       }
-      if (config.retryConfig.backoffFactor !== undefined && (config.retryConfig.backoffFactor < 1 || config.retryConfig.backoffFactor > 5)) {
-        errors.push(`Invalid backoffFactor: ${config.retryConfig.backoffFactor}. Must be between 1 and 5.`);
+
+      if (retryConfig.backoffFactor !== undefined) {
+        if (typeof retryConfig.backoffFactor !== 'number' || isNaN(retryConfig.backoffFactor)) {
+          errors.push(`Invalid backoffFactor: ${retryConfig.backoffFactor}. Must be a valid number.`);
+        } else if (retryConfig.backoffFactor < 1) {
+          errors.push(`Invalid backoffFactor: ${retryConfig.backoffFactor}. Must be at least 1.0.`);
+        } else if (retryConfig.backoffFactor > 5) {
+          errors.push(`Invalid backoffFactor: ${retryConfig.backoffFactor}. Maximum is 5.0 to prevent excessive delays.`);
+        }
+      }
+
+      // Check for logical consistency
+      if (retryConfig.baseDelay && retryConfig.maxDelay && retryConfig.baseDelay >= retryConfig.maxDelay) {
+        errors.push(`baseDelay (${retryConfig.baseDelay}ms) must be less than maxDelay (${retryConfig.maxDelay}ms).`);
       }
     }
 
     // Validate rate limit configuration
     if (config.rateLimitConfig) {
-      if (config.rateLimitConfig.maxRequestsPerWindow !== undefined && (config.rateLimitConfig.maxRequestsPerWindow < 1 || config.rateLimitConfig.maxRequestsPerWindow > 1000)) {
-        errors.push(`Invalid maxRequestsPerWindow: ${config.rateLimitConfig.maxRequestsPerWindow}. Must be between 1 and 1000.`);
+      const rateLimitConfig = config.rateLimitConfig;
+
+      if (rateLimitConfig.maxRequestsPerWindow !== undefined) {
+        if (typeof rateLimitConfig.maxRequestsPerWindow !== 'number' || isNaN(rateLimitConfig.maxRequestsPerWindow)) {
+          errors.push(`Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Must be a valid number.`);
+        } else if (rateLimitConfig.maxRequestsPerWindow < 1) {
+          errors.push(`Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Must be at least 1.`);
+        } else if (rateLimitConfig.maxRequestsPerWindow > 1000) {
+          errors.push(`Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Maximum is 1000 to prevent server overload.`);
+        }
       }
-      if (config.rateLimitConfig.windowMs !== undefined && (config.rateLimitConfig.windowMs < 1000 || config.rateLimitConfig.windowMs > 3600000)) {
-        errors.push(`Invalid windowMs: ${config.rateLimitConfig.windowMs}ms. Must be between 1000 and 3600000ms (1 hour).`);
+
+      if (rateLimitConfig.windowMs !== undefined) {
+        if (typeof rateLimitConfig.windowMs !== 'number' || isNaN(rateLimitConfig.windowMs)) {
+          errors.push(`Invalid windowMs: ${rateLimitConfig.windowMs}. Must be a valid number.`);
+        } else if (rateLimitConfig.windowMs < 1000) {
+          errors.push(`Invalid windowMs: ${rateLimitConfig.windowMs}ms. Minimum is 1000ms (1 second).`);
+        } else if (rateLimitConfig.windowMs > 3600000) {
+          errors.push(`Invalid windowMs: ${rateLimitConfig.windowMs}ms. Maximum is 3600000ms (1 hour).`);
+        }
       }
-      if (config.rateLimitConfig.maxBurst !== undefined && config.rateLimitConfig.maxBurst < 1) {
-        errors.push(`Invalid maxBurst: ${config.rateLimitConfig.maxBurst}. Must be a positive number.`);
+
+      if (rateLimitConfig.maxBurst !== undefined) {
+        if (typeof rateLimitConfig.maxBurst !== 'number' || isNaN(rateLimitConfig.maxBurst)) {
+          errors.push(`Invalid maxBurst: ${rateLimitConfig.maxBurst}. Must be a valid number.`);
+        } else if (rateLimitConfig.maxBurst < 1) {
+          errors.push(`Invalid maxBurst: ${rateLimitConfig.maxBurst}. Must be at least 1.`);
+        }
       }
-      if (config.rateLimitConfig.baseBackoffMs !== undefined && (config.rateLimitConfig.baseBackoffMs < 100 || config.rateLimitConfig.baseBackoffMs > 10000)) {
-        errors.push(`Invalid baseBackoffMs: ${config.rateLimitConfig.baseBackoffMs}ms. Must be between 100 and 10000ms.`);
+
+      if (rateLimitConfig.baseBackoffMs !== undefined) {
+        if (typeof rateLimitConfig.baseBackoffMs !== 'number' || isNaN(rateLimitConfig.baseBackoffMs)) {
+          errors.push(`Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}. Must be a valid number.`);
+        } else if (rateLimitConfig.baseBackoffMs < 100) {
+          errors.push(`Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}ms. Minimum is 100ms.`);
+        } else if (rateLimitConfig.baseBackoffMs > 10000) {
+          errors.push(`Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}ms. Maximum is 10000ms (10 seconds).`);
+        }
       }
-      if (config.rateLimitConfig.maxBackoffMs !== undefined && (config.rateLimitConfig.maxBackoffMs < 1000 || config.rateLimitConfig.maxBackoffMs > 300000)) {
-        errors.push(`Invalid maxBackoffMs: ${config.rateLimitConfig.maxBackoffMs}ms. Must be between 1000 and 300000ms.`);
+
+      if (rateLimitConfig.maxBackoffMs !== undefined) {
+        if (typeof rateLimitConfig.maxBackoffMs !== 'number' || isNaN(rateLimitConfig.maxBackoffMs)) {
+          errors.push(`Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}. Must be a valid number.`);
+        } else if (rateLimitConfig.maxBackoffMs < 1000) {
+          errors.push(`Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}ms. Minimum is 1000ms (1 second).`);
+        } else if (rateLimitConfig.maxBackoffMs > 300000) {
+          errors.push(`Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}ms. Maximum is 300000ms (5 minutes).`);
+        }
       }
-      if (config.rateLimitConfig.backoffMultiplier !== undefined && (config.rateLimitConfig.backoffMultiplier < 1 || config.rateLimitConfig.backoffMultiplier > 5)) {
-        errors.push(`Invalid backoffMultiplier: ${config.rateLimitConfig.backoffMultiplier}. Must be between 1 and 5.`);
+
+      if (rateLimitConfig.backoffMultiplier !== undefined) {
+        if (typeof rateLimitConfig.backoffMultiplier !== 'number' || isNaN(rateLimitConfig.backoffMultiplier)) {
+          errors.push(`Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Must be a valid number.`);
+        } else if (rateLimitConfig.backoffMultiplier < 1) {
+          errors.push(`Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Must be at least 1.0.`);
+        } else if (rateLimitConfig.backoffMultiplier > 5) {
+          errors.push(`Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Maximum is 5.0.`);
+        }
+      }
+
+      // Check for logical consistency
+      if (rateLimitConfig.baseBackoffMs && rateLimitConfig.maxBackoffMs && rateLimitConfig.baseBackoffMs >= rateLimitConfig.maxBackoffMs) {
+        errors.push(`baseBackoffMs (${rateLimitConfig.baseBackoffMs}ms) must be less than maxBackoffMs (${rateLimitConfig.maxBackoffMs}ms).`);
       }
     }
 
     // Validate logger configuration
     if (config.loggerConfig) {
-      if (config.loggerConfig.level && !Object.values(LogLevel).includes(config.loggerConfig.level)) {
-        errors.push(`Invalid log level: ${config.loggerConfig.level}. Must be one of: ${Object.values(LogLevel).join(', ')}.`);
+      const loggerConfig = config.loggerConfig;
+
+      if (loggerConfig.level && !Object.values(LogLevel).includes(loggerConfig.level)) {
+        errors.push(`Invalid log level: "${loggerConfig.level}". Must be one of: ${Object.values(LogLevel).join(', ')}.`);
       }
-      if (config.loggerConfig.filePath && typeof config.loggerConfig.filePath !== 'string') {
-        errors.push(`Invalid log file path: must be a string.`);
+
+      if (loggerConfig.filePath !== undefined) {
+        if (typeof loggerConfig.filePath !== 'string') {
+          errors.push(`Invalid log file path: must be a string, got ${typeof loggerConfig.filePath}.`);
+        } else if (loggerConfig.filePath.trim() === '') {
+          errors.push(`Invalid log file path: cannot be empty string.`);
+        }
       }
     }
 
-    // If there are validation errors, throw an exception
+    // Log warnings if there are any
+    if (warnings.length > 0 && this.logger) {
+      warnings.forEach(warning => this.logger.warn(`Configuration warning: ${warning}`));
+    }
+
+    // If there are validation errors, throw a comprehensive error
     if (errors.length > 0) {
-      throw new Error(`Configuration validation failed:\n${errors.map(error => `  - ${error}`).join('\n')}`);
+      const errorMessage = `Configuration validation failed with ${errors.length} error${errors.length === 1 ? '' : 's'}:\n${errors.map((error, index) => `  ${index + 1}. ${error}`).join('\n')}\n\nPlease fix these errors and try again. Refer to the documentation for valid configuration options.`;
+      throw new Error(errorMessage);
     }
   }
 

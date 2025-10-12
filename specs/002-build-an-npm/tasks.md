@@ -120,17 +120,17 @@
   - Implement constructor with optional configuration, environment variable loading, and validation
   - Story: US1
 
-- [ ] **T016** - Create main package entry point and exports [P]
+- [x] **T016** - Create main package entry point and exports [P]
   - File: `package/src/index.ts`
   - Create main entry point that exports PumpFunAPIClient, types, and utility classes
   - Story: US1
 
-- [ ] **T017** - Implement validateJurisdiction method [P]
+- [x] **T017** - Implement validateJurisdiction method [P]
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Add jurisdiction validation method to test basic API connectivity
   - Story: US1
 
-- [ ] **T018** - Add configuration validation and error handling [P]
+- [x] **T018** - Add configuration validation and error handling [P] ✅
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Implement validation for configuration parameters and clear error messages
   - Story: US1
