@@ -1,0 +1,559 @@
+openapi: 3.0.3
+info:
+  title: PumpFun API Client
+  description: RESTful API client for PumpFun streaming data and video streams
+  version: 1.0.0
+  contact:
+    name: PumpFun API Client
+    url: https://github.com/pumpfun/pumpfun-api
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://frontend-api-v3.pump.fun
+    description: Production API server
+  - url: https://livestream-api.pump.fun
+    description: Live streaming API server
+
+paths:
+  /coins/currently-live:
+    get:
+      tags:
+        - Live Streams
+      summary: Get currently live streaming coins
+      description: Retrieve a list of coins that currently have active live streams
+      operationId: getLiveCoins
+      parameters:
+        - name: offset
+          in: query
+          description: Number of items to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          description: Maximum number of items to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: sort
+          in: query
+          description: Sort field
+          required: false
+          schema:
+            type: string
+            enum: [currently_live, market_cap, participants]
+            default: currently_live
+        - name: order
+          in: query
+          description: Sort order
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+        - name: includeNsfw
+          in: query
+          description: Include NSFW content
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of live streaming coins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LiveCoin'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/is-valid-jurisdiction:
+    get:
+      tags:
+        - Authentication
+      summary: Validate user jurisdiction
+      description: Check if the user's jurisdiction is valid for accessing the API
+      operationId: validateJurisdiction
+      responses:
+        '200':
+          description: Jurisdiction validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JurisdictionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sol-price:
+    get:
+      tags:
+        - Market Data
+      summary: Get current SOL price
+      description: Retrieve the current price of SOL in USD
+      operationId: getSolPrice
+      responses:
+        '200':
+          description: Current SOL price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolPriceResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /livestream:
+    get:
+      tags:
+        - Live Streaming
+      summary: Get live stream information
+      description: Retrieve detailed information about a specific live stream
+      operationId: getLiveStreamInfo
+      parameters:
+        - name: mintId
+          in: query
+          required: true
+          description: The mint ID of the token
+          schema:
+            type: string
+            pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
+      responses:
+        '200':
+          description: Live stream information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveStreamInfo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /livestream/is-approved-creator:
+    get:
+      tags:
+        - Live Streaming
+      summary: Check if creator is approved for streaming
+      description: Verify if a creator is approved to start live streams
+      operationId: isApprovedCreator
+      parameters:
+        - name: mintId
+          in: query
+          required: true
+          description: The mint ID of the token
+          schema:
+            type: string
+            pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
+      responses:
+        '200':
+          description: Creator approval status
+          content:
+            application/json:
+              schema:
+                type: boolean
+        '304':
+          description: Cached response (creator is approved)
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /livestream/join:
+    post:
+      tags:
+        - Live Streaming
+      summary: Join a live stream
+      description: Attempt to join an active live stream
+      operationId: joinLiveStream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mintId
+              properties:
+                mintId:
+                  type: string
+                  pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
+                  description: The mint ID of the token to join
+      responses:
+        '200':
+          description: Successfully joined stream
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clips/{mintId}:
+    get:
+      tags:
+        - Stream Clips
+      summary: Get stream clips for a coin
+      description: Retrieve recorded stream clips for a specific token
+      operationId: getStreamClips
+      parameters:
+        - name: mintId
+          in: path
+          required: true
+          description: The mint ID of the token
+          schema:
+            type: string
+            pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
+        - name: limit
+          in: query
+          description: Maximum number of clips to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: clipType
+          in: query
+          description: Type of clips to retrieve
+          required: false
+          schema:
+            type: string
+            enum: [COMPLETE, HIGHLIGHT]
+            default: COMPLETE
+      responses:
+        '200':
+          description: List of stream clips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StreamClip'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    LiveCoin:
+      type: object
+      required:
+        - mint
+        - name
+        - symbol
+        - description
+        - image_uri
+        - creator
+        - created_timestamp
+        - market_cap
+        - usd_market_cap
+        - is_currently_live
+        - num_participants
+        - reply_count
+        - thumbnail
+        - last_reply
+      properties:
+        mint:
+          type: string
+          pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
+          description: Unique identifier for the token
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Token name
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Token symbol
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Token description
+        image_uri:
+          type: string
+          format: uri
+          description: Token image URL
+        twitter:
+          type: string
+          pattern: '^[a-zA-Z0-9_]{1,15}$'
+          description: Twitter handle
+        telegram:
+          type: string
+          format: uri
+          description: Telegram link
+        creator:
+          type: string
+          pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
+          description: Creator address
+        created_timestamp:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Creation timestamp
+        market_cap:
+          type: number
+          format: float
+          minimum: 0
+          description: Market cap value
+        usd_market_cap:
+          type: number
+          format: float
+          minimum: 0
+          description: USD market cap
+        is_currently_live:
+          type: boolean
+          description: Live streaming status
+        livestream_title:
+          type: string
+          maxLength: 200
+          description: Stream title
+        num_participants:
+          type: integer
+          minimum: 0
+          description: Current participant count
+        reply_count:
+          type: integer
+          minimum: 0
+          description: Chat message count
+        thumbnail:
+          type: string
+          format: uri
+          description: Stream thumbnail URL
+        last_reply:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Last activity timestamp
+
+    LiveStreamInfo:
+      type: object
+      required:
+        - id
+        - supabaseId
+        - mintId
+        - creatorAddress
+        - streamStartTimestamp
+        - numParticipants
+        - maxParticipants
+        - isLive
+        - downrankScore
+        - title
+        - mode
+      properties:
+        id:
+          type: integer
+          minimum: 1
+          description: Stream unique identifier
+        supabaseId:
+          type: integer
+          minimum: 1
+          description: Supabase database ID
+        mintId:
+          type: string
+          pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
+          description: Associated token mint
+        creatorAddress:
+          type: string
+          pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
+          description: Stream creator address
+        streamStartTimestamp:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Stream start time
+        numParticipants:
+          type: integer
+          minimum: 0
+          description: Current participants
+        maxParticipants:
+          type: integer
+          minimum: 0
+          description: Maximum participants
+        isLive:
+          type: boolean
+          description: Live status
+        downrankScore:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          description: Quality/relevance score
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Stream title
+        mode:
+          type: string
+          enum: [interactive, broadcast]
+          description: Stream mode
+
+    StreamClip:
+      type: object
+      required:
+        - id
+        - mintId
+        - clipType
+      properties:
+        id:
+          type: string
+          description: Clip unique identifier
+        mintId:
+          type: string
+          pattern: '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
+          description: Associated token mint
+        clipType:
+          type: string
+          enum: [COMPLETE, HIGHLIGHT]
+          description: Clip type
+        duration:
+          type: integer
+          minimum: 1
+          description: Clip duration in seconds
+        view_count:
+          type: integer
+          minimum: 0
+          description: View count
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        clip_url:
+          type: string
+          format: uri
+          description: Clip playback URL
+
+    JurisdictionResponse:
+      type: object
+      required:
+        - is_valid
+      properties:
+        is_valid:
+          type: boolean
+          description: Whether the jurisdiction is valid
+
+    SolPriceResponse:
+      type: object
+      required:
+        - sol_price
+      properties:
+        sol_price:
+          type: number
+          format: float
+          minimum: 0
+          description: Current SOL price in USD
+
+    APIError:
+      type: object
+      required:
+        - code
+        - message
+        - statusCode
+        - timestamp
+        - isRetryable
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Error code
+        message:
+          type: string
+          minLength: 1
+          description: Human-readable error message
+        statusCode:
+          type: integer
+          minimum: 100
+          maximum: 599
+          description: HTTP status code
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+        isRetryable:
+          type: boolean
+          description: Whether error can be retried
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+  - {}

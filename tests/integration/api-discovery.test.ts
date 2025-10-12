@@ -184,7 +184,7 @@ describe('PumpFun API Discovery Integration Tests', () => {
 
       // Verify all items have nsfw field set to false
       if (response.length > 0) {
-        response.forEach(coin => {
+        response.forEach((coin: any) => {
           expect(coin.nsfw).toBe(false);
         });
       }

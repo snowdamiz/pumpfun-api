@@ -34,7 +34,10 @@
       "Bash(node:*)",
       "Bash(npm test:*)",
       "Bash(npx ts-node:*)",
-      "Bash(TEST_CONFIG_MAX_REQUESTS=6 node:*)"
+      "Bash(TEST_CONFIG_MAX_REQUESTS=6 node:*)",
+      "mcp__chrome-devtools__click",
+      "Bash(npm run test)",
+      "Bash(TEST_CONFIG_MAX_REQUESTS=12 npx ts-node:*)"
     ],
     "deny": [],
     "ask": []
