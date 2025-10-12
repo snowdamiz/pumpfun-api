@@ -80,12 +80,12 @@
 
 **Goal**: Implement core utilities and infrastructure required by all user stories
 
-- [ ] **T009** - Extract and enhance HTTP client utility
+- [x] **T009** - Extract and enhance HTTP client utility
   - File: `package/src/utils/http-client.ts`
   - Extract HTTP client from existing codebase with enhanced retry logic, rate limiting, and error handling
   - Story: Shared across all user stories
 
-- [ ] **T010** - Extract and enhance Logger utility
+- [x] **T010** - Extract and enhance Logger utility ✅
   - File: `package/src/utils/logger.ts`
   - Extract logging system with configurable levels, output destinations, and performance tracking
   - Story: Shared across all user stories

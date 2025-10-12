@@ -1,0 +1,44 @@
+# Source and test files (will use compiled dist/)
+src/
+tests/
+examples/
+*.ts
+!*.d.ts
+
+# Development configuration
+.eslintrc*
+.prettierrc*
+jest.config.*
+tsconfig.*
+rollup.config.*
+
+# Documentation and specs
+docs/
+specs/
+*.md
+!README.md
+
+# Dependencies
+node_modules/
+
+# Development files
+.coverage/
+.nyc_output/
+.cache/
+*.log
+
+# OS and IDE files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# Environment files
+.env*
+.config/
+
+# Claude and development tools
+.claude/
+.npm/
+.eslintcache
