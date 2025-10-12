@@ -16,7 +16,7 @@ const TEST_CONFIG = {
   // Use shorter timeouts for testing
   requestTimeout: 8000,
   // Limit requests to avoid rate limiting
-  maxRequests: 3,
+  maxRequests: 12,
   // Test with smaller data sets
   testLimit: 3
 };
@@ -308,6 +308,262 @@ class APITestRunner {
     }
   }
 
+  // ==================== VIDEO STREAM DISCOVERY TESTS ====================
+
+  /**
+   * Test getLiveStreamInfo functionality
+   */
+  async testGetLiveStreamInfo(): Promise<void> {
+    // Test with a known live coin
+    const testMintId = '4F21SgBnms5bwQSjuc11ZF8ruSd9vJp6qu44rWLqpump'; // I AM PILL
+
+    const streamInfo = await this.client.getLiveStreamInfo(testMintId);
+
+    if (!streamInfo) {
+      // Stream might not be live, which is acceptable
+      this.logger.info(`No active stream found for test mint: ${testMintId}`);
+      return;
+    }
+
+    // Validate stream info structure
+    const requiredFields = ['id', 'supabaseId', 'mintId', 'creatorAddress', 'streamStartTimestamp', 'numParticipants', 'maxParticipants', 'isLive', 'downrankScore', 'title', 'mode'];
+    for (const field of requiredFields) {
+      if (!(field in streamInfo)) {
+        throw new Error(`Missing required field in stream info: ${field}`);
+      }
+    }
+
+    // Validate data types
+    if (typeof streamInfo.id !== 'number' || streamInfo.id <= 0) {
+      throw new Error('Invalid stream ID');
+    }
+
+    if (typeof streamInfo.mintId !== 'string' || streamInfo.mintId !== testMintId) {
+      throw new Error('Stream mint ID mismatch');
+    }
+
+    if (typeof streamInfo.isLive !== 'boolean') {
+      throw new Error('Invalid isLive field type');
+    }
+
+    if (typeof streamInfo.numParticipants !== 'number' || streamInfo.numParticipants < 0) {
+      throw new Error('Invalid participant count');
+    }
+
+    if (!['interactive', 'broadcast'].includes(streamInfo.mode)) {
+      throw new Error(`Invalid stream mode: ${streamInfo.mode}`);
+    }
+  }
+
+  /**
+   * Test isApprovedCreator functionality
+   */
+  async testIsApprovedCreator(): Promise<void> {
+    // Test with a known live coin
+    const testMintId = '4F21SgBnms5bwQSjuc11ZF8ruSd9vJp6qu44rWLqpump'; // I AM PILL
+
+    const isApproved = await this.client.isApprovedCreator(testMintId);
+
+    if (typeof isApproved !== 'boolean') {
+      throw new Error('Expected boolean response for creator approval');
+    }
+
+    // This test just verifies the API call works - the actual approval status may vary
+    this.logger.info(`Creator approval status for test mint: ${isApproved}`);
+  }
+
+  /**
+   * Test getLiveKitConnectionInfo functionality
+   */
+  async testGetLiveKitConnectionInfo(): Promise<void> {
+    // Test with a known live coin
+    const testMintId = '4F21SgBnms5bwQSjuc11ZF8ruSd9vJp6qu44rWLqpump'; // I AM PILL
+
+    const connectionInfo = await this.client.getLiveKitConnectionInfo(testMintId);
+
+    if (!connectionInfo) {
+      // No active stream, which is acceptable
+      this.logger.info(`No LiveKit connection available for test mint: ${testMintId}`);
+      return;
+    }
+
+    // Validate connection info structure
+    const requiredFields = ['regions', 'primaryServer', 'roomName', 'mintId', 'streamId', 'websocketUrl', 'requiresAuthentication'];
+    for (const field of requiredFields) {
+      if (!(field in connectionInfo)) {
+        throw new Error(`Missing required field in connection info: ${field}`);
+      }
+    }
+
+    // Validate data types
+    if (!Array.isArray(connectionInfo.regions)) {
+      throw new Error('Regions should be an array');
+    }
+
+    if (connectionInfo.regions.length === 0) {
+      throw new Error('At least one region should be available');
+    }
+
+    // Validate region structure
+    const firstRegion = connectionInfo.regions[0];
+    if (!firstRegion) {
+      throw new Error('First region in regions array is undefined');
+    }
+    const regionFields = ['region', 'url', 'distance'];
+    for (const field of regionFields) {
+      if (!(field in firstRegion)) {
+        throw new Error(`Missing required field in region: ${field}`);
+      }
+    }
+
+    if (typeof connectionInfo.roomName !== 'string' || connectionInfo.roomName.length === 0) {
+      throw new Error('Invalid room name');
+    }
+
+    if (typeof connectionInfo.websocketUrl !== 'string' || !connectionInfo.websocketUrl.startsWith('wss://')) {
+      throw new Error('Invalid WebSocket URL');
+    }
+
+    if (typeof connectionInfo.requiresAuthentication !== 'boolean') {
+      throw new Error('Invalid authentication flag');
+    }
+
+    // Validate room naming pattern
+    const expectedRoomName = `${testMintId}:${connectionInfo.streamId}`;
+    if (connectionInfo.roomName !== expectedRoomName) {
+      throw new Error(`Room name mismatch. Expected: ${expectedRoomName}, Got: ${connectionInfo.roomName}`);
+    }
+  }
+
+  /**
+   * Test getStreamClips functionality
+   */
+  async testGetStreamClips(): Promise<void> {
+    // Test with a known live coin
+    const testMintId = '4F21SgBnms5bwQSjuc11ZF8ruSd9vJp6qu44rWLqpump'; // I AM PILL
+
+    // Test complete clips
+    const completeClips = await this.client.getStreamClips(testMintId, 'COMPLETE', 5);
+
+    if (!Array.isArray(completeClips)) {
+      throw new Error('Expected array response for complete clips');
+    }
+
+    if (completeClips.length > 5) {
+      throw new Error(`Too many complete clips returned: ${completeClips.length} > 5`);
+    }
+
+    // Test highlight clips
+    const highlightClips = await this.client.getStreamClips(testMintId, 'HIGHLIGHT', 5);
+
+    if (!Array.isArray(highlightClips)) {
+      throw new Error('Expected array response for highlight clips');
+    }
+
+    if (highlightClips.length > 5) {
+      throw new Error(`Too many highlight clips returned: ${highlightClips.length} > 5`);
+    }
+
+    // Validate clip structure if any clips exist
+    const allClips = [...completeClips, ...highlightClips];
+    for (const clip of allClips) {
+      if (clip && typeof clip === 'object') {
+        // Clips may have different structures, so we're flexible here
+        this.logger.info(`Found clip with structure: ${Object.keys(clip).join(', ')}`);
+      }
+    }
+  }
+
+  /**
+   * Test joinLiveStream functionality
+   */
+  async testJoinLiveStream(): Promise<void> {
+    // Test with a known live coin
+    const testMintId = '4F21SgBnms5bwQSjuc11ZF8ruSd9vJp6qu44rWLqpump'; // I AM PILL
+
+    const joinResult = await this.client.joinLiveStream(testMintId);
+
+    if (!joinResult || typeof joinResult !== 'object') {
+      throw new Error('Expected object response for join result');
+    }
+
+    const requiredFields = ['success', 'message'];
+    for (const field of requiredFields) {
+      if (!(field in joinResult)) {
+        throw new Error(`Missing required field in join result: ${field}`);
+      }
+    }
+
+    if (typeof joinResult.success !== 'boolean') {
+      throw new Error('Invalid success field type');
+    }
+
+    if (typeof joinResult.message !== 'string') {
+      throw new Error('Invalid message field type');
+    }
+
+    this.logger.info(`Join stream result: ${joinResult.success ? 'SUCCESS' : 'FAILED'} - ${joinResult.message}`);
+  }
+
+  /**
+   * Test getVideoStreamAnalysis functionality
+   */
+  async testGetVideoStreamAnalysis(): Promise<void> {
+    // Test with a known live coin
+    const testMintId = '4F21SgBnms5bwQSjuc11ZF8ruSd9vJp6qu44rWLqpump'; // I AM PILL
+
+    const analysis = await this.client.getVideoStreamAnalysis(testMintId);
+
+    if (!analysis || typeof analysis !== 'object') {
+      throw new Error('Expected object response for video stream analysis');
+    }
+
+    // Validate analysis structure
+    const requiredFields = ['hasActiveStream', 'streamInfo', 'liveKitConnection', 'isApprovedCreator', 'availableClips', 'canJoin'];
+    for (const field of requiredFields) {
+      if (!(field in analysis)) {
+        throw new Error(`Missing required field in analysis: ${field}`);
+      }
+    }
+
+    // Validate data types
+    if (typeof analysis.hasActiveStream !== 'boolean') {
+      throw new Error('Invalid hasActiveStream field type');
+    }
+
+    if (typeof analysis.isApprovedCreator !== 'boolean') {
+      throw new Error('Invalid isApprovedCreator field type');
+    }
+
+    if (typeof analysis.canJoin !== 'boolean') {
+      throw new Error('Invalid canJoin field type');
+    }
+
+    if (!analysis.availableClips || typeof analysis.availableClips !== 'object') {
+      throw new Error('Invalid availableClips field');
+    }
+
+    if (!Array.isArray(analysis.availableClips.complete)) {
+      throw new Error('Complete clips should be an array');
+    }
+
+    if (!Array.isArray(analysis.availableClips.highlight)) {
+      throw new Error('Highlight clips should be an array');
+    }
+
+    // Validate consistency
+    if (analysis.hasActiveStream && !analysis.streamInfo) {
+      throw new Error('Stream info should be available when hasActiveStream is true');
+    }
+
+    if (analysis.hasActiveStream && !analysis.liveKitConnection) {
+      // This might be acceptable if the stream is ending, but log it
+      this.logger.info('Active stream found but no LiveKit connection available');
+    }
+
+    this.logger.info(`Video stream analysis completed: Active=${analysis.hasActiveStream}, Approved=${analysis.isApprovedCreator}, CanJoin=${analysis.canJoin}`);
+  }
+
   /**
    * Run all tests
    */
@@ -320,7 +576,13 @@ class APITestRunner {
       { name: 'Get Top Live Streams', fn: () => this.testGetTopLiveStreams() },
       { name: 'Search Live Streams', fn: () => this.testSearchLiveStreams() },
       { name: 'Get Stream Statistics', fn: () => this.testGetStreamStatistics() },
-      { name: 'Get Titled Streams', fn: () => this.testGetTitledStreams() }
+      { name: 'Get Titled Streams', fn: () => this.testGetTitledStreams() },
+      { name: 'Get Live Stream Info', fn: () => this.testGetLiveStreamInfo() },
+      { name: 'Check Creator Approval', fn: () => this.testIsApprovedCreator() },
+      { name: 'Get LiveKit Connection Info', fn: () => this.testGetLiveKitConnectionInfo() },
+      { name: 'Get Stream Clips', fn: () => this.testGetStreamClips() },
+      { name: 'Join Live Stream', fn: () => this.testJoinLiveStream() },
+      { name: 'Video Stream Analysis', fn: () => this.testGetVideoStreamAnalysis() }
     ];
 
     const startTime = Date.now();
