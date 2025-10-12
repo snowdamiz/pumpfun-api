@@ -75,11 +75,16 @@ export class PumpFunAPIClient {
     // Load configuration from environment variables first
     const envConfig = this.loadEnvironmentConfig();
 
+    // Filter out undefined values from config
+    const filteredConfig = config ? Object.fromEntries(
+      Object.entries(config).filter(([_, value]) => value !== undefined)
+    ) : {};
+
     // Merge configuration: defaults < environment < explicit config
     const mergedConfig = {
       ...DEFAULT_CLIENT_CONFIG,
       ...envConfig,
-      ...config,
+      ...filteredConfig,
     };
 
     // Validate the merged configuration

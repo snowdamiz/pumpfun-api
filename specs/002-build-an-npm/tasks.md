@@ -140,7 +140,7 @@
   - Create examples showing installation, initialization, and basic API calls
   - Story: US1
 
-- [ ] **T020** - Implement unit tests for client initialization
+- [x] **T020** - Implement unit tests for client initialization
   - File: `package/tests/unit/client.test.ts`
   - Test client initialization, configuration validation, and error scenarios
   - Story: US1
