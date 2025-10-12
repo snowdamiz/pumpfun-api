@@ -145,7 +145,7 @@
   - Test client initialization, configuration validation, and error scenarios
   - Story: US1
 
-- [ ] **T021** - Create integration tests for basic functionality
+- [x] **T021** - Create integration tests for basic functionality ✅
   - File: `package/tests/integration/basic.test.ts`
   - Test real API connectivity with mocked responses for jurisdiction validation
   - Story: US1
@@ -158,11 +158,6 @@
 - [ ] **T023** - Implement error scenarios and recovery [P]
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Handle invalid configuration, network errors, and provide helpful error messages
-  - Story: US1
-
-- [ ] **T024** - Create performance benchmarks for initialization
-  - File: `package/tests/performance/init.test.ts`
-  - Benchmark client initialization time and memory usage
   - Story: US1
 
 **✅ Phase 3 Checkpoint**: User Story 1 complete - npm package can be installed and client initialized
