@@ -15,7 +15,7 @@ export * from './client/types';
 export * from './utils/errors';
 
 // Re-export commonly used utilities
-export { HttpClient } from './utils/http-client';
+export { HTTPClient, createHTTPClient, httpClient } from './utils/http-client';
 export { Logger } from './utils/logger';
 export { RateLimiter } from './utils/rate-limiter';
 
