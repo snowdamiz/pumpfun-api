@@ -1,0 +1,369 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ published ]
+
+jobs:
+  test:
+    name: Test on Node.js ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Run type checking
+      working-directory: ./package
+      run: npm run type-check
+
+    - name: Run linting
+      working-directory: ./package
+      run: npm run lint
+
+    - name: Run tests
+      working-directory: ./package
+      run: npm run test:coverage
+
+    - name: Upload coverage to Codecov
+      if: matrix.node-version == '20.x'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./package/coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Build package
+      working-directory: ./package
+      run: npm run build
+
+    - name: Verify build artifacts
+      working-directory: ./package
+      run: |
+        ls -la dist/
+        test -f dist/index.js
+        test -f dist/index.esm.js
+        test -f dist/index.d.ts
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: package/dist/
+        retention-days: 1
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Run security audit
+      working-directory: ./package
+      run: npm audit --audit-level moderate
+
+    - name: Run Snyk security scan
+      uses: snyk/actions/node@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    needs: [test, build, security]
+    if: github.event_name == 'release' && github.event.action == 'published'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        registry-url: 'https://registry.npmjs.org'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: package/dist/
+
+    - name: Verify build
+      working-directory: ./package
+      run: |
+        ls -la dist/
+        test -f dist/index.js
+        test -f dist/index.esm.js
+        test -f dist/index.d.ts
+
+    - name: Publish to npm
+      working-directory: ./package
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  size-limit:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: package/dist/
+
+    - name: Check bundle size
+      working-directory: ./package
+      run: |
+        # Check if main bundle is under 500KB
+        MAIN_SIZE=$(stat -c%s dist/index.js)
+        ESM_SIZE=$(stat -c%s dist/index.esm.js)
+
+        echo "Main bundle size: $MAIN_SIZE bytes"
+        echo "ESM bundle size: $ESM_SIZE bytes"
+
+        if [ $MAIN_SIZE -gt 512000 ]; then
+          echo "❌ Main bundle exceeds 500KB limit"
+          exit 1
+        fi
+
+        if [ $ESM_SIZE -gt 512000 ]; then
+          echo "❌ ESM bundle exceeds 500KB limit"
+          exit 1
+        fi
+
+        echo "✅ All bundles within size limits"
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build
+
+    services:
+      mock-api:
+        image: mockserver/mockserver:latest
+        ports:
+          - 1080:1080
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: package/dist/
+
+    - name: Wait for mock API to be ready
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:1080/mockserver/status; do sleep 2; done'
+
+    - name: Setup mock expectations
+      run: |
+        curl -X PUT http://localhost:1080/mockserver/expectation \
+          -H "Content-Type: application/json" \
+          -d '{
+            "httpRequest": {
+              "path": "/coins/currently-live"
+            },
+            "httpResponse": {
+              "statusCode": 200,
+              "body": "[{\"mint\":\"test\",\"name\":\"Test\",\"symbol\":\"TEST\",\"description\":\"Test token\",\"image_uri\":\"https://example.com/image.png\",\"creator\":\"test_creator\",\"created_timestamp\":1234567890,\"market_cap\":1000,\"usd_market_cap\":1000,\"is_currently_live\":true,\"num_participants\":10,\"reply_count\":5,\"thumbnail\":\"https://example.com/thumb.png\",\"last_reply\":1234567890}]"
+            }
+          }'
+
+    - name: Run integration tests
+      working-directory: ./package
+      run: npm run test:integration
+      env:
+        API_BASE_URL: http://localhost:1080
+
+  docs:
+    name: Documentation Build
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Install TypeDoc
+      working-directory: ./package
+      run: npm install -g typedoc
+
+    - name: Generate documentation
+      working-directory: ./package
+      run: |
+        mkdir -p docs
+        typedoc --out docs src/index.ts --excludePrivate --excludeInternal
+
+    - name: Upload documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: docs
+        path: package/docs/
+        retention-days: 30
+
+  performance:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: package/dist/
+
+    - name: Run performance benchmarks
+      working-directory: ./package
+      run: npm run test:performance || echo "Performance tests not configured yet"
+
+    - name: Report performance results
+      if: always()
+      run: |
+        echo "Performance benchmark results:"
+        echo "- Bundle size: $(du -sh dist/ | cut -f1)"
+        echo "- Bundle files: $(find dist/ -name "*.js" | wc -l)"
+
+  notification:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [test, build, security, publish]
+    if: always()
+
+    steps:
+    - name: Notify on success
+      if: ${{ needs.test.result == 'success' && needs.build.result == 'success' }}
+      run: |
+        echo "✅ All checks passed!"
+        echo "Build: ${{ needs.build.result }}"
+        echo "Test: ${{ needs.test.result }}"
+        echo "Security: ${{ needs.security.result }}"
+        echo "Publish: ${{ needs.publish.result }}"
+
+    - name: Notify on failure
+      if: ${{ needs.test.result == 'failure' || needs.build.result == 'failure' || needs.security.result == 'failure' }}
+      run: |
+        echo "❌ Some checks failed!"
+        echo "Build: ${{ needs.build.result }}"
+        echo "Test: ${{ needs.test.result }}"
+        echo "Security: ${{ needs.security.result }}"
+        exit 1

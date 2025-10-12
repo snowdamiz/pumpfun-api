@@ -1,0 +1,182 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  quick-checks:
+    name: Quick PR Checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Check code formatting
+      working-directory: ./package
+      run: |
+        npx prettier --check "src/**/*.ts" "tests/**/*.ts" || {
+          echo "❌ Code formatting issues found. Run 'npm run format' to fix."
+          exit 1
+        }
+
+    - name: Run linting
+      working-directory: ./package
+      run: npm run lint
+
+    - name: Type checking
+      working-directory: ./package
+      run: npm run type-check
+
+    - name: Run unit tests
+      working-directory: ./package
+      run: npm test
+
+    - name: Build check
+      working-directory: ./package
+      run: npm run build
+
+    - name: Check for package.json changes
+      run: |
+        if git diff --name-only HEAD^ HEAD | grep -q "package/package.json"; then
+          echo "⚠️ package.json was modified. Please ensure version is bumped if needed."
+        fi
+
+    - name: Check for breaking changes
+      if: contains(github.event.pull_request.labels.*.name, 'breaking-change')
+      run: |
+        echo "🚨 This PR contains breaking changes. Ensure proper version bump and documentation."
+        exit 1
+
+  size-check:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Build package
+      working-directory: ./package
+      run: npm run build
+
+    - name: Check bundle size
+      working-directory: ./package
+      run: |
+        MAIN_SIZE=$(stat -c%s dist/index.js 2>/dev/null || echo 0)
+        ESM_SIZE=$(stat -c%s dist/index.esm.js 2>/dev/null || echo 0)
+
+        echo "Main bundle size: $MAIN_SIZE bytes"
+        echo "ESM bundle size: $ESM_SIZE bytes"
+
+        # Warn if bundle is growing large (but don't fail)
+        if [ $MAIN_SIZE -gt 400000 ]; then
+          echo "⚠️ Main bundle is getting large ($(($MAIN_SIZE / 1024))KB). Consider optimization."
+        fi
+
+        if [ $ESM_SIZE -gt 400000 ]; then
+          echo "⚠️ ESM bundle is getting large ($(($ESM_SIZE / 1024))KB). Consider optimization."
+        fi
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: 'package/package-lock.json'
+
+    - name: Install dependencies
+      working-directory: ./package
+      run: npm ci
+
+    - name: Audit dependencies
+      working-directory: ./package
+      run: npm audit --audit-level moderate
+
+    - name: Check for sensitive data
+      run: |
+        # Check for potential API keys, tokens, or secrets
+        if grep -r -i "api[_-]key\|secret\|token\|password" package/src/ --include="*.ts" --include="*.js"; then
+          echo "⚠️ Potential sensitive data found in source code"
+          exit 1
+        fi
+
+  commit-message-check:
+    name: Commit Message Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check commit messages
+      run: |
+        # Get all commits in the PR
+        COMMITS=$(git log --format=%s origin/main..HEAD)
+
+        # Check for conventional commit format
+        for COMMIT in $COMMITS; do
+          if [[ ! "$COMMIT" =~ ^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .+ ]]; then
+            echo "❌ Commit message should follow conventional commit format:"
+            echo "   feat: add new feature"
+            echo "   fix: resolve bug"
+            echo "   docs: update documentation"
+            echo "Found: $COMMIT"
+            exit 1
+          fi
+        done
+
+        echo "✅ All commit messages follow conventional format"
+
+  pr-summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: PR Summary
+      run: |
+        echo "## Pull Request Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Quick Checks | ${{ needs.quick-checks.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Bundle Size | ${{ needs.size-check.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Commit Messages | ${{ needs.commit-message-check.result }} |" >> $GITHUB_STEP_SUMMARY
