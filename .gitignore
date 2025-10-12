@@ -95,3 +95,9 @@ config/secrets.json
 secrets/
 *.key
 *.pem
+
+# Claude settings
+.claude/settings.local.json
+
+# System files
+nul
