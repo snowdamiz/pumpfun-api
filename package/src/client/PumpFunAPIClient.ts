@@ -784,7 +784,8 @@ export class PumpFunAPIClient {
    * Get currently live streaming coins with pagination and filtering
    *
    * This method retrieves a list of coins that currently have active live streams,
-   * with support for pagination, sorting, and filtering options.
+   * with support for pagination, sorting, and filtering options. Enhanced error
+   * handling provides specific recovery guidance for API failures.
    *
    * @param params - Optional parameters for pagination, sorting, and filtering
    * @returns Promise that resolves to an array of LiveCoin objects
@@ -822,7 +823,8 @@ export class PumpFunAPIClient {
       const queryString = this.buildQueryString(mergedParams);
       const endpoint = `/coins/currently-live${queryString}`;
 
-      const response = await this.httpClient.get(endpoint);
+      // Enhanced request with specific error handling for API failures
+      const response = await this.executeLiveCoinsRequest(endpoint, mergedParams);
 
       // Update statistics
       this.state.requestCount++;
@@ -831,13 +833,14 @@ export class PumpFunAPIClient {
       // Record successful request in rate limiter
       this.rateLimiter.recordRequest();
 
-      // Validate response data
-      const liveCoins = this.validateLiveCoinsResponse(response);
+      // Validate response data with enhanced error handling
+      const liveCoins = this.validateLiveCoinsResponseWithFallback(response, mergedParams);
 
       this.logger.info('Successfully fetched live streaming coins', {
         count: liveCoins.length,
         params: mergedParams,
-        hasMore: liveCoins.length === mergedParams.limit
+        hasMore: liveCoins.length === mergedParams.limit,
+        responseTime: Date.now() - this.state.lastRequestTime
       });
 
       return liveCoins;
@@ -847,17 +850,152 @@ export class PumpFunAPIClient {
       const pumpFunError = this.handleError(error, 'getLiveCoins', {
         endpoint: '/coins/currently-live',
         params: mergedParams,
-        baseURL: this.config.baseURL
+        baseURL: this.config.baseURL,
+        requestTime: new Date().toISOString()
       });
 
       this.logger.error('Failed to fetch live streaming coins', {
         error: pumpFunError.toJSON(),
         params: mergedParams,
-        resolution: pumpFunError.getResolution()
+        resolution: pumpFunError.getResolution(),
+        errorCategory: pumpFunError.details?.errorCategory
       });
 
       throw pumpFunError;
     }
+  }
+
+  /**
+   * Execute live coins request with enhanced error handling and retry logic
+   */
+  private async executeLiveCoinsRequest(endpoint: string, _params: Required<GetLiveCoinsParams>): Promise<any> {
+    let lastError: any;
+
+    // Implement retry logic specifically for API failures
+    const maxRetries = this.retryConfig?.maxRetries || 3;
+    const baseDelay = this.retryConfig?.baseDelay || 1000;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await this.httpClient.get(endpoint);
+        return response;
+      } catch (error: unknown) {
+        lastError = error;
+
+        // Ensure error is properly typed for logging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorConstructor = error instanceof Error ? error.constructor.name : 'Unknown';
+
+        // Don't retry on certain error types
+        if (this.shouldNotRetry(error)) {
+          this.logger.warn('Non-retryable error encountered, not retrying', {
+            attempt: attempt + 1,
+            errorType: errorConstructor,
+            message: errorMessage
+          });
+          throw error;
+        }
+
+        // If this is the last attempt, throw the error
+        if (attempt === maxRetries) {
+          this.logger.error('All retry attempts failed for live coins request', {
+            totalAttempts: maxRetries + 1,
+            lastError: errorMessage
+          });
+          throw error;
+        }
+
+        // Calculate delay for this attempt
+        const delay = Math.min(baseDelay * Math.pow(2, attempt), 30000);
+
+        this.logger.warn(`Live coins request failed, retrying in ${delay}ms`, {
+          attempt: attempt + 1,
+          maxRetries: maxRetries + 1,
+          error: errorMessage,
+          nextRetryIn: delay
+        });
+
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
+   * Determine if an error should not be retried
+   */
+  private shouldNotRetry(error: any): boolean {
+    // Don't retry configuration errors
+    if (this.isConfigurationError(error)) {
+      return true;
+    }
+
+    // Don't retry authentication errors (401)
+    if (error.response?.status === 401) {
+      return true;
+    }
+
+    // Don't retry forbidden errors (403)
+    if (error.response?.status === 403) {
+      return true;
+    }
+
+    // Don't retry not found errors (404) for live coins endpoint
+    if (error.response?.status === 404) {
+      return true;
+    }
+
+    // Don't retry validation errors (400)
+    if (error.response?.status === 400) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Validate live coins response with fallback handling for API failures
+   */
+  private validateLiveCoinsResponseWithFallback(response: any, params: Required<GetLiveCoinsParams>): LiveCoin[] {
+    // Handle completely empty or null responses
+    if (!response) {
+      this.logger.warn('Received empty response from live coins API', {
+        params,
+        responseType: typeof response
+      });
+      return [];
+    }
+
+    // Handle non-array responses with fallback
+    if (!Array.isArray(response)) {
+      // If it's an object with a data property that's an array, use that
+      if (response && typeof response === 'object' && Array.isArray(response.data)) {
+        this.logger.info('Response wrapped in object, extracting data array', {
+          responseKeys: Object.keys(response),
+          dataArrayLength: response.data.length
+        });
+        response = response.data;
+      } else {
+        // For other unexpected formats, create a detailed error
+        throw new ServerError({
+          message: 'Invalid response format: expected array of live coins',
+          statusCode: 500,
+          details: {
+            expectedType: 'array',
+            receivedType: typeof response,
+            responseType: response?.constructor?.name,
+            responseKeys: response ? Object.keys(response) : null,
+            params,
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+    }
+
+    // Proceed with normal validation
+    return this.validateLiveCoinsResponse(response);
   }
 
   /**
@@ -1257,6 +1395,9 @@ export class PumpFunAPIClient {
   /**
    * Handle errors with comprehensive categorization and recovery guidance
    *
+   * This method provides enhanced error handling specifically for API failures,
+   * with additional context for live streaming data operations and recovery guidance.
+   *
    * @param error The original error from HTTP client or other sources
    * @param operation The operation that failed
    * @param context Additional context for error handling
@@ -1275,7 +1416,8 @@ export class PumpFunAPIClient {
           ...error.details,
           operation,
           context,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          errorCategory: this.categorizeError(error, operation)
         },
         originalError: error.originalError
       });
@@ -1300,6 +1442,16 @@ export class PumpFunAPIClient {
     // Handle configuration errors
     if (this.isConfigurationError(error)) {
       return this.handleConfigurationError(error, operation, context);
+    }
+
+    // Handle API-specific validation errors
+    if (this.isAPIValidationError(error)) {
+      return this.handleAPIValidationError(error, operation, context);
+    }
+
+    // Handle rate limit exceeded errors (specific to API failures)
+    if (this.isRateLimitExceededError(error)) {
+      return this.handleRateLimitExceededError(error, operation, context);
     }
 
     // Default to generic error
@@ -1338,6 +1490,76 @@ export class PumpFunAPIClient {
            error.message?.includes('Invalid baseURL') ||
            error.message?.includes('validation failed') ||
            error.code === 'CONFIGURATION_ERROR';
+  }
+
+  /**
+   * Check if error is an API validation error (invalid response format)
+   */
+  private isAPIValidationError(error: any): boolean {
+    return error.message?.includes('Invalid response') ||
+           error.message?.includes('validation failed') ||
+           error.message?.includes('Expected array') ||
+           error.message?.includes('Missing required field') ||
+           error.code === 'API_VALIDATION_ERROR' ||
+           error.name === 'ValidationError';
+  }
+
+  /**
+   * Check if error is a rate limit exceeded error
+   */
+  private isRateLimitExceededError(error: any): boolean {
+    return error.response?.status === 429 ||
+           error.message?.includes('rate limit') ||
+           error.message?.includes('too many requests') ||
+           error.code === 'RATE_LIMIT_EXCEEDED' ||
+           error.code === 'TOO_MANY_REQUESTS';
+  }
+
+  /**
+   * Categorize errors for better handling and reporting
+   */
+  private categorizeError(error: any, operation: string): string {
+    // Network connectivity issues
+    if (this.isNetworkError(error)) {
+      return 'NETWORK_CONNECTIVITY';
+    }
+
+    // Rate limiting
+    if (this.isRateLimitExceededError(error)) {
+      return 'RATE_LIMIT';
+    }
+
+    // Server-side issues
+    if (error.response?.status >= 500) {
+      return 'SERVER_ERROR';
+    }
+
+    // Client-side issues (4xx)
+    if (error.response?.status >= 400 && error.response?.status < 500) {
+      return 'CLIENT_ERROR';
+    }
+
+    // Timeout issues
+    if (this.isTimeoutError(error)) {
+      return 'TIMEOUT';
+    }
+
+    // Configuration issues
+    if (this.isConfigurationError(error)) {
+      return 'CONFIGURATION';
+    }
+
+    // API validation issues
+    if (this.isAPIValidationError(error)) {
+      return 'API_VALIDATION';
+    }
+
+    // Operation-specific categorization
+    if (operation === 'getLiveCoins') {
+      return 'LIVE_STREAMING_API';
+    }
+
+    return 'UNKNOWN';
   }
 
   /**
@@ -1462,6 +1684,56 @@ export class PumpFunAPIClient {
     });
 
     return configError;
+  }
+
+  /**
+   * Handle API validation errors with specific recovery guidance
+   */
+  private handleAPIValidationError(error: any, operation: string, context?: any): ServerError {
+    const validationError = new ServerError({
+      message: this.getAPIValidationErrorMessage(error, operation),
+      statusCode: 500,
+      details: {
+        operation,
+        context,
+        errorType: 'API_VALIDATION',
+        suggestions: this.getAPIValidationErrorRecovery(error, operation)
+      },
+      originalError: error
+    });
+
+    this.logger.error('API validation error detected', {
+      operation,
+      error: error.message,
+      suggestions: validationError.getResolution()
+    });
+
+    return validationError;
+  }
+
+  /**
+   * Handle rate limit exceeded errors with specific recovery guidance
+   */
+  private handleRateLimitExceededError(error: any, operation: string, context?: any): RateLimitError {
+    const rateLimitError = new RateLimitError({
+      message: this.getRateLimitExceededErrorMessage(error, operation),
+      retryAfter: this.extractRetryAfter(error),
+      details: {
+        operation,
+        context,
+        errorType: 'RATE_LIMIT_EXCEEDED',
+        suggestions: this.getRateLimitExceededErrorRecovery(error, operation)
+      },
+      originalError: error
+    });
+
+    this.logger.warn('Rate limit exceeded detected', {
+      operation,
+      retryAfter: rateLimitError.retryAfter,
+      suggestions: rateLimitError.getResolution()
+    });
+
+    return rateLimitError;
   }
 
   /**
@@ -1591,6 +1863,93 @@ export class PumpFunAPIClient {
     if (error.message?.includes('timeout')) {
       suggestions.push('Ensure timeout is a positive number in milliseconds');
       suggestions.push('Recommended range: 5000ms to 30000ms');
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Get appropriate error message for API validation errors
+   */
+  private getAPIValidationErrorMessage(error: any, operation: string): string {
+    if (error.message?.includes('Invalid response')) {
+      return `API response validation failed during ${operation}. The server returned data in an unexpected format.`;
+    }
+    if (error.message?.includes('Expected array')) {
+      return `API response format error during ${operation}. Expected an array of live coins but received different data type.`;
+    }
+    if (error.message?.includes('Missing required field')) {
+      return `API response validation error during ${operation}. Required fields are missing from the response.`;
+    }
+    return `API validation failed during ${operation}: ${error.message}`;
+  }
+
+  /**
+   * Get recovery suggestions for API validation errors
+   */
+  private getAPIValidationErrorRecovery(_error: any, operation: string): string[] {
+    const suggestions = [
+      'The API response format has changed or is invalid',
+      'Try the request again to see if the issue is temporary',
+      'Check if there are any API changes or maintenance notifications',
+      'Report this issue if it persists'
+    ];
+
+    if (operation === 'getLiveCoins') {
+      suggestions.push('The live streaming data format may have changed');
+      suggestions.push('Try with different parameters to isolate the issue');
+      suggestions.push('Check if the live coins endpoint is functioning correctly');
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Get appropriate error message for rate limit exceeded errors
+   */
+  private getRateLimitExceededErrorMessage(error: any, operation: string): string {
+    const retryAfter = this.extractRetryAfter(error);
+    const retryText = retryAfter ? ` Wait ${retryAfter} seconds before retrying.` : ' Wait before retrying.';
+    return `Rate limit exceeded during ${operation}.${retryText} You have made too many requests to the API.`;
+  }
+
+  /**
+   * Extract retry-after value from error
+   */
+  private extractRetryAfter(error: any): number {
+    // Check response headers for Retry-After
+    if (error.response?.headers?.['retry-after']) {
+      const retryAfter = parseInt(error.response.headers['retry-after'], 10);
+      if (!isNaN(retryAfter) && retryAfter > 0) {
+        return retryAfter;
+      }
+    }
+
+    // Check for retryAfter in error details
+    if (error.retryAfter && typeof error.retryAfter === 'number') {
+      return error.retryAfter;
+    }
+
+    // Default retry time for rate limit errors (60 seconds)
+    return 60;
+  }
+
+  /**
+   * Get recovery suggestions for rate limit exceeded errors
+   */
+  private getRateLimitExceededErrorRecovery(error: any, operation: string): string[] {
+    const retryAfter = this.extractRetryAfter(error);
+    const suggestions = [
+      `Wait ${retryAfter} seconds before making another request`,
+      'Implement exponential backoff for retries',
+      'Reduce the frequency of API requests',
+      'Use request batching if applicable'
+    ];
+
+    if (operation === 'getLiveCoins') {
+      suggestions.push('Cache live coins data to reduce API calls');
+      suggestions.push('Use pagination to fetch smaller batches');
+      suggestions.push('Consider using webhooks for real-time updates instead of polling');
     }
 
     return suggestions;
