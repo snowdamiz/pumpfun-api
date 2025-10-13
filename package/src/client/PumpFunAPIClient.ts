@@ -31,7 +31,7 @@ import {
   ConfigurationError,
   TimeoutError,
   ErrorFactory,
-  ErrorUtils
+  ErrorUtils,
 } from '../utils/errors';
 
 /**
@@ -88,9 +88,9 @@ export class PumpFunAPIClient {
     const envConfig = this.loadEnvironmentConfig();
 
     // Filter out undefined values from config
-    const filteredConfig = config ? Object.fromEntries(
-      Object.entries(config).filter(([_, value]) => value !== undefined)
-    ) : {};
+    const filteredConfig = config
+      ? Object.fromEntries(Object.entries(config).filter(([_, value]) => value !== undefined))
+      : {};
 
     // Merge configuration: defaults < environment < explicit config
     const mergedConfig = {
@@ -103,8 +103,8 @@ export class PumpFunAPIClient {
     this.validateConfig(mergedConfig);
 
     this.config = {
-      baseURL: mergedConfig.baseURL!,
-      timeout: mergedConfig.timeout!,
+      baseURL: mergedConfig.baseURL,
+      timeout: mergedConfig.timeout,
     };
 
     // Store additional configuration options
@@ -251,10 +251,12 @@ export class PumpFunAPIClient {
       rateLimitConfig.enableRetryAfter = process.env.PUMPFUN_RATE_LIMIT_RETRY_AFTER === 'true';
     }
     if (process.env.PUMPFUN_RATE_LIMIT_SLIDING_WINDOW !== undefined) {
-      rateLimitConfig.enableSlidingWindow = process.env.PUMPFUN_RATE_LIMIT_SLIDING_WINDOW === 'true';
+      rateLimitConfig.enableSlidingWindow =
+        process.env.PUMPFUN_RATE_LIMIT_SLIDING_WINDOW === 'true';
     }
     if (process.env.PUMPFUN_RATE_LIMIT_BURST_PROTECTION !== undefined) {
-      rateLimitConfig.enableBurstProtection = process.env.PUMPFUN_RATE_LIMIT_BURST_PROTECTION === 'true';
+      rateLimitConfig.enableBurstProtection =
+        process.env.PUMPFUN_RATE_LIMIT_BURST_PROTECTION === 'true';
     }
     if (process.env.PUMPFUN_RATE_LIMIT_MAX_BURST) {
       const maxBurst = parseInt(process.env.PUMPFUN_RATE_LIMIT_MAX_BURST, 10);
@@ -317,13 +319,19 @@ export class PumpFunAPIClient {
       try {
         const url = new URL(config.baseURL);
         if (!['http:', 'https:'].includes(url.protocol)) {
-          errors.push(`Invalid baseURL protocol: ${url.protocol}. Only http: and https: are allowed.`);
+          errors.push(
+            `Invalid baseURL protocol: ${url.protocol}. Only http: and https: are allowed.`
+          );
         }
         if (url.hostname.includes('localhost') || url.hostname.includes('127.0.0.1')) {
-          warnings.push(`Using localhost address: ${url.hostname}. This may not work in production.`);
+          warnings.push(
+            `Using localhost address: ${url.hostname}. This may not work in production.`
+          );
         }
       } catch (error) {
-        errors.push(`Invalid baseURL format: "${config.baseURL}". Expected format: "https://api.example.com"`);
+        errors.push(
+          `Invalid baseURL format: "${config.baseURL}". Expected format: "https://api.example.com"`
+        );
       }
     }
 
@@ -332,11 +340,17 @@ export class PumpFunAPIClient {
       if (typeof config.timeout !== 'number' || isNaN(config.timeout)) {
         errors.push(`Invalid timeout: ${config.timeout}. Must be a valid number.`);
       } else if (config.timeout <= 0) {
-        errors.push(`Invalid timeout: ${config.timeout}ms. Must be a positive number greater than 0.`);
+        errors.push(
+          `Invalid timeout: ${config.timeout}ms. Must be a positive number greater than 0.`
+        );
       } else if (config.timeout > 60000) {
-        warnings.push(`Timeout very high: ${config.timeout}ms. Consider reducing to 30000ms (30 seconds) for better responsiveness.`);
+        warnings.push(
+          `Timeout very high: ${config.timeout}ms. Consider reducing to 30000ms (30 seconds) for better responsiveness.`
+        );
       } else if (config.timeout < 1000) {
-        warnings.push(`Timeout very low: ${config.timeout}ms. Consider increasing to at least 5000ms (5 seconds) to avoid timeouts.`);
+        warnings.push(
+          `Timeout very low: ${config.timeout}ms. Consider increasing to at least 5000ms (5 seconds) to avoid timeouts.`
+        );
       }
     }
 
@@ -350,7 +364,9 @@ export class PumpFunAPIClient {
         } else if (retryConfig.maxRetries < 0) {
           errors.push(`Invalid maxRetries: ${retryConfig.maxRetries}. Cannot be negative.`);
         } else if (retryConfig.maxRetries > 10) {
-          errors.push(`Invalid maxRetries: ${retryConfig.maxRetries}. Maximum allowed is 10 to prevent excessive retries.`);
+          errors.push(
+            `Invalid maxRetries: ${retryConfig.maxRetries}. Maximum allowed is 10 to prevent excessive retries.`
+          );
         }
       }
 
@@ -358,9 +374,13 @@ export class PumpFunAPIClient {
         if (typeof retryConfig.baseDelay !== 'number' || isNaN(retryConfig.baseDelay)) {
           errors.push(`Invalid baseDelay: ${retryConfig.baseDelay}. Must be a valid number.`);
         } else if (retryConfig.baseDelay < 100) {
-          errors.push(`Invalid baseDelay: ${retryConfig.baseDelay}ms. Minimum is 100ms to prevent spam.`);
+          errors.push(
+            `Invalid baseDelay: ${retryConfig.baseDelay}ms. Minimum is 100ms to prevent spam.`
+          );
         } else if (retryConfig.baseDelay > 10000) {
-          errors.push(`Invalid baseDelay: ${retryConfig.baseDelay}ms. Maximum is 10000ms (10 seconds).`);
+          errors.push(
+            `Invalid baseDelay: ${retryConfig.baseDelay}ms. Maximum is 10000ms (10 seconds).`
+          );
         }
       }
 
@@ -370,23 +390,35 @@ export class PumpFunAPIClient {
         } else if (retryConfig.maxDelay < 1000) {
           errors.push(`Invalid maxDelay: ${retryConfig.maxDelay}ms. Minimum is 1000ms (1 second).`);
         } else if (retryConfig.maxDelay > 300000) {
-          errors.push(`Invalid maxDelay: ${retryConfig.maxDelay}ms. Maximum is 300000ms (5 minutes).`);
+          errors.push(
+            `Invalid maxDelay: ${retryConfig.maxDelay}ms. Maximum is 300000ms (5 minutes).`
+          );
         }
       }
 
       if (retryConfig.backoffFactor !== undefined) {
         if (typeof retryConfig.backoffFactor !== 'number' || isNaN(retryConfig.backoffFactor)) {
-          errors.push(`Invalid backoffFactor: ${retryConfig.backoffFactor}. Must be a valid number.`);
+          errors.push(
+            `Invalid backoffFactor: ${retryConfig.backoffFactor}. Must be a valid number.`
+          );
         } else if (retryConfig.backoffFactor < 1) {
           errors.push(`Invalid backoffFactor: ${retryConfig.backoffFactor}. Must be at least 1.0.`);
         } else if (retryConfig.backoffFactor > 5) {
-          errors.push(`Invalid backoffFactor: ${retryConfig.backoffFactor}. Maximum is 5.0 to prevent excessive delays.`);
+          errors.push(
+            `Invalid backoffFactor: ${retryConfig.backoffFactor}. Maximum is 5.0 to prevent excessive delays.`
+          );
         }
       }
 
       // Check for logical consistency
-      if (retryConfig.baseDelay && retryConfig.maxDelay && retryConfig.baseDelay >= retryConfig.maxDelay) {
-        errors.push(`baseDelay (${retryConfig.baseDelay}ms) must be less than maxDelay (${retryConfig.maxDelay}ms).`);
+      if (
+        retryConfig.baseDelay &&
+        retryConfig.maxDelay &&
+        retryConfig.baseDelay >= retryConfig.maxDelay
+      ) {
+        errors.push(
+          `baseDelay (${retryConfig.baseDelay}ms) must be less than maxDelay (${retryConfig.maxDelay}ms).`
+        );
       }
     }
 
@@ -395,12 +427,21 @@ export class PumpFunAPIClient {
       const rateLimitConfig = config.rateLimitConfig;
 
       if (rateLimitConfig.maxRequestsPerWindow !== undefined) {
-        if (typeof rateLimitConfig.maxRequestsPerWindow !== 'number' || isNaN(rateLimitConfig.maxRequestsPerWindow)) {
-          errors.push(`Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Must be a valid number.`);
+        if (
+          typeof rateLimitConfig.maxRequestsPerWindow !== 'number' ||
+          isNaN(rateLimitConfig.maxRequestsPerWindow)
+        ) {
+          errors.push(
+            `Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Must be a valid number.`
+          );
         } else if (rateLimitConfig.maxRequestsPerWindow < 1) {
-          errors.push(`Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Must be at least 1.`);
+          errors.push(
+            `Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Must be at least 1.`
+          );
         } else if (rateLimitConfig.maxRequestsPerWindow > 1000) {
-          errors.push(`Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Maximum is 1000 to prevent server overload.`);
+          errors.push(
+            `Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Maximum is 1000 to prevent server overload.`
+          );
         }
       }
 
@@ -408,9 +449,13 @@ export class PumpFunAPIClient {
         if (typeof rateLimitConfig.windowMs !== 'number' || isNaN(rateLimitConfig.windowMs)) {
           errors.push(`Invalid windowMs: ${rateLimitConfig.windowMs}. Must be a valid number.`);
         } else if (rateLimitConfig.windowMs < 1000) {
-          errors.push(`Invalid windowMs: ${rateLimitConfig.windowMs}ms. Minimum is 1000ms (1 second).`);
+          errors.push(
+            `Invalid windowMs: ${rateLimitConfig.windowMs}ms. Minimum is 1000ms (1 second).`
+          );
         } else if (rateLimitConfig.windowMs > 3600000) {
-          errors.push(`Invalid windowMs: ${rateLimitConfig.windowMs}ms. Maximum is 3600000ms (1 hour).`);
+          errors.push(
+            `Invalid windowMs: ${rateLimitConfig.windowMs}ms. Maximum is 3600000ms (1 hour).`
+          );
         }
       }
 
@@ -423,38 +468,71 @@ export class PumpFunAPIClient {
       }
 
       if (rateLimitConfig.baseBackoffMs !== undefined) {
-        if (typeof rateLimitConfig.baseBackoffMs !== 'number' || isNaN(rateLimitConfig.baseBackoffMs)) {
-          errors.push(`Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}. Must be a valid number.`);
+        if (
+          typeof rateLimitConfig.baseBackoffMs !== 'number' ||
+          isNaN(rateLimitConfig.baseBackoffMs)
+        ) {
+          errors.push(
+            `Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}. Must be a valid number.`
+          );
         } else if (rateLimitConfig.baseBackoffMs < 100) {
-          errors.push(`Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}ms. Minimum is 100ms.`);
+          errors.push(
+            `Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}ms. Minimum is 100ms.`
+          );
         } else if (rateLimitConfig.baseBackoffMs > 10000) {
-          errors.push(`Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}ms. Maximum is 10000ms (10 seconds).`);
+          errors.push(
+            `Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}ms. Maximum is 10000ms (10 seconds).`
+          );
         }
       }
 
       if (rateLimitConfig.maxBackoffMs !== undefined) {
-        if (typeof rateLimitConfig.maxBackoffMs !== 'number' || isNaN(rateLimitConfig.maxBackoffMs)) {
-          errors.push(`Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}. Must be a valid number.`);
+        if (
+          typeof rateLimitConfig.maxBackoffMs !== 'number' ||
+          isNaN(rateLimitConfig.maxBackoffMs)
+        ) {
+          errors.push(
+            `Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}. Must be a valid number.`
+          );
         } else if (rateLimitConfig.maxBackoffMs < 1000) {
-          errors.push(`Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}ms. Minimum is 1000ms (1 second).`);
+          errors.push(
+            `Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}ms. Minimum is 1000ms (1 second).`
+          );
         } else if (rateLimitConfig.maxBackoffMs > 300000) {
-          errors.push(`Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}ms. Maximum is 300000ms (5 minutes).`);
+          errors.push(
+            `Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}ms. Maximum is 300000ms (5 minutes).`
+          );
         }
       }
 
       if (rateLimitConfig.backoffMultiplier !== undefined) {
-        if (typeof rateLimitConfig.backoffMultiplier !== 'number' || isNaN(rateLimitConfig.backoffMultiplier)) {
-          errors.push(`Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Must be a valid number.`);
+        if (
+          typeof rateLimitConfig.backoffMultiplier !== 'number' ||
+          isNaN(rateLimitConfig.backoffMultiplier)
+        ) {
+          errors.push(
+            `Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Must be a valid number.`
+          );
         } else if (rateLimitConfig.backoffMultiplier < 1) {
-          errors.push(`Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Must be at least 1.0.`);
+          errors.push(
+            `Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Must be at least 1.0.`
+          );
         } else if (rateLimitConfig.backoffMultiplier > 5) {
-          errors.push(`Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Maximum is 5.0.`);
+          errors.push(
+            `Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Maximum is 5.0.`
+          );
         }
       }
 
       // Check for logical consistency
-      if (rateLimitConfig.baseBackoffMs && rateLimitConfig.maxBackoffMs && rateLimitConfig.baseBackoffMs >= rateLimitConfig.maxBackoffMs) {
-        errors.push(`baseBackoffMs (${rateLimitConfig.baseBackoffMs}ms) must be less than maxBackoffMs (${rateLimitConfig.maxBackoffMs}ms).`);
+      if (
+        rateLimitConfig.baseBackoffMs &&
+        rateLimitConfig.maxBackoffMs &&
+        rateLimitConfig.baseBackoffMs >= rateLimitConfig.maxBackoffMs
+      ) {
+        errors.push(
+          `baseBackoffMs (${rateLimitConfig.baseBackoffMs}ms) must be less than maxBackoffMs (${rateLimitConfig.maxBackoffMs}ms).`
+        );
       }
     }
 
@@ -463,12 +541,16 @@ export class PumpFunAPIClient {
       const loggerConfig = config.loggerConfig;
 
       if (loggerConfig.level && !Object.values(LogLevel).includes(loggerConfig.level)) {
-        errors.push(`Invalid log level: "${loggerConfig.level}". Must be one of: ${Object.values(LogLevel).join(', ')}.`);
+        errors.push(
+          `Invalid log level: "${loggerConfig.level}". Must be one of: ${Object.values(LogLevel).join(', ')}.`
+        );
       }
 
       if (loggerConfig.filePath !== undefined) {
         if (typeof loggerConfig.filePath !== 'string') {
-          errors.push(`Invalid log file path: must be a string, got ${typeof loggerConfig.filePath}.`);
+          errors.push(
+            `Invalid log file path: must be a string, got ${typeof loggerConfig.filePath}.`
+          );
         } else if (loggerConfig.filePath.trim() === '') {
           errors.push(`Invalid log file path: cannot be empty string.`);
         }
@@ -630,9 +712,8 @@ export class PumpFunAPIClient {
     errorRate: number;
     rateLimitInfo: RateLimitState;
   } {
-    const errorRate = this.state.requestCount > 0
-      ? (this.state.errorCount / this.state.requestCount) * 100
-      : 0;
+    const errorRate =
+      this.state.requestCount > 0 ? (this.state.errorCount / this.state.requestCount) * 100 : 0;
 
     return {
       requestCount: this.state.requestCount,
@@ -748,7 +829,7 @@ export class PumpFunAPIClient {
     try {
       this.logger.info('Validating jurisdiction...', {
         endpoint: '/auth/is-valid-jurisdiction',
-        baseURL: this.config.baseURL
+        baseURL: this.config.baseURL,
       });
 
       const response = await this.httpClient.get('/auth/is-valid-jurisdiction');
@@ -759,21 +840,20 @@ export class PumpFunAPIClient {
 
       this.logger.info('Jurisdiction validation successful', {
         isValid: response?.is_valid,
-        response
+        response,
       });
 
       return Boolean(response?.is_valid);
-
     } catch (error) {
       this.state.errorCount++;
       const pumpFunError = this.handleError(error, 'validateJurisdiction', {
         endpoint: '/auth/is-valid-jurisdiction',
-        baseURL: this.config.baseURL
+        baseURL: this.config.baseURL,
       });
 
       this.logger.error('Jurisdiction validation failed', {
         error: pumpFunError.toJSON(),
-        resolution: pumpFunError.getResolution()
+        resolution: pumpFunError.getResolution(),
       });
 
       throw pumpFunError;
@@ -800,7 +880,7 @@ export class PumpFunAPIClient {
       limit: 10,
       sort: 'currently_live',
       order: 'DESC',
-      includeNsfw: false
+      includeNsfw: false,
     };
 
     // Merge provided params with defaults
@@ -813,7 +893,7 @@ export class PumpFunAPIClient {
       this.logger.info('Fetching live streaming coins...', {
         endpoint: '/coins/currently-live',
         params: mergedParams,
-        baseURL: this.config.baseURL
+        baseURL: this.config.baseURL,
       });
 
       // Apply rate limiting before making the request
@@ -840,25 +920,24 @@ export class PumpFunAPIClient {
         count: liveCoins.length,
         params: mergedParams,
         hasMore: liveCoins.length === mergedParams.limit,
-        responseTime: Date.now() - this.state.lastRequestTime
+        responseTime: Date.now() - this.state.lastRequestTime,
       });
 
       return liveCoins;
-
     } catch (error) {
       this.state.errorCount++;
       const pumpFunError = this.handleError(error, 'getLiveCoins', {
         endpoint: '/coins/currently-live',
         params: mergedParams,
         baseURL: this.config.baseURL,
-        requestTime: new Date().toISOString()
+        requestTime: new Date().toISOString(),
       });
 
       this.logger.error('Failed to fetch live streaming coins', {
         error: pumpFunError.toJSON(),
         params: mergedParams,
         resolution: pumpFunError.getResolution(),
-        errorCategory: pumpFunError.details?.errorCategory
+        errorCategory: pumpFunError.details?.errorCategory,
       });
 
       throw pumpFunError;
@@ -868,7 +947,10 @@ export class PumpFunAPIClient {
   /**
    * Execute live coins request with enhanced error handling and retry logic
    */
-  private async executeLiveCoinsRequest(endpoint: string, _params: Required<GetLiveCoinsParams>): Promise<any> {
+  private async executeLiveCoinsRequest(
+    endpoint: string,
+    _params: Required<GetLiveCoinsParams>
+  ): Promise<any> {
     let lastError: any;
 
     // Implement retry logic specifically for API failures
@@ -891,7 +973,7 @@ export class PumpFunAPIClient {
           this.logger.warn('Non-retryable error encountered, not retrying', {
             attempt: attempt + 1,
             errorType: errorConstructor,
-            message: errorMessage
+            message: errorMessage,
           });
           throw error;
         }
@@ -900,7 +982,7 @@ export class PumpFunAPIClient {
         if (attempt === maxRetries) {
           this.logger.error('All retry attempts failed for live coins request', {
             totalAttempts: maxRetries + 1,
-            lastError: errorMessage
+            lastError: errorMessage,
           });
           throw error;
         }
@@ -912,7 +994,7 @@ export class PumpFunAPIClient {
           attempt: attempt + 1,
           maxRetries: maxRetries + 1,
           error: errorMessage,
-          nextRetryIn: delay
+          nextRetryIn: delay,
         });
 
         // Wait before retrying
@@ -958,12 +1040,15 @@ export class PumpFunAPIClient {
   /**
    * Validate live coins response with fallback handling for API failures
    */
-  private validateLiveCoinsResponseWithFallback(response: any, params: Required<GetLiveCoinsParams>): LiveCoin[] {
+  private validateLiveCoinsResponseWithFallback(
+    response: any,
+    params: Required<GetLiveCoinsParams>
+  ): LiveCoin[] {
     // Handle completely empty or null responses
     if (!response) {
       this.logger.warn('Received empty response from live coins API', {
         params,
-        responseType: typeof response
+        responseType: typeof response,
       });
       return [];
     }
@@ -974,7 +1059,7 @@ export class PumpFunAPIClient {
       if (response && typeof response === 'object' && Array.isArray(response.data)) {
         this.logger.info('Response wrapped in object, extracting data array', {
           responseKeys: Object.keys(response),
-          dataArrayLength: response.data.length
+          dataArrayLength: response.data.length,
         });
         response = response.data;
       } else {
@@ -988,8 +1073,8 @@ export class PumpFunAPIClient {
             responseType: response?.constructor?.name,
             responseKeys: response ? Object.keys(response) : null,
             params,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         });
       }
     }
@@ -1022,13 +1107,17 @@ export class PumpFunAPIClient {
     // Validate sort field
     const validSortFields = ['currently_live', 'market_cap', 'participants'];
     if (!validSortFields.includes(params.sort)) {
-      errors.push(`Invalid sort field: "${params.sort}". Must be one of: ${validSortFields.join(', ')}.`);
+      errors.push(
+        `Invalid sort field: "${params.sort}". Must be one of: ${validSortFields.join(', ')}.`
+      );
     }
 
     // Validate sort order
     const validSortOrders = ['ASC', 'DESC'];
     if (!validSortOrders.includes(params.order)) {
-      errors.push(`Invalid sort order: "${params.order}". Must be one of: ${validSortOrders.join(', ')}.`);
+      errors.push(
+        `Invalid sort order: "${params.order}". Must be one of: ${validSortOrders.join(', ')}.`
+      );
     }
 
     // Validate includeNsfw type
@@ -1042,8 +1131,8 @@ export class PumpFunAPIClient {
         details: {
           operation: 'getLiveCoins',
           providedParams: params,
-          validationErrors: errors
-        }
+          validationErrors: errors,
+        },
       });
     }
   }
@@ -1093,8 +1182,8 @@ export class PumpFunAPIClient {
         details: {
           expectedType: 'array',
           receivedType: typeof response,
-          response
-        }
+          response,
+        },
       });
     }
 
@@ -1117,7 +1206,7 @@ export class PumpFunAPIClient {
       this.logger.warn('Some live coins failed validation', {
         validationErrors,
         totalItems: response.length,
-        validItems: liveCoins.length
+        validItems: liveCoins.length,
       });
     }
 
@@ -1142,9 +1231,20 @@ export class PumpFunAPIClient {
 
     // Required field validation (all required fields from LiveCoin interface)
     const requiredFields: (keyof LiveCoin)[] = [
-      'mint', 'name', 'symbol', 'description', 'image_uri', 'creator',
-      'created_timestamp', 'market_cap', 'usd_market_cap', 'is_currently_live',
-      'num_participants', 'reply_count', 'thumbnail', 'last_reply'
+      'mint',
+      'name',
+      'symbol',
+      'description',
+      'image_uri',
+      'creator',
+      'created_timestamp',
+      'market_cap',
+      'usd_market_cap',
+      'is_currently_live',
+      'num_participants',
+      'reply_count',
+      'thumbnail',
+      'last_reply',
     ];
 
     for (const field of requiredFields) {
@@ -1157,7 +1257,9 @@ export class PumpFunAPIClient {
     const optionalFields: (keyof LiveCoin)[] = ['twitter', 'telegram', 'livestream_title'];
     for (const field of optionalFields) {
       if (coin[field] !== undefined && coin[field] !== null && typeof coin[field] !== 'string') {
-        errors.push(`Optional field ${field} must be string or undefined/null, got ${typeof coin[field]}`);
+        errors.push(
+          `Optional field ${field} must be string or undefined/null, got ${typeof coin[field]}`
+        );
       }
     }
 
@@ -1168,7 +1270,9 @@ export class PumpFunAPIClient {
       } else {
         // Validate Solana address format (base58, 32-44 characters)
         if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(coin.mint)) {
-          errors.push(`mint must be valid Solana address (base58, 32-44 chars), got: "${coin.mint}"`);
+          errors.push(
+            `mint must be valid Solana address (base58, 32-44 chars), got: "${coin.mint}"`
+          );
         }
       }
     }
@@ -1204,7 +1308,9 @@ export class PumpFunAPIClient {
         if (coin.description.length === 0) {
           errors.push(`description cannot be empty string`);
         } else if (coin.description.length > 1000) {
-          errors.push(`description exceeds maximum length of 1000 characters (${coin.description.length})`);
+          errors.push(
+            `description exceeds maximum length of 1000 characters (${coin.description.length})`
+          );
         }
       }
     }
@@ -1245,7 +1351,9 @@ export class PumpFunAPIClient {
       } else {
         // Validate Solana address format
         if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(coin.creator)) {
-          errors.push(`creator must be valid Solana address (base58, 32-44 chars), got: "${coin.creator}"`);
+          errors.push(
+            `creator must be valid Solana address (base58, 32-44 chars), got: "${coin.creator}"`
+          );
         }
       }
     }
@@ -1255,7 +1363,9 @@ export class PumpFunAPIClient {
       if (typeof coin.twitter === 'string') {
         // Twitter handle validation (1-15 chars, alphanumeric + underscore)
         if (!/^[a-zA-Z0-9_]{1,15}$/.test(coin.twitter)) {
-          warnings.push(`twitter handle appears invalid: "${coin.twitter}" (should be 1-15 chars, alphanumeric + underscore)`);
+          warnings.push(
+            `twitter handle appears invalid: "${coin.twitter}" (should be 1-15 chars, alphanumeric + underscore)`
+          );
         }
       }
     }
@@ -1276,7 +1386,9 @@ export class PumpFunAPIClient {
     if (coin.livestream_title !== undefined && coin.livestream_title !== null) {
       if (typeof coin.livestream_title === 'string') {
         if (coin.livestream_title.length > 200) {
-          errors.push(`livestream_title exceeds maximum length of 200 characters (${coin.livestream_title.length})`);
+          errors.push(
+            `livestream_title exceeds maximum length of 200 characters (${coin.livestream_title.length})`
+          );
         }
       }
     }
@@ -1288,7 +1400,7 @@ export class PumpFunAPIClient {
       { name: 'usd_market_cap', min: 0 },
       { name: 'num_participants', min: 0, max: 10000 }, // Reasonable upper bound
       { name: 'reply_count', min: 0, max: 100000 }, // Reasonable upper bound
-      { name: 'last_reply', min: 0, max: Date.now() + 86400000 }
+      { name: 'last_reply', min: 0, max: Date.now() + 86400000 },
     ];
 
     for (const field of numericFields) {
@@ -1315,7 +1427,9 @@ export class PumpFunAPIClient {
     // Business logic validation
     if (coin.created_timestamp !== undefined && coin.last_reply !== undefined) {
       if (coin.last_reply < coin.created_timestamp) {
-        warnings.push(`last_reply (${coin.last_reply}) is before created_timestamp (${coin.created_timestamp})`);
+        warnings.push(
+          `last_reply (${coin.last_reply}) is before created_timestamp (${coin.created_timestamp})`
+        );
       }
     }
 
@@ -1333,7 +1447,7 @@ export class PumpFunAPIClient {
         coinIndex: index,
         mint: coin.mint,
         warnings,
-        coinData: this.sanitizeCoinForLogging(coin)
+        coinData: this.sanitizeCoinForLogging(coin),
       });
     }
 
@@ -1345,8 +1459,8 @@ export class PumpFunAPIClient {
           coinIndex: index,
           validationErrors: errors,
           validationWarnings: warnings,
-          coinData: this.sanitizeCoinForLogging(coin)
-        }
+          coinData: this.sanitizeCoinForLogging(coin),
+        },
       });
     }
 
@@ -1369,7 +1483,7 @@ export class PumpFunAPIClient {
       // Only include optional fields if they exist and are valid
       ...(coin.twitter && { twitter: coin.twitter }),
       ...(coin.telegram && { telegram: coin.telegram }),
-      ...(coin.livestream_title && { livestream_title: coin.livestream_title })
+      ...(coin.livestream_title && { livestream_title: coin.livestream_title }),
     };
 
     return validatedCoin;
@@ -1386,7 +1500,7 @@ export class PumpFunAPIClient {
 
     // Remove or truncate potentially sensitive fields
     if (sanitized.description && sanitized.description.length > 100) {
-      sanitized.description = sanitized.description.substring(0, 100) + '...';
+      sanitized.description = `${sanitized.description.substring(0, 100)}...`;
     }
 
     return sanitized;
@@ -1417,9 +1531,9 @@ export class PumpFunAPIClient {
           operation,
           context,
           timestamp: new Date().toISOString(),
-          errorCategory: this.categorizeError(error, operation)
+          errorCategory: this.categorizeError(error, operation),
         },
-        originalError: error.originalError
+        originalError: error.originalError,
       });
       return enhancedError;
     }
@@ -1462,13 +1576,14 @@ export class PumpFunAPIClient {
    * Check if error is a network-related error
    */
   private isNetworkError(error: any): boolean {
-    return !error.response && (
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ENOTFOUND' ||
-      error.code === 'ECONNRESET' ||
-      error.code === 'ETIMEDOUT' ||
-      error.message?.includes('Network Error') ||
-      error.message?.includes('fetch')
+    return (
+      !error.response &&
+      (error.code === 'ECONNREFUSED' ||
+        error.code === 'ENOTFOUND' ||
+        error.code === 'ECONNRESET' ||
+        error.code === 'ETIMEDOUT' ||
+        error.message?.includes('Network Error') ||
+        error.message?.includes('fetch'))
     );
   }
 
@@ -1476,43 +1591,51 @@ export class PumpFunAPIClient {
    * Check if error is a timeout error
    */
   private isTimeoutError(error: any): boolean {
-    return error.code === 'ETIMEDOUT' ||
-           error.code === 'ECONNABORTED' ||
-           error.message?.includes('timeout') ||
-           error.type === 'REQUEST_TIMEOUT';
+    return (
+      error.code === 'ETIMEDOUT' ||
+      error.code === 'ECONNABORTED' ||
+      error.message?.includes('timeout') ||
+      error.type === 'REQUEST_TIMEOUT'
+    );
   }
 
   /**
    * Check if error is a configuration error
    */
   private isConfigurationError(error: any): boolean {
-    return error.message?.includes('Configuration') ||
-           error.message?.includes('Invalid baseURL') ||
-           error.message?.includes('validation failed') ||
-           error.code === 'CONFIGURATION_ERROR';
+    return (
+      error.message?.includes('Configuration') ||
+      error.message?.includes('Invalid baseURL') ||
+      error.message?.includes('validation failed') ||
+      error.code === 'CONFIGURATION_ERROR'
+    );
   }
 
   /**
    * Check if error is an API validation error (invalid response format)
    */
   private isAPIValidationError(error: any): boolean {
-    return error.message?.includes('Invalid response') ||
-           error.message?.includes('validation failed') ||
-           error.message?.includes('Expected array') ||
-           error.message?.includes('Missing required field') ||
-           error.code === 'API_VALIDATION_ERROR' ||
-           error.name === 'ValidationError';
+    return (
+      error.message?.includes('Invalid response') ||
+      error.message?.includes('validation failed') ||
+      error.message?.includes('Expected array') ||
+      error.message?.includes('Missing required field') ||
+      error.code === 'API_VALIDATION_ERROR' ||
+      error.name === 'ValidationError'
+    );
   }
 
   /**
    * Check if error is a rate limit exceeded error
    */
   private isRateLimitExceededError(error: any): boolean {
-    return error.response?.status === 429 ||
-           error.message?.includes('rate limit') ||
-           error.message?.includes('too many requests') ||
-           error.code === 'RATE_LIMIT_EXCEEDED' ||
-           error.code === 'TOO_MANY_REQUESTS';
+    return (
+      error.response?.status === 429 ||
+      error.message?.includes('rate limit') ||
+      error.message?.includes('too many requests') ||
+      error.code === 'RATE_LIMIT_EXCEEDED' ||
+      error.code === 'TOO_MANY_REQUESTS'
+    );
   }
 
   /**
@@ -1579,9 +1702,9 @@ export class PumpFunAPIClient {
         context,
         baseURL: this.config.baseURL,
         timeout: this.config.timeout,
-        suggestions: this.getNetworkErrorRecovery(error, operation)
+        suggestions: this.getNetworkErrorRecovery(error, operation),
       },
-      originalError: error
+      originalError: error,
     });
 
     this.logger.warn('Network error detected', {
@@ -1589,7 +1712,7 @@ export class PumpFunAPIClient {
       errorCode: error.code,
       message: error.message,
       isRetryable: networkError.canRetry(),
-      retryDelay: networkError.getRetryDelay()
+      retryDelay: networkError.getRetryDelay(),
     });
 
     return networkError;
@@ -1600,11 +1723,7 @@ export class PumpFunAPIClient {
    */
   private handleHTTPError(error: any, operation: string, context?: any): PumpFunError {
     const { response } = error;
-    const baseError = ErrorFactory.createFromResponse(
-      response.status,
-      response.data,
-      error
-    );
+    const baseError = ErrorFactory.createFromResponse(response.status, response.data, error);
 
     // Create a new error with enhanced details
     const pumpFunError = new (baseError.constructor as any)({
@@ -1619,9 +1738,9 @@ export class PumpFunAPIClient {
         url: response.config?.url,
         method: response.config?.method?.toUpperCase(),
         statusCode: response.status,
-        suggestions: this.getHTTPErrorRecovery(response.status, operation, response.data)
+        suggestions: this.getHTTPErrorRecovery(response.status, operation, response.data),
       },
-      originalError: error
+      originalError: error,
     });
 
     this.logger.warn('HTTP error detected', {
@@ -1631,7 +1750,7 @@ export class PumpFunAPIClient {
       url: response.config?.url,
       method: response.config?.method?.toUpperCase(),
       isRetryable: pumpFunError.canRetry(),
-      retryDelay: pumpFunError.getRetryDelay()
+      retryDelay: pumpFunError.getRetryDelay(),
     });
 
     return pumpFunError;
@@ -1648,15 +1767,15 @@ export class PumpFunAPIClient {
         operation,
         context,
         currentTimeout: this.config.timeout,
-        suggestions: this.getTimeoutErrorRecovery(operation)
+        suggestions: this.getTimeoutErrorRecovery(operation),
       },
-      originalError: error
+      originalError: error,
     });
 
     this.logger.warn('Timeout error detected', {
       operation,
       timeout: this.config.timeout,
-      suggestions: timeoutError.getResolution()
+      suggestions: timeoutError.getResolution(),
     });
 
     return timeoutError;
@@ -1665,22 +1784,26 @@ export class PumpFunAPIClient {
   /**
    * Handle configuration errors with specific recovery guidance
    */
-  private handleConfigurationError(error: any, operation: string, context?: any): ConfigurationError {
+  private handleConfigurationError(
+    error: any,
+    operation: string,
+    context?: any
+  ): ConfigurationError {
     const configError = new ConfigurationError({
       message: this.getConfigurationErrorMessage(error, operation),
       details: {
         operation,
         context,
         currentConfig: this.sanitizeConfigForError(),
-        suggestions: this.getConfigurationErrorRecovery(error, operation)
+        suggestions: this.getConfigurationErrorRecovery(error, operation),
       },
-      originalError: error
+      originalError: error,
     });
 
     this.logger.error('Configuration error detected', {
       operation,
       error: error.message,
-      suggestions: configError.getResolution()
+      suggestions: configError.getResolution(),
     });
 
     return configError;
@@ -1697,15 +1820,15 @@ export class PumpFunAPIClient {
         operation,
         context,
         errorType: 'API_VALIDATION',
-        suggestions: this.getAPIValidationErrorRecovery(error, operation)
+        suggestions: this.getAPIValidationErrorRecovery(error, operation),
       },
-      originalError: error
+      originalError: error,
     });
 
     this.logger.error('API validation error detected', {
       operation,
       error: error.message,
-      suggestions: validationError.getResolution()
+      suggestions: validationError.getResolution(),
     });
 
     return validationError;
@@ -1714,7 +1837,11 @@ export class PumpFunAPIClient {
   /**
    * Handle rate limit exceeded errors with specific recovery guidance
    */
-  private handleRateLimitExceededError(error: any, operation: string, context?: any): RateLimitError {
+  private handleRateLimitExceededError(
+    error: any,
+    operation: string,
+    context?: any
+  ): RateLimitError {
     const rateLimitError = new RateLimitError({
       message: this.getRateLimitExceededErrorMessage(error, operation),
       retryAfter: this.extractRetryAfter(error),
@@ -1722,15 +1849,15 @@ export class PumpFunAPIClient {
         operation,
         context,
         errorType: 'RATE_LIMIT_EXCEEDED',
-        suggestions: this.getRateLimitExceededErrorRecovery(error, operation)
+        suggestions: this.getRateLimitExceededErrorRecovery(error, operation),
       },
-      originalError: error
+      originalError: error,
     });
 
     this.logger.warn('Rate limit exceeded detected', {
       operation,
       retryAfter: rateLimitError.retryAfter,
-      suggestions: rateLimitError.getResolution()
+      suggestions: rateLimitError.getResolution(),
     });
 
     return rateLimitError;
@@ -1743,7 +1870,7 @@ export class PumpFunAPIClient {
     const suggestions = [
       'Check your internet connection is stable',
       'Verify the PumpFun API is accessible from your network',
-      'Check if firewall or proxy is blocking the request'
+      'Check if firewall or proxy is blocking the request',
     ];
 
     // Add specific suggestions based on error code
@@ -1778,7 +1905,11 @@ export class PumpFunAPIClient {
   /**
    * Get recovery suggestions for HTTP errors
    */
-  private getHTTPErrorRecovery(statusCode: number, operation: string, _responseData?: any): string[] {
+  private getHTTPErrorRecovery(
+    statusCode: number,
+    operation: string,
+    _responseData?: any
+  ): string[] {
     const suggestions: string[] = [];
 
     switch (statusCode) {
@@ -1833,11 +1964,13 @@ export class PumpFunAPIClient {
       `Increase timeout configuration (current: ${this.config.timeout}ms)`,
       'Check your network connection speed and stability',
       'Try again with a smaller request if applicable',
-      'Check if the server is experiencing high load'
+      'Check if the server is experiencing high load',
     ];
 
     if (operation === 'validateJurisdiction') {
-      suggestions.push('The jurisdiction validation endpoint may be slow - consider a longer timeout');
+      suggestions.push(
+        'The jurisdiction validation endpoint may be slow - consider a longer timeout'
+      );
       suggestions.push('Try connecting from a different network or region');
     }
 
@@ -1852,7 +1985,7 @@ export class PumpFunAPIClient {
       'Check your client configuration settings',
       'Verify all required configuration values are provided',
       'Refer to the documentation for proper configuration format',
-      'Use environment variables for sensitive configuration'
+      'Use environment variables for sensitive configuration',
     ];
 
     if (error.message?.includes('baseURL')) {
@@ -1892,7 +2025,7 @@ export class PumpFunAPIClient {
       'The API response format has changed or is invalid',
       'Try the request again to see if the issue is temporary',
       'Check if there are any API changes or maintenance notifications',
-      'Report this issue if it persists'
+      'Report this issue if it persists',
     ];
 
     if (operation === 'getLiveCoins') {
@@ -1909,7 +2042,9 @@ export class PumpFunAPIClient {
    */
   private getRateLimitExceededErrorMessage(error: any, operation: string): string {
     const retryAfter = this.extractRetryAfter(error);
-    const retryText = retryAfter ? ` Wait ${retryAfter} seconds before retrying.` : ' Wait before retrying.';
+    const retryText = retryAfter
+      ? ` Wait ${retryAfter} seconds before retrying.`
+      : ' Wait before retrying.';
     return `Rate limit exceeded during ${operation}.${retryText} You have made too many requests to the API.`;
   }
 
@@ -1943,7 +2078,7 @@ export class PumpFunAPIClient {
       `Wait ${retryAfter} seconds before making another request`,
       'Implement exponential backoff for retries',
       'Reduce the frequency of API requests',
-      'Use request batching if applicable'
+      'Use request batching if applicable',
     ];
 
     if (operation === 'getLiveCoins') {
@@ -1984,7 +2119,7 @@ export class PumpFunAPIClient {
       timeout: this.config.timeout,
       hasLoggerConfig: !!this.loggerConfig,
       hasRateLimitConfig: !!this.rateLimitConfig,
-      hasRetryConfig: !!this.retryConfig
+      hasRetryConfig: !!this.retryConfig,
     };
   }
 
@@ -1994,13 +2129,14 @@ export class PumpFunAPIClient {
   private ensureInitialized(): void {
     if (!this.isInitialized) {
       throw new ConfigurationError({
-        message: 'PumpFunAPIClient is not properly initialized. Check the client configuration and try again.',
+        message:
+          'PumpFunAPIClient is not properly initialized. Check the client configuration and try again.',
         details: {
           isInitialized: this.isInitialized,
           hasHTTPClient: !!this.httpClient,
           hasLogger: !!this.logger,
-          hasRateLimiter: !!this.rateLimiter
-        }
+          hasRateLimiter: !!this.rateLimiter,
+        },
       });
     }
   }
@@ -2025,21 +2161,24 @@ export class PumpFunAPIClient {
         errorCount: this.state.errorCount,
         errorRate: this.getStatistics().errorRate,
         isRateLimited: this.isRateLimited(),
-        rateLimitBackoffRemaining: this.getRateLimitBackoffRemaining()
+        rateLimitBackoffRemaining: this.getRateLimitBackoffRemaining(),
       },
       network: {
         canConnect: 'Unknown - run testConnection() to verify',
         lastRequestTime: this.state.lastRequestTime,
-        timeSinceLastRequest: this.state.lastRequestTime ? Date.now() - this.state.lastRequestTime : null
+        timeSinceLastRequest: this.state.lastRequestTime
+          ? Date.now() - this.state.lastRequestTime
+          : null,
       },
       configuration: {
-        hasCustomConfig: !!this.config.baseURL || this.config.timeout !== DEFAULT_CLIENT_CONFIG.timeout,
+        hasCustomConfig:
+          !!this.config.baseURL || this.config.timeout !== DEFAULT_CLIENT_CONFIG.timeout,
         hasCustomLoggerConfig: Object.keys(this.loggerConfig || {}).length > 0,
         hasCustomRateLimitConfig: Object.keys(this.rateLimitConfig || {}).length > 0,
         hasCustomRetryConfig: Object.keys(this.retryConfig || {}).length > 0,
-        configSource: this.detectConfigSource()
+        configSource: this.detectConfigSource(),
       },
-      suggestions: this.getGeneralTroubleshootingSuggestions()
+      suggestions: this.getGeneralTroubleshootingSuggestions(),
     };
   }
 
@@ -2047,8 +2186,8 @@ export class PumpFunAPIClient {
    * Detect where configuration is coming from
    */
   private detectConfigSource(): string {
-    const hasEnvVars = Object.keys(process.env).some(key =>
-      key.startsWith('PUMPFUN_') || key.startsWith('TIMEOUT_') || key.startsWith('RATE_')
+    const hasEnvVars = Object.keys(process.env).some(
+      key => key.startsWith('PUMPFUN_') || key.startsWith('TIMEOUT_') || key.startsWith('RATE_')
     );
 
     if (hasEnvVars) {
@@ -2067,15 +2206,19 @@ export class PumpFunAPIClient {
       'Check client.getErrorDiagnostics() for detailed information',
       'Verify your network connection and firewall settings',
       'Ensure you are using the correct API endpoint URL',
-      'Check if the PumpFun service is operational'
+      'Check if the PumpFun service is operational',
     ];
 
     if (this.state.errorCount > 0) {
-      suggestions.push(`High error rate detected (${this.state.errorCount}/${this.state.requestCount}) - consider checking configuration`);
+      suggestions.push(
+        `High error rate detected (${this.state.errorCount}/${this.state.requestCount}) - consider checking configuration`
+      );
     }
 
     if (this.isRateLimited()) {
-      suggestions.push(`Currently rate limited - wait ${Math.ceil(this.getRateLimitBackoffRemaining() / 1000)}s before retrying`);
+      suggestions.push(
+        `Currently rate limited - wait ${Math.ceil(this.getRateLimitBackoffRemaining() / 1000)}s before retrying`
+      );
     }
 
     return suggestions;
@@ -2091,7 +2234,7 @@ export class PumpFunAPIClient {
     this.logger.info('Attempting automatic error recovery', {
       errorCode: error.getErrorCode(),
       isRetryable: error.canRetry(),
-      retryDelay: error.getRetryDelay()
+      retryDelay: error.getRetryDelay(),
     });
 
     try {
@@ -2116,15 +2259,14 @@ export class PumpFunAPIClient {
       }
 
       this.logger.warn('No automatic recovery available for error type', {
-        errorType: error.constructor.name
+        errorType: error.constructor.name,
       });
 
       return false;
-
     } catch (recoveryError) {
       this.logger.error('Automatic error recovery failed', {
         originalError: error.toJSON(),
-        recoveryError: ErrorUtils.formatForLogging(recoveryError)
+        recoveryError: ErrorUtils.formatForLogging(recoveryError),
       });
       return false;
     }
@@ -2138,7 +2280,7 @@ export class PumpFunAPIClient {
 
     this.logger.info(`Rate limited - waiting ${retryDelay}ms before retry`, {
       retryAfter: error.retryAfter,
-      calculatedDelay: retryDelay
+      calculatedDelay: retryDelay,
     });
 
     // Wait the recommended time
@@ -2149,7 +2291,7 @@ export class PumpFunAPIClient {
     this.state.rateLimitInfo.consecutiveErrors = 0;
 
     // Test connection to verify recovery
-    return await this.testConnection();
+    return this.testConnection();
   }
 
   /**
@@ -2158,7 +2300,7 @@ export class PumpFunAPIClient {
   private async recoverFromNetworkError(error: NetworkError): Promise<boolean> {
     this.logger.info('Attempting network error recovery', {
       errorCode: error.getErrorCode(),
-      retryDelay: error.getRetryDelay()
+      retryDelay: error.getRetryDelay(),
     });
 
     // Wait before retrying
@@ -2166,7 +2308,7 @@ export class PumpFunAPIClient {
     await new Promise(resolve => setTimeout(resolve, retryDelay));
 
     // Test connection to verify recovery
-    return await this.testConnection();
+    return this.testConnection();
   }
 
   /**
@@ -2175,7 +2317,7 @@ export class PumpFunAPIClient {
   private async recoverFromTimeoutError(_error: TimeoutError): Promise<boolean> {
     this.logger.info('Attempting timeout error recovery', {
       currentTimeout: this.config.timeout,
-      suggestedTimeout: this.config.timeout * 1.5
+      suggestedTimeout: this.config.timeout * 1.5,
     });
 
     // Temporarily increase timeout
@@ -2203,7 +2345,7 @@ export class PumpFunAPIClient {
   private async recoverFromServerError(error: ServerError): Promise<boolean> {
     this.logger.info('Attempting server error recovery', {
       statusCode: error.statusCode,
-      retryDelay: error.getRetryDelay()
+      retryDelay: error.getRetryDelay(),
     });
 
     // Wait before retrying (server errors need longer delays)
@@ -2211,7 +2353,7 @@ export class PumpFunAPIClient {
     await new Promise(resolve => setTimeout(resolve, retryDelay));
 
     // Test connection to verify recovery
-    return await this.testConnection();
+    return this.testConnection();
   }
 
   // ============================================================================
@@ -2230,7 +2372,10 @@ export class PumpFunAPIClient {
    * @returns Promise that resolves to an array of LiveCoin objects with at least minParticipants
    * @throws {PumpFunError} Various error types with specific recovery guidance
    */
-  public async getActiveStreams(minParticipants: number = 1, params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
+  public async getActiveStreams(
+    minParticipants: number = 1,
+    params?: GetLiveCoinsParams
+  ): Promise<LiveCoin[]> {
     this.ensureInitialized();
 
     // Validate minParticipants parameter
@@ -2240,8 +2385,8 @@ export class PumpFunAPIClient {
         details: {
           operation: 'getActiveStreams',
           providedValue: minParticipants,
-          expectedType: 'number'
-        }
+          expectedType: 'number',
+        },
       });
     }
 
@@ -2251,22 +2396,22 @@ export class PumpFunAPIClient {
         details: {
           operation: 'getActiveStreams',
           providedValue: minParticipants,
-          minValue: 0
-        }
+          minValue: 0,
+        },
       });
     }
 
     if (minParticipants > 10000) {
       this.logger.warn('Very high minParticipants value provided', {
         minParticipants,
-        recommendation: 'Consider using a lower value to get more results'
+        recommendation: 'Consider using a lower value to get more results',
       });
     }
 
     this.logger.info('Fetching active streams with participant filter', {
       minParticipants,
       params,
-      endpoint: 'getLiveCoins -> filter'
+      endpoint: 'getLiveCoins -> filter',
     });
 
     try {
@@ -2275,7 +2420,7 @@ export class PumpFunAPIClient {
         limit: 100, // Fetch more items to account for filtering
         sort: 'participants', // Sort by participants to get most relevant results
         order: 'DESC',
-        ...params
+        ...params,
       });
 
       // Filter streams by minimum participant count
@@ -2288,21 +2433,26 @@ export class PumpFunAPIClient {
         totalLiveStreams: allLiveStreams.length,
         activeStreamsCount: activeStreams.length,
         minParticipants,
-        filterRate: allLiveStreams.length > 0 ? (activeStreams.length / allLiveStreams.length * 100).toFixed(1) + '%' : '0%',
-        participantStats: this.calculateParticipantStats(activeStreams)
+        filterRate:
+          allLiveStreams.length > 0
+            ? `${((activeStreams.length / allLiveStreams.length) * 100).toFixed(1)}%`
+            : '0%',
+        participantStats: this.calculateParticipantStats(activeStreams),
       });
 
       // Log details about the filtered results
       if (activeStreams.length === 0 && allLiveStreams.length > 0) {
         this.logger.info('No streams meet the participant criteria', {
           minParticipants,
-          availableParticipantRanges: allLiveStreams.map(s => s.num_participants).sort((a, b) => b - a).slice(0, 5),
-          suggestion: `Try a lower minParticipants value (current: ${minParticipants})`
+          availableParticipantRanges: allLiveStreams
+            .map(s => s.num_participants)
+            .sort((a, b) => b - a)
+            .slice(0, 5),
+          suggestion: `Try a lower minParticipants value (current: ${minParticipants})`,
         });
       }
 
       return activeStreams;
-
     } catch (error) {
       // Re-throw with additional context about the filtering operation
       if (error instanceof PumpFunError) {
@@ -2317,18 +2467,18 @@ export class PumpFunAPIClient {
             operation: 'getActiveStreams',
             filterCriteria: {
               minParticipants,
-              isCurrentlyLive: true
+              isCurrentlyLive: true,
             },
-            suggestion: this.getActiveStreamsErrorSuggestion(minParticipants, error)
+            suggestion: this.getActiveStreamsErrorSuggestion(minParticipants, error),
           },
-          originalError: error.originalError
+          originalError: error.originalError,
         });
 
         this.logger.error('Failed to get active streams', {
           minParticipants,
           params,
           error: enhancedError.toJSON(),
-          resolution: enhancedError.getResolution()
+          resolution: enhancedError.getResolution(),
         });
 
         throw enhancedError;
@@ -2342,14 +2492,14 @@ export class PumpFunAPIClient {
           operation: 'getActiveStreams',
           minParticipants,
           params,
-          originalError: error instanceof Error ? error.stack : String(error)
-        }
+          originalError: error instanceof Error ? error.stack : String(error),
+        },
       });
 
       this.logger.error('Unexpected error in getActiveStreams', {
         minParticipants,
         params,
-        error: unexpectedError.toJSON()
+        error: unexpectedError.toJSON(),
       });
 
       throw unexpectedError;
@@ -2370,7 +2520,7 @@ export class PumpFunAPIClient {
         totalParticipants: 0,
         averageParticipants: 0,
         maxParticipants: 0,
-        minParticipants: 0
+        minParticipants: 0,
       };
     }
 
@@ -2384,22 +2534,29 @@ export class PumpFunAPIClient {
       totalParticipants,
       averageParticipants: Math.round(averageParticipants * 100) / 100,
       maxParticipants,
-      minParticipants
+      minParticipants,
     };
   }
 
   /**
    * Get error-specific suggestions for getActiveStreams method
    */
-  private getActiveStreamsErrorSuggestion(minParticipants: number, originalError: PumpFunError): string[] {
+  private getActiveStreamsErrorSuggestion(
+    minParticipants: number,
+    originalError: PumpFunError
+  ): string[] {
     const suggestions = [...originalError.getResolution()];
 
     // Add specific suggestions based on the minParticipants value
     if (minParticipants > 100) {
-      suggestions.push(`Try a lower minParticipants value (current: ${minParticipants}) - most streams have fewer participants`);
+      suggestions.push(
+        `Try a lower minParticipants value (current: ${minParticipants}) - most streams have fewer participants`
+      );
       suggestions.push('Consider using minParticipants between 1-50 for better results');
     } else if (minParticipants > 10) {
-      suggestions.push(`Try minParticipants: ${Math.floor(minParticipants / 2)} or lower to see more streams`);
+      suggestions.push(
+        `Try minParticipants: ${Math.floor(minParticipants / 2)} or lower to see more streams`
+      );
     }
 
     // Add suggestions based on error type
@@ -2434,7 +2591,10 @@ export class PumpFunAPIClient {
    * @returns Promise that resolves to an array of LiveCoin objects sorted by participant count (highest first)
    * @throws {PumpFunError} Various error types with specific recovery guidance
    */
-  public async getTopLiveStreams(limit: number = 10, params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
+  public async getTopLiveStreams(
+    limit: number = 10,
+    params?: GetLiveCoinsParams
+  ): Promise<LiveCoin[]> {
     this.ensureInitialized();
 
     // Validate limit parameter
@@ -2444,8 +2604,8 @@ export class PumpFunAPIClient {
         details: {
           operation: 'getTopLiveStreams',
           providedValue: limit,
-          expectedType: 'number'
-        }
+          expectedType: 'number',
+        },
       });
     }
 
@@ -2455,8 +2615,8 @@ export class PumpFunAPIClient {
         details: {
           operation: 'getTopLiveStreams',
           providedValue: limit,
-          minValue: 1
-        }
+          minValue: 1,
+        },
       });
     }
 
@@ -2464,7 +2624,7 @@ export class PumpFunAPIClient {
       this.logger.warn('High limit value for getTopLiveStreams', {
         limit,
         recommendation: 'Consider using pagination for large result sets',
-        maxRecommended: 50
+        maxRecommended: 50,
       });
     }
 
@@ -2473,22 +2633,20 @@ export class PumpFunAPIClient {
       params,
       operation: 'getTopLiveStreams',
       sortBy: 'participants',
-      sortOrder: 'DESC'
+      sortOrder: 'DESC',
     });
 
     try {
       // Get live streams sorted by participants in descending order
       const liveStreams = await this.getLiveCoins({
         limit: Math.max(limit, 20), // Fetch extra to account for filtering
-        sort: 'participants',      // Sort by participant count
-        order: 'DESC',             // Descending order (highest first)
-        ...params                   // Pass through any additional parameters
+        sort: 'participants', // Sort by participant count
+        order: 'DESC', // Descending order (highest first)
+        ...params, // Pass through any additional parameters
       });
 
       // Filter to only include currently live streams and apply limit
-      const topLiveStreams = liveStreams
-        .filter(stream => stream.is_currently_live)
-        .slice(0, limit);
+      const topLiveStreams = liveStreams.filter(stream => stream.is_currently_live).slice(0, limit);
 
       // Calculate statistics for logging
       const participantCounts = topLiveStreams.map(stream => stream.num_participants);
@@ -2497,39 +2655,46 @@ export class PumpFunAPIClient {
         totalReturned: topLiveStreams.length,
         maxParticipants: participantCounts.length > 0 ? Math.max(...participantCounts) : 0,
         minParticipants: participantCounts.length > 0 ? Math.min(...participantCounts) : 0,
-        averageParticipants: participantCounts.length > 0
-          ? Math.round((participantCounts.reduce((sum, count) => sum + count, 0) / participantCounts.length) * 100) / 100
-          : 0
+        averageParticipants:
+          participantCounts.length > 0
+            ? Math.round(
+                (participantCounts.reduce((sum, count) => sum + count, 0) /
+                  participantCounts.length) *
+                  100
+              ) / 100
+            : 0,
       };
 
       this.logger.info('Successfully fetched top live streams', {
         ...stats,
         currentlyLiveCount: liveStreams.filter(stream => stream.is_currently_live).length,
         totalLiveFetched: liveStreams.length,
-        participantRange: topLiveStreams.length > 0
-          ? `${stats.minParticipants} - ${stats.maxParticipants}`
-          : 'N/A',
-        hasResults: topLiveStreams.length > 0
+        participantRange:
+          topLiveStreams.length > 0 ? `${stats.minParticipants} - ${stats.maxParticipants}` : 'N/A',
+        hasResults: topLiveStreams.length > 0,
       });
 
       // Log details about top streams if we have results
       if (topLiveStreams.length > 0) {
         const topStream = topLiveStreams[0]!;
-        const bottomStream = topLiveStreams.length > 1 ? topLiveStreams[topLiveStreams.length - 1]! : null;
+        const bottomStream =
+          topLiveStreams.length > 1 ? topLiveStreams[topLiveStreams.length - 1]! : null;
 
         this.logger.debug('Top live streams details', {
           topStream: {
             name: topStream.name,
             symbol: topStream.symbol,
             participants: topStream.num_participants,
-            title: topStream.livestream_title || null
+            title: topStream.livestream_title || null,
           },
-          bottomStream: bottomStream ? {
-            name: bottomStream.name,
-            symbol: bottomStream.symbol,
-            participants: bottomStream.num_participants,
-            title: bottomStream.livestream_title || null
-          } : null
+          bottomStream: bottomStream
+            ? {
+                name: bottomStream.name,
+                symbol: bottomStream.symbol,
+                participants: bottomStream.num_participants,
+                title: bottomStream.livestream_title || null,
+              }
+            : null,
         });
       }
 
@@ -2541,13 +2706,12 @@ export class PumpFunAPIClient {
           suggestions: [
             'Try again later as streams may become available',
             'Check if there are any currently live streams using getLiveCoins()',
-            'Consider increasing the search parameters'
-          ]
+            'Consider increasing the search parameters',
+          ],
         });
       }
 
       return topLiveStreams;
-
     } catch (error) {
       this.state.errorCount++;
 
@@ -2557,7 +2721,7 @@ export class PumpFunAPIClient {
         params,
         sortBy: 'participants',
         sortOrder: 'DESC',
-        endpoint: '/coins/currently-live'
+        endpoint: '/coins/currently-live',
       });
 
       this.logger.error('Failed to get top live streams', {
@@ -2565,7 +2729,7 @@ export class PumpFunAPIClient {
         params,
         error: pumpFunError.toJSON(),
         resolution: pumpFunError.getResolution(),
-        errorCategory: pumpFunError.details?.errorCategory
+        errorCategory: pumpFunError.details?.errorCategory,
       });
 
       throw pumpFunError;
@@ -2583,11 +2747,14 @@ export class PumpFunAPIClient {
    * @returns Promise that resolves to an array of most active LiveCoin objects
    * @throws {PumpFunError} Various error types with specific recovery guidance
    */
-  public async getTopActiveStreams(limit: number = 10, minParticipants: number = 5): Promise<LiveCoin[]> {
+  public async getTopActiveStreams(
+    limit: number = 10,
+    minParticipants: number = 5
+  ): Promise<LiveCoin[]> {
     this.logger.info('Fetching top active streams', {
       limit,
       minParticipants,
-      operation: 'getTopActiveStreams'
+      operation: 'getTopActiveStreams',
     });
 
     try {
@@ -2595,7 +2762,7 @@ export class PumpFunAPIClient {
       const activeStreams = await this.getActiveStreams(minParticipants, {
         limit: Math.max(limit, 50), // Fetch more to account for any edge cases
         sort: 'participants',
-        order: 'DESC'
+        order: 'DESC',
       });
 
       // Return the top streams
@@ -2606,20 +2773,283 @@ export class PumpFunAPIClient {
         returned: topStreams.length,
         minParticipants,
         topParticipantCount: topStreams.length > 0 ? topStreams[0]!.num_participants : 0,
-        participantRange: topStreams.length > 1
-          ? `${topStreams[topStreams.length - 1]!.num_participants} - ${topStreams[0]!.num_participants}`
-          : topStreams.length > 0
-            ? `${topStreams[0]!.num_participants} - ${topStreams[0]!.num_participants}`
-            : 'N/A'
+        participantRange:
+          topStreams.length > 1
+            ? `${topStreams[topStreams.length - 1]!.num_participants} - ${topStreams[0]!.num_participants}`
+            : topStreams.length > 0
+              ? `${topStreams[0]!.num_participants} - ${topStreams[0]!.num_participants}`
+              : 'N/A',
       });
 
       return topStreams;
-
     } catch (error) {
       this.logger.error('Failed to get top active streams', {
         limit,
         minParticipants,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // T031: getTitledStreams Method (User Story 2)
+  // ============================================================================
+
+  /**
+   * Get live streams that have titles indicating more active content
+   *
+   * This method filters live streaming coins to return only those that have
+   * meaningful titles, which typically indicates more active and engaging content.
+   * Streams with titles are often more likely to have active hosts and better content.
+   *
+   * @param limit - Maximum number of streams to return (default: 10)
+   * @param params - Optional parameters for pagination, sorting, and filtering
+   * @returns Promise that resolves to an array of LiveCoin objects with meaningful titles
+   * @throws {PumpFunError} Various error types with specific recovery guidance
+   */
+  public async getTitledStreams(
+    limit: number = 10,
+    params?: GetLiveCoinsParams
+  ): Promise<LiveCoin[]> {
+    this.ensureInitialized();
+
+    // Validate limit parameter
+    if (typeof limit !== 'number' || isNaN(limit)) {
+      throw new ConfigurationError({
+        message: `Invalid limit: ${limit}. Must be a valid number.`,
+        details: {
+          operation: 'getTitledStreams',
+          providedValue: limit,
+          expectedType: 'number',
+        },
+      });
+    }
+
+    if (limit < 1) {
+      throw new ConfigurationError({
+        message: `Invalid limit: ${limit}. Must be at least 1.`,
+        details: {
+          operation: 'getTitledStreams',
+          providedValue: limit,
+          minValue: 1,
+        },
+      });
+    }
+
+    if (limit > 100) {
+      this.logger.warn('High limit value for getTitledStreams', {
+        limit,
+        recommendation: 'Consider using pagination for large result sets',
+        maxRecommended: 50,
+      });
+    }
+
+    this.logger.info('Fetching live streams with meaningful titles', {
+      limit,
+      params,
+      operation: 'getTitledStreams',
+      filterCriteria: 'has meaningful livestream_title',
+    });
+
+    try {
+      // Get live streams - fetch more to account for title filtering
+      const liveStreams = await this.getLiveCoins({
+        limit: Math.max(limit, 50), // Fetch extra to account for filtering
+        sort: 'currently_live',
+        order: 'DESC',
+        ...params,
+      });
+
+      // Filter streams to only include those with meaningful titles
+      const titledStreams = liveStreams
+        .filter(stream => {
+          // Must be currently live
+          if (!stream.is_currently_live) {
+            return false;
+          }
+
+          // Must have a title
+          if (!stream.livestream_title || stream.livestream_title.trim().length === 0) {
+            return false;
+          }
+
+          // Title must be meaningful (not just default text)
+          const title = stream.livestream_title.trim();
+
+          // Filter out generic or placeholder titles
+          const genericTitles = [
+            'live',
+            'streaming',
+            'broadcast',
+            'live stream',
+            '🔴',
+            '🔴 live',
+            'live 🔴',
+            'starting soon',
+            'test',
+            'testing',
+            'placeholder',
+            '',
+          ];
+
+          if (genericTitles.some(generic => title.toLowerCase() === generic.toLowerCase())) {
+            return false;
+          }
+
+          // Title must be at least 3 characters long and contain meaningful content
+          if (title.length < 3) {
+            return false;
+          }
+
+          // Title should contain some actual content beyond just emojis or special characters
+          const meaningfulChars = title.replace(/[^\w\s]/g, '').replace(/\s+/g, '').length;
+          if (meaningfulChars < 2) {
+            return false;
+          }
+
+          return true;
+        })
+        .slice(0, limit);
+
+      // Calculate statistics for logging
+      const stats = {
+        totalLiveStreams: liveStreams.length,
+        titledStreamsCount: titledStreams.length,
+        requested: limit,
+        returned: titledStreams.length,
+        titleRate:
+          liveStreams.length > 0
+            ? `${((titledStreams.length / liveStreams.length) * 100).toFixed(1)}%`
+            : '0%',
+        averageTitleLength:
+          titledStreams.length > 0
+            ? Math.round(
+                titledStreams.reduce((sum, stream) => sum + stream.livestream_title!.length, 0) /
+                  titledStreams.length
+              )
+            : 0,
+      };
+
+      this.logger.info('Successfully filtered titled streams', {
+        ...stats,
+        currentlyLiveCount: liveStreams.filter(stream => stream.is_currently_live).length,
+        hasResults: titledStreams.length > 0,
+      });
+
+      // Log details about the filtered titles if we have results
+      if (titledStreams.length > 0) {
+        const titleDetails = titledStreams.map((stream, index) => ({
+          rank: index + 1,
+          name: stream.name,
+          symbol: stream.symbol,
+          title: stream.livestream_title!,
+          titleLength: stream.livestream_title!.length,
+          participants: stream.num_participants,
+        }));
+
+        this.logger.debug('Titled streams details', {
+          totalTitles: titleDetails.length,
+          longestTitle: Math.max(...titleDetails.map(t => t.titleLength)),
+          shortestTitle: Math.min(...titleDetails.map(t => t.titleLength)),
+          sampleTitles: titleDetails.slice(0, 3),
+        });
+      }
+
+      // If no results, provide helpful information
+      if (titledStreams.length === 0) {
+        const availableTitles = liveStreams
+          .filter(stream => stream.livestream_title && stream.livestream_title.trim().length > 0)
+          .map(stream => stream.livestream_title!.trim())
+          .slice(0, 5);
+
+        this.logger.info('No streams with meaningful titles found', {
+          totalLiveStreams: liveStreams.length,
+          streamsWithAnyTitle: availableTitles.length,
+          sampleTitles: availableTitles,
+          suggestions: [
+            'Try again later as streams may get titles',
+            'Use getLiveCoins() to see all available streams',
+            'Consider using getActiveStreams() for streams with participants',
+          ],
+        });
+      }
+
+      return titledStreams;
+    } catch (error) {
+      this.state.errorCount++;
+
+      // Enhance error with operation-specific context
+      const pumpFunError = this.handleError(error, 'getTitledStreams', {
+        limit,
+        params,
+        filterCriteria: 'has meaningful livestream_title',
+        endpoint: '/coins/currently-live',
+      });
+
+      this.logger.error('Failed to get titled streams', {
+        limit,
+        params,
+        error: pumpFunError.toJSON(),
+        resolution: pumpFunError.getResolution(),
+        errorCategory: pumpFunError.details?.errorCategory,
+      });
+
+      throw pumpFunError;
+    }
+  }
+
+  /**
+   * Get titled streams with minimum participant count
+   *
+   * This is a convenience method that combines title filtering with participant
+   * filtering to find streams that are both well-titled and have active engagement.
+   *
+   * @param limit - Maximum number of streams to return (default: 10)
+   * @param minParticipants - Minimum participants required (default: 1)
+   * @param params - Optional parameters for pagination, sorting, and filtering
+   * @returns Promise that resolves to an array of titled LiveCoin objects with minimum participants
+   * @throws {PumpFunError} Various error types with specific recovery guidance
+   */
+  public async getTitledActiveStreams(
+    limit: number = 10,
+    minParticipants: number = 1,
+    params?: GetLiveCoinsParams
+  ): Promise<LiveCoin[]> {
+    this.logger.info('Fetching titled active streams', {
+      limit,
+      minParticipants,
+      operation: 'getTitledActiveStreams',
+    });
+
+    try {
+      // Get titled streams first
+      const titledStreams = await this.getTitledStreams(Math.max(limit, 50), params);
+
+      // Filter by minimum participant count
+      const titledActiveStreams = titledStreams
+        .filter(stream => stream.num_participants >= minParticipants)
+        .slice(0, limit);
+
+      this.logger.info('Successfully filtered titled active streams', {
+        totalTitledStreams: titledStreams.length,
+        titledActiveCount: titledActiveStreams.length,
+        minParticipants,
+        requested: limit,
+        returned: titledActiveStreams.length,
+        filterRate:
+          titledStreams.length > 0
+            ? `${((titledActiveStreams.length / titledStreams.length) * 100).toFixed(1)}%`
+            : '0%',
+      });
+
+      return titledActiveStreams;
+    } catch (error) {
+      this.logger.error('Failed to get titled active streams', {
+        limit,
+        minParticipants,
+        params,
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }

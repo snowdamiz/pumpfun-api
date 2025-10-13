@@ -197,7 +197,7 @@
   - Add method to return streams sorted by participant count in descending order
   - Story: US2
 
-- [ ] **T031** - Add getTitledStreams method for active content
+- [x] **T031** - Add getTitledStreams method for active content ✅
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Filter and return streams that have titles indicating more active content
   - Story: US2
