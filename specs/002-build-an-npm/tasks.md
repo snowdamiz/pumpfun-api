@@ -167,7 +167,7 @@
 **Story Goal**: Enable developers to retrieve currently live streaming coins with filtering and pagination
 **Independent Test**: Call getLiveCoins() with various parameters and verify correct array responses
 
-- [ ] **T025** - Implement getLiveCoins method with pagination [P]
+- [x] **T025** - Implement getLiveCoins method with pagination [P] ✅
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Add method to fetch live streaming coins with pagination, sorting, and filtering options
   - Story: US2

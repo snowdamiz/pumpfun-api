@@ -17,6 +17,8 @@ import {
   ClientState,
   RateLimitState,
   LogLevel,
+  LiveCoin,
+  GetLiveCoinsParams,
 } from './types';
 import { HTTPClient } from '../utils/http-client';
 import { Logger } from '../utils/logger';
@@ -776,6 +778,286 @@ export class PumpFunAPIClient {
 
       throw pumpFunError;
     }
+  }
+
+  /**
+   * Get currently live streaming coins with pagination and filtering
+   *
+   * This method retrieves a list of coins that currently have active live streams,
+   * with support for pagination, sorting, and filtering options.
+   *
+   * @param params - Optional parameters for pagination, sorting, and filtering
+   * @returns Promise that resolves to an array of LiveCoin objects
+   * @throws {PumpFunError} Various error types with specific recovery guidance
+   */
+  public async getLiveCoins(params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
+    this.ensureInitialized();
+
+    // Set default parameter values
+    const defaultParams: Required<GetLiveCoinsParams> = {
+      offset: 0,
+      limit: 10,
+      sort: 'currently_live',
+      order: 'DESC',
+      includeNsfw: false
+    };
+
+    // Merge provided params with defaults
+    const mergedParams = { ...defaultParams, ...params };
+
+    // Validate parameters
+    this.validateGetLiveCoinsParams(mergedParams);
+
+    try {
+      this.logger.info('Fetching live streaming coins...', {
+        endpoint: '/coins/currently-live',
+        params: mergedParams,
+        baseURL: this.config.baseURL
+      });
+
+      // Apply rate limiting before making the request
+      await this.rateLimiter.waitForRequest();
+
+      // Build query string
+      const queryString = this.buildQueryString(mergedParams);
+      const endpoint = `/coins/currently-live${queryString}`;
+
+      const response = await this.httpClient.get(endpoint);
+
+      // Update statistics
+      this.state.requestCount++;
+      this.state.lastRequestTime = Date.now();
+
+      // Record successful request in rate limiter
+      this.rateLimiter.recordRequest();
+
+      // Validate response data
+      const liveCoins = this.validateLiveCoinsResponse(response);
+
+      this.logger.info('Successfully fetched live streaming coins', {
+        count: liveCoins.length,
+        params: mergedParams,
+        hasMore: liveCoins.length === mergedParams.limit
+      });
+
+      return liveCoins;
+
+    } catch (error) {
+      this.state.errorCount++;
+      const pumpFunError = this.handleError(error, 'getLiveCoins', {
+        endpoint: '/coins/currently-live',
+        params: mergedParams,
+        baseURL: this.config.baseURL
+      });
+
+      this.logger.error('Failed to fetch live streaming coins', {
+        error: pumpFunError.toJSON(),
+        params: mergedParams,
+        resolution: pumpFunError.getResolution()
+      });
+
+      throw pumpFunError;
+    }
+  }
+
+  /**
+   * Validate parameters for getLiveCoins request
+   *
+   * @param params The parameters to validate
+   * @throws {ConfigurationError} If parameters are invalid
+   */
+  private validateGetLiveCoinsParams(params: Required<GetLiveCoinsParams>): void {
+    const errors: string[] = [];
+
+    // Validate offset
+    if (params.offset < 0) {
+      errors.push(`Invalid offset: ${params.offset}. Must be a non-negative integer.`);
+    }
+
+    // Validate limit
+    if (params.limit < 1) {
+      errors.push(`Invalid limit: ${params.limit}. Must be at least 1.`);
+    } else if (params.limit > 100) {
+      errors.push(`Invalid limit: ${params.limit}. Maximum allowed is 100.`);
+    }
+
+    // Validate sort field
+    const validSortFields = ['currently_live', 'market_cap', 'participants'];
+    if (!validSortFields.includes(params.sort)) {
+      errors.push(`Invalid sort field: "${params.sort}". Must be one of: ${validSortFields.join(', ')}.`);
+    }
+
+    // Validate sort order
+    const validSortOrders = ['ASC', 'DESC'];
+    if (!validSortOrders.includes(params.order)) {
+      errors.push(`Invalid sort order: "${params.order}". Must be one of: ${validSortOrders.join(', ')}.`);
+    }
+
+    // Validate includeNsfw type
+    if (typeof params.includeNsfw !== 'boolean') {
+      errors.push(`Invalid includeNsfw type: ${typeof params.includeNsfw}. Must be boolean.`);
+    }
+
+    if (errors.length > 0) {
+      throw new ConfigurationError({
+        message: `getLiveCoins parameter validation failed:\n${errors.map((error, index) => `  ${index + 1}. ${error}`).join('\n')}`,
+        details: {
+          operation: 'getLiveCoins',
+          providedParams: params,
+          validationErrors: errors
+        }
+      });
+    }
+  }
+
+  /**
+   * Build query string from parameters
+   *
+   * @param params The parameters to convert to query string
+   * @returns Query string (including leading ? if parameters exist)
+   */
+  private buildQueryString(params: Required<GetLiveCoinsParams>): string {
+    const queryParams = new URLSearchParams();
+
+    // Only add parameters that differ from defaults or are explicitly provided
+    if (params.offset !== 0) {
+      queryParams.append('offset', params.offset.toString());
+    }
+    if (params.limit !== 10) {
+      queryParams.append('limit', params.limit.toString());
+    }
+    if (params.sort !== 'currently_live') {
+      queryParams.append('sort', params.sort);
+    }
+    if (params.order !== 'DESC') {
+      queryParams.append('order', params.order);
+    }
+    if (params.includeNsfw !== false) {
+      queryParams.append('includeNsfw', params.includeNsfw.toString());
+    }
+
+    const queryString = queryParams.toString();
+    return queryString ? `?${queryString}` : '';
+  }
+
+  /**
+   * Validate and normalize live coins response data
+   *
+   * @param response The raw response from the API
+   * @returns Validated array of LiveCoin objects
+   * @throws {ServerError} If response data is invalid
+   */
+  private validateLiveCoinsResponse(response: any): LiveCoin[] {
+    if (!Array.isArray(response)) {
+      throw new ServerError({
+        message: 'Invalid response format: expected array of live coins',
+        statusCode: 500,
+        details: {
+          expectedType: 'array',
+          receivedType: typeof response,
+          response
+        }
+      });
+    }
+
+    const liveCoins: LiveCoin[] = [];
+    const validationErrors: string[] = [];
+
+    for (let i = 0; i < response.length; i++) {
+      const coin = response[i];
+
+      try {
+        const validatedCoin = this.validateLiveCoin(coin, i);
+        liveCoins.push(validatedCoin);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        validationErrors.push(`Item ${i}: ${errorMessage}`);
+      }
+    }
+
+    if (validationErrors.length > 0) {
+      this.logger.warn('Some live coins failed validation', {
+        validationErrors,
+        totalItems: response.length,
+        validItems: liveCoins.length
+      });
+    }
+
+    return liveCoins;
+  }
+
+  /**
+   * Validate a single LiveCoin object
+   *
+   * @param coin The coin object to validate
+   * @param index The index of the coin in the array (for error reporting)
+   * @returns Validated LiveCoin object
+   * @throws {ServerError} If coin data is invalid
+   */
+  private validateLiveCoin(coin: any, index: number): LiveCoin {
+    const errors: string[] = [];
+
+    // Required field validation
+    const requiredFields = [
+      'mint', 'name', 'symbol', 'description', 'image_uri', 'creator',
+      'created_timestamp', 'market_cap', 'usd_market_cap', 'is_currently_live',
+      'num_participants', 'reply_count', 'thumbnail', 'last_reply'
+    ];
+
+    for (const field of requiredFields) {
+      if (coin[field] === undefined || coin[field] === null) {
+        errors.push(`Missing required field: ${field}`);
+      }
+    }
+
+    // Type validation
+    if (coin.mint && typeof coin.mint !== 'string') {
+      errors.push(`mint must be string, got ${typeof coin.mint}`);
+    }
+    if (coin.name && typeof coin.name !== 'string') {
+      errors.push(`name must be string, got ${typeof coin.name}`);
+    }
+    if (coin.symbol && typeof coin.symbol !== 'string') {
+      errors.push(`symbol must be string, got ${typeof coin.symbol}`);
+    }
+    if (coin.market_cap !== undefined && typeof coin.market_cap !== 'number') {
+      errors.push(`market_cap must be number, got ${typeof coin.market_cap}`);
+    }
+    if (coin.usd_market_cap !== undefined && typeof coin.usd_market_cap !== 'number') {
+      errors.push(`usd_market_cap must be number, got ${typeof coin.usd_market_cap}`);
+    }
+    if (coin.is_currently_live !== undefined && typeof coin.is_currently_live !== 'boolean') {
+      errors.push(`is_currently_live must be boolean, got ${typeof coin.is_currently_live}`);
+    }
+    if (coin.num_participants !== undefined && (typeof coin.num_participants !== 'number' || coin.num_participants < 0)) {
+      errors.push(`num_participants must be non-negative number, got ${coin.num_participants}`);
+    }
+    if (coin.reply_count !== undefined && (typeof coin.reply_count !== 'number' || coin.reply_count < 0)) {
+      errors.push(`reply_count must be non-negative number, got ${coin.reply_count}`);
+    }
+
+    // Value validation
+    if (coin.created_timestamp !== undefined && (typeof coin.created_timestamp !== 'number' || coin.created_timestamp < 0)) {
+      errors.push(`created_timestamp must be non-negative number, got ${coin.created_timestamp}`);
+    }
+    if (coin.last_reply !== undefined && (typeof coin.last_reply !== 'number' || coin.last_reply < 0)) {
+      errors.push(`last_reply must be non-negative number, got ${coin.last_reply}`);
+    }
+
+    if (errors.length > 0) {
+      throw new ServerError({
+        message: `Invalid live coin data at index ${index}:\n${errors.map((error, index) => `  ${index + 1}. ${error}`).join('\n')}`,
+        statusCode: 500,
+        details: {
+          coinIndex: index,
+          validationErrors: errors,
+          coinData: coin
+        }
+      });
+    }
+
+    // Return validated coin (casting to LiveCoin type)
+    return coin as LiveCoin;
   }
 
   /**
