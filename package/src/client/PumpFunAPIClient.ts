@@ -19,6 +19,7 @@ import {
   LogLevel,
   LiveCoin,
   GetLiveCoinsParams,
+  LiveStreamInfo,
 } from './types';
 import { HTTPClient } from '../utils/http-client';
 import { Logger } from '../utils/logger';
@@ -30,6 +31,8 @@ import {
   ServerError,
   ConfigurationError,
   TimeoutError,
+  ValidationError,
+  PumpFunAPIError,
   ErrorFactory,
   ErrorUtils,
 } from '../utils/errors';
@@ -3051,6 +3054,196 @@ export class PumpFunAPIClient {
         params,
         error: error instanceof Error ? error.message : String(error),
       });
+      throw error;
+    }
+  }
+
+  // T033: getLiveStreamInfo Method (User Story 3)
+  /**
+   * Get detailed live stream information for a specific token
+   *
+   * This method fetches comprehensive live stream information from the livestream-api,
+   * including stream details, participant counts, and stream metadata.
+   *
+   * @param mintId - The mint ID of the token to get stream information for
+   * @returns Promise that resolves to LiveStreamInfo object or null if no stream is found
+   * @throws {PumpFunError} Various error types with specific recovery guidance
+   */
+  public async getLiveStreamInfo(mintId: string): Promise<LiveStreamInfo | null> {
+    this.logger.info('Fetching live stream information', {
+      mintId,
+      operation: 'getLiveStreamInfo',
+    });
+
+    // Validate input parameter
+    if (!mintId || typeof mintId !== 'string') {
+      throw new ValidationError({
+        message: 'Invalid mintId parameter',
+        field: 'mintId',
+        value: mintId,
+        details: {
+          received: typeof mintId,
+        },
+      });
+    }
+
+    // Validate Solana address format
+    const solanaAddressRegex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+    if (!solanaAddressRegex.test(mintId)) {
+      throw new ValidationError({
+        message: 'Invalid Solana address format for mintId',
+        field: 'mintId',
+        value: mintId,
+        details: {
+          expectedFormat: 'Solana base58 address (32-44 characters)',
+        },
+      });
+    }
+
+    try {
+      // Create a temporary HTTP client for the livestream API (matching basic-usage.ts pattern)
+      const livestreamClient = new HTTPClient({
+        baseURL: 'https://livestream-api.pump.fun',
+        timeout: this.config.timeout,
+        headers: {
+          'Origin': 'https://pump.fun',
+          'Referer': 'https://pump.fun/',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+        }
+      });
+
+      // Make request to livestream API (matching basic-usage.ts pattern)
+      const response = await livestreamClient.get(`/livestream?mintId=${mintId}`);
+
+      this.logger.debug('Livestream API response received', {
+        mintId,
+        responseType: typeof response,
+        hasData: !!response,
+      });
+
+      // Handle response matching basic-usage.ts pattern
+      if (response && typeof response === 'object' && 'id' in response) {
+        const streamInfo = response as LiveStreamInfo;
+
+        // Basic validation that this looks like a LiveStreamInfo
+        if (!streamInfo.mintId || !streamInfo.title || typeof streamInfo.isLive !== 'boolean') {
+          throw new PumpFunAPIError({
+            message: 'Invalid response structure from livestream API',
+            code: 'LIVESTREAM_API_INVALID_STRUCTURE',
+            statusCode: 500,
+            isRetryable: false,
+            details: {
+              mintId,
+              responseKeys: Object.keys(response),
+              requiredFields: ['mintId', 'title', 'isLive'],
+            },
+          });
+        }
+
+        this.logger.info('Successfully retrieved live stream information', {
+          mintId,
+          streamId: streamInfo.id,
+          isLive: streamInfo.isLive,
+          participants: streamInfo.numParticipants,
+          title: streamInfo.title,
+          mode: streamInfo.mode,
+        });
+
+        return streamInfo;
+      } else {
+        this.logger.info('No active stream found for mint', {
+          mintId,
+        });
+        return null;
+      }
+
+    } catch (error: unknown) {
+      this.logger.error('Failed to get live stream information', {
+        mintId,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: error?.constructor?.name,
+      });
+
+      // Re-throw known error types
+      if (error instanceof ValidationError || error instanceof PumpFunAPIError) {
+        throw error;
+      }
+
+      // Type guard for errors with response property (axios errors)
+      const axiosError = error as any;
+      if (axiosError.response) {
+        const statusCode = axiosError.response.status;
+
+        // Handle 404 - no stream found (matching basic-usage.ts pattern)
+        if (statusCode === 404) {
+          this.logger.info('No active stream found for mint (404)', {
+            mintId,
+            status: statusCode,
+          });
+          return null;
+        }
+
+        // Categorize error type for retry logic
+        if (statusCode === 429) {
+          throw new RateLimitError({
+            message: `Rate limit exceeded for livestream API: ${axiosError.response.data?.message || axiosError.message}`,
+            retryAfter: axiosError.response.data?.retryAfter,
+            details: {
+              mintId,
+              retryAfter: axiosError.response.data?.retryAfter,
+            },
+          });
+        } else if (statusCode >= 500) {
+          throw new ServerError({
+            message: `Server error from livestream API: ${axiosError.response.data?.message || axiosError.message}`,
+            statusCode,
+            details: {
+              mintId,
+              statusCode,
+            },
+          });
+        } else {
+          throw new PumpFunAPIError({
+            message: `HTTP ${statusCode} error from livestream API: ${axiosError.response.data?.message || axiosError.message}`,
+            code: 'LIVESTREAM_API_HTTP_ERROR',
+            statusCode,
+            isRetryable: statusCode >= 500,
+            details: {
+              mintId,
+              endpoint: `/livestream?mintId=${mintId}`,
+              responseStatus: statusCode,
+              responseData: axiosError.response.data,
+            },
+          });
+        }
+      }
+
+      // Handle network errors
+      if (axiosError.code === 'ECONNREFUSED' || axiosError.code === 'ENOTFOUND' || axiosError.code === 'ETIMEDOUT') {
+        throw new NetworkError({
+          message: `Network error connecting to livestream API: ${axiosError.message}`,
+          code: axiosError.code,
+          details: {
+            mintId,
+            errorCode: axiosError.code,
+            baseURL: 'https://livestream-api.pump.fun',
+          },
+        });
+      }
+
+      // Handle timeout errors
+      if (axiosError.code === 'ECONNABORTED' || axiosError.message?.includes('timeout')) {
+        throw new TimeoutError({
+          message: `Request timeout while fetching live stream information: ${axiosError.message}`,
+          timeout: this.config.timeout,
+          details: {
+            mintId,
+            timeout: this.config.timeout,
+          },
+        });
+      }
+
+      // Re-throw unknown errors (matching basic-usage.ts pattern)
       throw error;
     }
   }
