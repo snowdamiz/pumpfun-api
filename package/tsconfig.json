@@ -41,8 +41,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "incremental": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "ignoreDeprecations": "6.0"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": [
     "src/**/*"
