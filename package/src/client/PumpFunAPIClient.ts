@@ -2418,6 +2418,160 @@ export class PumpFunAPIClient {
     return suggestions;
   }
 
+  // ============================================================================
+  // T030: getTopLiveStreams Method (User Story 2)
+  // ============================================================================
+
+  /**
+   * Get top live streams sorted by participant count in descending order
+   *
+   * This method retrieves currently live streaming coins and returns them sorted
+   * by participant count in descending order, making it easy to find the most
+   * popular live streams at any given moment.
+   *
+   * @param limit - Maximum number of streams to return (default: 10)
+   * @param params - Optional parameters for pagination and additional filtering
+   * @returns Promise that resolves to an array of LiveCoin objects sorted by participant count (highest first)
+   * @throws {PumpFunError} Various error types with specific recovery guidance
+   */
+  public async getTopLiveStreams(limit: number = 10, params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
+    this.ensureInitialized();
+
+    // Validate limit parameter
+    if (typeof limit !== 'number' || isNaN(limit)) {
+      throw new ConfigurationError({
+        message: `Invalid limit: ${limit}. Must be a valid number.`,
+        details: {
+          operation: 'getTopLiveStreams',
+          providedValue: limit,
+          expectedType: 'number'
+        }
+      });
+    }
+
+    if (limit < 1) {
+      throw new ConfigurationError({
+        message: `Invalid limit: ${limit}. Must be at least 1.`,
+        details: {
+          operation: 'getTopLiveStreams',
+          providedValue: limit,
+          minValue: 1
+        }
+      });
+    }
+
+    if (limit > 100) {
+      this.logger.warn('High limit value for getTopLiveStreams', {
+        limit,
+        recommendation: 'Consider using pagination for large result sets',
+        maxRecommended: 50
+      });
+    }
+
+    this.logger.info('Fetching top live streams by participant count', {
+      limit,
+      params,
+      operation: 'getTopLiveStreams',
+      sortBy: 'participants',
+      sortOrder: 'DESC'
+    });
+
+    try {
+      // Get live streams sorted by participants in descending order
+      const liveStreams = await this.getLiveCoins({
+        limit: Math.max(limit, 20), // Fetch extra to account for filtering
+        sort: 'participants',      // Sort by participant count
+        order: 'DESC',             // Descending order (highest first)
+        ...params                   // Pass through any additional parameters
+      });
+
+      // Filter to only include currently live streams and apply limit
+      const topLiveStreams = liveStreams
+        .filter(stream => stream.is_currently_live)
+        .slice(0, limit);
+
+      // Calculate statistics for logging
+      const participantCounts = topLiveStreams.map(stream => stream.num_participants);
+      const stats = {
+        totalRequested: limit,
+        totalReturned: topLiveStreams.length,
+        maxParticipants: participantCounts.length > 0 ? Math.max(...participantCounts) : 0,
+        minParticipants: participantCounts.length > 0 ? Math.min(...participantCounts) : 0,
+        averageParticipants: participantCounts.length > 0
+          ? Math.round((participantCounts.reduce((sum, count) => sum + count, 0) / participantCounts.length) * 100) / 100
+          : 0
+      };
+
+      this.logger.info('Successfully fetched top live streams', {
+        ...stats,
+        currentlyLiveCount: liveStreams.filter(stream => stream.is_currently_live).length,
+        totalLiveFetched: liveStreams.length,
+        participantRange: topLiveStreams.length > 0
+          ? `${stats.minParticipants} - ${stats.maxParticipants}`
+          : 'N/A',
+        hasResults: topLiveStreams.length > 0
+      });
+
+      // Log details about top streams if we have results
+      if (topLiveStreams.length > 0) {
+        const topStream = topLiveStreams[0]!;
+        const bottomStream = topLiveStreams.length > 1 ? topLiveStreams[topLiveStreams.length - 1]! : null;
+
+        this.logger.debug('Top live streams details', {
+          topStream: {
+            name: topStream.name,
+            symbol: topStream.symbol,
+            participants: topStream.num_participants,
+            title: topStream.livestream_title || null
+          },
+          bottomStream: bottomStream ? {
+            name: bottomStream.name,
+            symbol: bottomStream.symbol,
+            participants: bottomStream.num_participants,
+            title: bottomStream.livestream_title || null
+          } : null
+        });
+      }
+
+      // If no results, provide helpful information
+      if (topLiveStreams.length === 0) {
+        this.logger.info('No live streams found for getTopLiveStreams', {
+          requested: limit,
+          params,
+          suggestions: [
+            'Try again later as streams may become available',
+            'Check if there are any currently live streams using getLiveCoins()',
+            'Consider increasing the search parameters'
+          ]
+        });
+      }
+
+      return topLiveStreams;
+
+    } catch (error) {
+      this.state.errorCount++;
+
+      // Enhance error with operation-specific context
+      const pumpFunError = this.handleError(error, 'getTopLiveStreams', {
+        limit,
+        params,
+        sortBy: 'participants',
+        sortOrder: 'DESC',
+        endpoint: '/coins/currently-live'
+      });
+
+      this.logger.error('Failed to get top live streams', {
+        limit,
+        params,
+        error: pumpFunError.toJSON(),
+        resolution: pumpFunError.getResolution(),
+        errorCategory: pumpFunError.details?.errorCategory
+      });
+
+      throw pumpFunError;
+    }
+  }
+
   /**
    * Get top active streams by participant count
    *
@@ -2451,10 +2605,12 @@ export class PumpFunAPIClient {
         requested: limit,
         returned: topStreams.length,
         minParticipants,
-        topParticipantCount: topStreams.length > 0 ? topStreams[0].num_participants : 0,
-        participantRange: topStreams.length > 0
-          ? `${topStreams[topStreams.length - 1].num_participants} - ${topStreams[0].num_participants}`
-          : 'N/A'
+        topParticipantCount: topStreams.length > 0 ? topStreams[0]!.num_participants : 0,
+        participantRange: topStreams.length > 1
+          ? `${topStreams[topStreams.length - 1]!.num_participants} - ${topStreams[0]!.num_participants}`
+          : topStreams.length > 0
+            ? `${topStreams[0]!.num_participants} - ${topStreams[0]!.num_participants}`
+            : 'N/A'
       });
 
       return topStreams;

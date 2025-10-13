@@ -192,7 +192,7 @@
   - Add helper method to filter streams by minimum participant count
   - Story: US2
 
-- [ ] **T030** - Implement getTopLiveStreams method [P]
+- [x] **T030** - Implement getTopLiveStreams method [P] ✅
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Add method to return streams sorted by participant count in descending order
   - Story: US2
