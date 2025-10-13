@@ -2213,4 +2213,259 @@ export class PumpFunAPIClient {
     // Test connection to verify recovery
     return await this.testConnection();
   }
+
+  // ============================================================================
+  // T029: getActiveStreams Helper Method (User Story 2)
+  // ============================================================================
+
+  /**
+   * Get active streams filtered by minimum participant count
+   *
+   * This helper method retrieves live streaming coins and filters them to only
+   * include streams with at least the specified minimum number of participants.
+   * This is useful for finding streams with sufficient audience engagement.
+   *
+   * @param minParticipants - Minimum number of participants required (default: 1)
+   * @param params - Optional parameters for pagination, sorting, and filtering
+   * @returns Promise that resolves to an array of LiveCoin objects with at least minParticipants
+   * @throws {PumpFunError} Various error types with specific recovery guidance
+   */
+  public async getActiveStreams(minParticipants: number = 1, params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
+    this.ensureInitialized();
+
+    // Validate minParticipants parameter
+    if (typeof minParticipants !== 'number' || isNaN(minParticipants)) {
+      throw new ConfigurationError({
+        message: `Invalid minParticipants: ${minParticipants}. Must be a valid number.`,
+        details: {
+          operation: 'getActiveStreams',
+          providedValue: minParticipants,
+          expectedType: 'number'
+        }
+      });
+    }
+
+    if (minParticipants < 0) {
+      throw new ConfigurationError({
+        message: `Invalid minParticipants: ${minParticipants}. Must be a non-negative number.`,
+        details: {
+          operation: 'getActiveStreams',
+          providedValue: minParticipants,
+          minValue: 0
+        }
+      });
+    }
+
+    if (minParticipants > 10000) {
+      this.logger.warn('Very high minParticipants value provided', {
+        minParticipants,
+        recommendation: 'Consider using a lower value to get more results'
+      });
+    }
+
+    this.logger.info('Fetching active streams with participant filter', {
+      minParticipants,
+      params,
+      endpoint: 'getLiveCoins -> filter'
+    });
+
+    try {
+      // Get all live streams first
+      const allLiveStreams = await this.getLiveCoins({
+        limit: 100, // Fetch more items to account for filtering
+        sort: 'participants', // Sort by participants to get most relevant results
+        order: 'DESC',
+        ...params
+      });
+
+      // Filter streams by minimum participant count
+      const activeStreams = allLiveStreams.filter(stream => {
+        // Ensure stream is currently live and meets participant threshold
+        return stream.is_currently_live && stream.num_participants >= minParticipants;
+      });
+
+      this.logger.info('Successfully filtered active streams', {
+        totalLiveStreams: allLiveStreams.length,
+        activeStreamsCount: activeStreams.length,
+        minParticipants,
+        filterRate: allLiveStreams.length > 0 ? (activeStreams.length / allLiveStreams.length * 100).toFixed(1) + '%' : '0%',
+        participantStats: this.calculateParticipantStats(activeStreams)
+      });
+
+      // Log details about the filtered results
+      if (activeStreams.length === 0 && allLiveStreams.length > 0) {
+        this.logger.info('No streams meet the participant criteria', {
+          minParticipants,
+          availableParticipantRanges: allLiveStreams.map(s => s.num_participants).sort((a, b) => b - a).slice(0, 5),
+          suggestion: `Try a lower minParticipants value (current: ${minParticipants})`
+        });
+      }
+
+      return activeStreams;
+
+    } catch (error) {
+      // Re-throw with additional context about the filtering operation
+      if (error instanceof PumpFunError) {
+        // Create a new error with enhanced details
+        const enhancedError = new (error.constructor as any)({
+          message: `Failed to get active streams with minParticipants=${minParticipants}: ${error.message}`,
+          code: error.code,
+          statusCode: error.statusCode,
+          isRetryable: error.isRetryable,
+          details: {
+            ...error.details,
+            operation: 'getActiveStreams',
+            filterCriteria: {
+              minParticipants,
+              isCurrentlyLive: true
+            },
+            suggestion: this.getActiveStreamsErrorSuggestion(minParticipants, error)
+          },
+          originalError: error.originalError
+        });
+
+        this.logger.error('Failed to get active streams', {
+          minParticipants,
+          params,
+          error: enhancedError.toJSON(),
+          resolution: enhancedError.getResolution()
+        });
+
+        throw enhancedError;
+      }
+
+      // Handle unexpected errors
+      const unexpectedError = new ServerError({
+        message: `Unexpected error occurred while getting active streams: ${error instanceof Error ? error.message : String(error)}`,
+        statusCode: 500,
+        details: {
+          operation: 'getActiveStreams',
+          minParticipants,
+          params,
+          originalError: error instanceof Error ? error.stack : String(error)
+        }
+      });
+
+      this.logger.error('Unexpected error in getActiveStreams', {
+        minParticipants,
+        params,
+        error: unexpectedError.toJSON()
+      });
+
+      throw unexpectedError;
+    }
+  }
+
+  /**
+   * Calculate participant statistics for active streams
+   */
+  private calculateParticipantStats(streams: LiveCoin[]): {
+    totalParticipants: number;
+    averageParticipants: number;
+    maxParticipants: number;
+    minParticipants: number;
+  } {
+    if (streams.length === 0) {
+      return {
+        totalParticipants: 0,
+        averageParticipants: 0,
+        maxParticipants: 0,
+        minParticipants: 0
+      };
+    }
+
+    const participantCounts = streams.map(stream => stream.num_participants);
+    const totalParticipants = participantCounts.reduce((sum, count) => sum + count, 0);
+    const averageParticipants = totalParticipants / participantCounts.length;
+    const maxParticipants = Math.max(...participantCounts);
+    const minParticipants = Math.min(...participantCounts);
+
+    return {
+      totalParticipants,
+      averageParticipants: Math.round(averageParticipants * 100) / 100,
+      maxParticipants,
+      minParticipants
+    };
+  }
+
+  /**
+   * Get error-specific suggestions for getActiveStreams method
+   */
+  private getActiveStreamsErrorSuggestion(minParticipants: number, originalError: PumpFunError): string[] {
+    const suggestions = [...originalError.getResolution()];
+
+    // Add specific suggestions based on the minParticipants value
+    if (minParticipants > 100) {
+      suggestions.push(`Try a lower minParticipants value (current: ${minParticipants}) - most streams have fewer participants`);
+      suggestions.push('Consider using minParticipants between 1-50 for better results');
+    } else if (minParticipants > 10) {
+      suggestions.push(`Try minParticipants: ${Math.floor(minParticipants / 2)} or lower to see more streams`);
+    }
+
+    // Add suggestions based on error type
+    if (originalError instanceof RateLimitError) {
+      suggestions.push('Cache active streams results to reduce API calls');
+      suggestions.push('Consider increasing the time between getActiveStreams calls');
+    } else if (originalError instanceof NetworkError) {
+      suggestions.push('Check if the live streaming API endpoint is accessible');
+      suggestions.push('Verify network connectivity to the PumpFun API servers');
+    }
+
+    // Add general suggestions
+    suggestions.push('Use getLiveCoins() directly if you need all live streams without filtering');
+    suggestions.push('Consider using a larger limit parameter to fetch more streams for filtering');
+
+    return suggestions;
+  }
+
+  /**
+   * Get top active streams by participant count
+   *
+   * This is a convenience method that gets the most active streams with
+   * a high number of participants, useful for finding popular content.
+   *
+   * @param limit - Maximum number of streams to return (default: 10)
+   * @param minParticipants - Minimum participants required (default: 5)
+   * @returns Promise that resolves to an array of most active LiveCoin objects
+   * @throws {PumpFunError} Various error types with specific recovery guidance
+   */
+  public async getTopActiveStreams(limit: number = 10, minParticipants: number = 5): Promise<LiveCoin[]> {
+    this.logger.info('Fetching top active streams', {
+      limit,
+      minParticipants,
+      operation: 'getTopActiveStreams'
+    });
+
+    try {
+      // Get active streams sorted by participants
+      const activeStreams = await this.getActiveStreams(minParticipants, {
+        limit: Math.max(limit, 50), // Fetch more to account for any edge cases
+        sort: 'participants',
+        order: 'DESC'
+      });
+
+      // Return the top streams
+      const topStreams = activeStreams.slice(0, limit);
+
+      this.logger.info('Successfully fetched top active streams', {
+        requested: limit,
+        returned: topStreams.length,
+        minParticipants,
+        topParticipantCount: topStreams.length > 0 ? topStreams[0].num_participants : 0,
+        participantRange: topStreams.length > 0
+          ? `${topStreams[topStreams.length - 1].num_participants} - ${topStreams[0].num_participants}`
+          : 'N/A'
+      });
+
+      return topStreams;
+
+    } catch (error) {
+      this.logger.error('Failed to get top active streams', {
+        limit,
+        minParticipants,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
 }

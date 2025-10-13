@@ -187,7 +187,7 @@
   - Handle network errors, rate limits, and invalid responses with appropriate retry logic
   - Story: US2
 
-- [ ] **T029** - Create getActiveStreams helper method [P]
+- [x] **T029** - Create getActiveStreams helper method [P] ✅
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Add helper method to filter streams by minimum participant count
   - Story: US2
