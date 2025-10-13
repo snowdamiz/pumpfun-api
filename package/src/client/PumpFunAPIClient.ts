@@ -21,6 +21,16 @@ import {
 import { HTTPClient } from '../utils/http-client';
 import { Logger } from '../utils/logger';
 import { RateLimiter } from '../utils/rate-limiter';
+import {
+  PumpFunError,
+  NetworkError,
+  RateLimitError,
+  ServerError,
+  ConfigurationError,
+  TimeoutError,
+  ErrorFactory,
+  ErrorUtils
+} from '../utils/errors';
 
 /**
  * Main API client class for PumpFun streaming data
@@ -715,5 +725,657 @@ export class PumpFunAPIClient {
       },
       statistics: this.getStatistics(),
     };
+  }
+
+  // ============================================================================
+  // Enhanced Error Handling and Recovery Methods (T023)
+  // ============================================================================
+
+  /**
+   * Validate jurisdiction with enhanced error handling and recovery guidance
+   *
+   * This method provides comprehensive error handling for the jurisdiction validation
+   * endpoint with helpful error messages and recovery suggestions.
+   *
+   * @returns Promise that resolves to true if jurisdiction is valid, false otherwise
+   * @throws {PumpFunError} Various error types with specific recovery guidance
+   */
+  public async validateJurisdiction(): Promise<boolean> {
+    this.ensureInitialized();
+
+    try {
+      this.logger.info('Validating jurisdiction...', {
+        endpoint: '/auth/is-valid-jurisdiction',
+        baseURL: this.config.baseURL
+      });
+
+      const response = await this.httpClient.get('/auth/is-valid-jurisdiction');
+
+      // Update statistics
+      this.state.requestCount++;
+      this.state.lastRequestTime = Date.now();
+
+      this.logger.info('Jurisdiction validation successful', {
+        isValid: response?.is_valid,
+        response
+      });
+
+      return Boolean(response?.is_valid);
+
+    } catch (error) {
+      this.state.errorCount++;
+      const pumpFunError = this.handleError(error, 'validateJurisdiction', {
+        endpoint: '/auth/is-valid-jurisdiction',
+        baseURL: this.config.baseURL
+      });
+
+      this.logger.error('Jurisdiction validation failed', {
+        error: pumpFunError.toJSON(),
+        resolution: pumpFunError.getResolution()
+      });
+
+      throw pumpFunError;
+    }
+  }
+
+  /**
+   * Handle errors with comprehensive categorization and recovery guidance
+   *
+   * @param error The original error from HTTP client or other sources
+   * @param operation The operation that failed
+   * @param context Additional context for error handling
+   * @returns Enhanced PumpFunError with recovery guidance
+   */
+  private handleError(error: any, operation: string, context?: any): PumpFunError {
+    // If it's already a PumpFunError, enhance it with operation context
+    if (error instanceof PumpFunError) {
+      // Create a new error with enhanced details since details is read-only
+      const enhancedError = new (error.constructor as any)({
+        message: error.message,
+        code: error.code,
+        statusCode: error.statusCode,
+        isRetryable: error.isRetryable,
+        details: {
+          ...error.details,
+          operation,
+          context,
+          timestamp: new Date().toISOString()
+        },
+        originalError: error.originalError
+      });
+      return enhancedError;
+    }
+
+    // Handle network-related errors
+    if (this.isNetworkError(error)) {
+      return this.handleNetworkError(error, operation, context);
+    }
+
+    // Handle HTTP response errors
+    if (error.response) {
+      return this.handleHTTPError(error, operation, context);
+    }
+
+    // Handle timeout errors
+    if (this.isTimeoutError(error)) {
+      return this.handleTimeoutError(error, operation, context);
+    }
+
+    // Handle configuration errors
+    if (this.isConfigurationError(error)) {
+      return this.handleConfigurationError(error, operation, context);
+    }
+
+    // Default to generic error
+    return ErrorFactory.createFromNetworkError(error);
+  }
+
+  /**
+   * Check if error is a network-related error
+   */
+  private isNetworkError(error: any): boolean {
+    return !error.response && (
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ENOTFOUND' ||
+      error.code === 'ECONNRESET' ||
+      error.code === 'ETIMEDOUT' ||
+      error.message?.includes('Network Error') ||
+      error.message?.includes('fetch')
+    );
+  }
+
+  /**
+   * Check if error is a timeout error
+   */
+  private isTimeoutError(error: any): boolean {
+    return error.code === 'ETIMEDOUT' ||
+           error.code === 'ECONNABORTED' ||
+           error.message?.includes('timeout') ||
+           error.type === 'REQUEST_TIMEOUT';
+  }
+
+  /**
+   * Check if error is a configuration error
+   */
+  private isConfigurationError(error: any): boolean {
+    return error.message?.includes('Configuration') ||
+           error.message?.includes('Invalid baseURL') ||
+           error.message?.includes('validation failed') ||
+           error.code === 'CONFIGURATION_ERROR';
+  }
+
+  /**
+   * Handle network errors with specific recovery guidance
+   */
+  private handleNetworkError(error: any, operation: string, context?: any): NetworkError {
+    const baseNetworkError = ErrorFactory.createFromNetworkError(error);
+
+    // Create a new network error with enhanced details
+    const networkError = new NetworkError({
+      message: baseNetworkError.message,
+      code: baseNetworkError.code,
+      statusCode: baseNetworkError.statusCode,
+      details: {
+        ...baseNetworkError.details,
+        operation,
+        context,
+        baseURL: this.config.baseURL,
+        timeout: this.config.timeout,
+        suggestions: this.getNetworkErrorRecovery(error, operation)
+      },
+      originalError: error
+    });
+
+    this.logger.warn('Network error detected', {
+      operation,
+      errorCode: error.code,
+      message: error.message,
+      isRetryable: networkError.canRetry(),
+      retryDelay: networkError.getRetryDelay()
+    });
+
+    return networkError;
+  }
+
+  /**
+   * Handle HTTP response errors with specific recovery guidance
+   */
+  private handleHTTPError(error: any, operation: string, context?: any): PumpFunError {
+    const { response } = error;
+    const baseError = ErrorFactory.createFromResponse(
+      response.status,
+      response.data,
+      error
+    );
+
+    // Create a new error with enhanced details
+    const pumpFunError = new (baseError.constructor as any)({
+      message: baseError.message,
+      code: baseError.code,
+      statusCode: baseError.statusCode,
+      isRetryable: baseError.isRetryable,
+      details: {
+        ...baseError.details,
+        operation,
+        context,
+        url: response.config?.url,
+        method: response.config?.method?.toUpperCase(),
+        statusCode: response.status,
+        suggestions: this.getHTTPErrorRecovery(response.status, operation, response.data)
+      },
+      originalError: error
+    });
+
+    this.logger.warn('HTTP error detected', {
+      operation,
+      statusCode: response.status,
+      statusText: response.statusText,
+      url: response.config?.url,
+      method: response.config?.method?.toUpperCase(),
+      isRetryable: pumpFunError.canRetry(),
+      retryDelay: pumpFunError.getRetryDelay()
+    });
+
+    return pumpFunError;
+  }
+
+  /**
+   * Handle timeout errors with specific recovery guidance
+   */
+  private handleTimeoutError(error: any, operation: string, context?: any): TimeoutError {
+    const timeoutError = new TimeoutError({
+      message: this.getTimeoutErrorMessage(operation, this.config.timeout),
+      timeout: this.config.timeout,
+      details: {
+        operation,
+        context,
+        currentTimeout: this.config.timeout,
+        suggestions: this.getTimeoutErrorRecovery(operation)
+      },
+      originalError: error
+    });
+
+    this.logger.warn('Timeout error detected', {
+      operation,
+      timeout: this.config.timeout,
+      suggestions: timeoutError.getResolution()
+    });
+
+    return timeoutError;
+  }
+
+  /**
+   * Handle configuration errors with specific recovery guidance
+   */
+  private handleConfigurationError(error: any, operation: string, context?: any): ConfigurationError {
+    const configError = new ConfigurationError({
+      message: this.getConfigurationErrorMessage(error, operation),
+      details: {
+        operation,
+        context,
+        currentConfig: this.sanitizeConfigForError(),
+        suggestions: this.getConfigurationErrorRecovery(error, operation)
+      },
+      originalError: error
+    });
+
+    this.logger.error('Configuration error detected', {
+      operation,
+      error: error.message,
+      suggestions: configError.getResolution()
+    });
+
+    return configError;
+  }
+
+  /**
+   * Get recovery suggestions for network errors
+   */
+  private getNetworkErrorRecovery(error: any, operation: string): string[] {
+    const suggestions = [
+      'Check your internet connection is stable',
+      'Verify the PumpFun API is accessible from your network',
+      'Check if firewall or proxy is blocking the request'
+    ];
+
+    // Add specific suggestions based on error code
+    switch (error.code) {
+      case 'ECONNREFUSED':
+        suggestions.push('The server refused the connection - it may be down or overloaded');
+        suggestions.push('Try again in a few minutes');
+        break;
+      case 'ENOTFOUND':
+        suggestions.push('DNS resolution failed - check the API URL configuration');
+        suggestions.push('Try using a different DNS server');
+        break;
+      case 'ECONNRESET':
+        suggestions.push('Connection was reset - the server may be restarting');
+        suggestions.push('Retry with exponential backoff');
+        break;
+      case 'ETIMEDOUT':
+        suggestions.push('Connection timed out - increase timeout configuration');
+        suggestions.push('Check network latency to the server');
+        break;
+    }
+
+    // Add operation-specific suggestions
+    if (operation === 'validateJurisdiction') {
+      suggestions.push('Ensure you are using the correct API endpoint URL');
+      suggestions.push('Check if the API service is operational via status page');
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Get recovery suggestions for HTTP errors
+   */
+  private getHTTPErrorRecovery(statusCode: number, operation: string, _responseData?: any): string[] {
+    const suggestions: string[] = [];
+
+    switch (statusCode) {
+      case 400:
+        suggestions.push('Check your request parameters and format');
+        suggestions.push('Verify required fields are included');
+        if (operation === 'validateJurisdiction') {
+          suggestions.push('Ensure the jurisdiction validation endpoint is correctly formatted');
+        }
+        break;
+      case 401:
+        suggestions.push('Check your API credentials or authentication token');
+        suggestions.push('Verify your authentication method is supported');
+        break;
+      case 403:
+        suggestions.push('Check if you have permission to access this resource');
+        suggestions.push('Verify your account is in good standing');
+        break;
+      case 404:
+        suggestions.push('Verify the endpoint URL is correct');
+        suggestions.push('Check if the resource you are trying to access exists');
+        if (operation === 'validateJurisdiction') {
+          suggestions.push('The jurisdiction validation endpoint may have changed');
+        }
+        break;
+      case 429:
+        suggestions.push('You have hit the rate limit - wait before retrying');
+        suggestions.push('Implement exponential backoff for retries');
+        suggestions.push('Consider reducing request frequency');
+        break;
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        suggestions.push('The server is experiencing issues - try again later');
+        suggestions.push('Check the service status page for ongoing issues');
+        suggestions.push('Implement retry logic with exponential backoff');
+        break;
+      default:
+        suggestions.push('An unexpected HTTP error occurred');
+        suggestions.push('Check the error message and status code for details');
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Get recovery suggestions for timeout errors
+   */
+  private getTimeoutErrorRecovery(operation: string): string[] {
+    const suggestions = [
+      `Increase timeout configuration (current: ${this.config.timeout}ms)`,
+      'Check your network connection speed and stability',
+      'Try again with a smaller request if applicable',
+      'Check if the server is experiencing high load'
+    ];
+
+    if (operation === 'validateJurisdiction') {
+      suggestions.push('The jurisdiction validation endpoint may be slow - consider a longer timeout');
+      suggestions.push('Try connecting from a different network or region');
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Get recovery suggestions for configuration errors
+   */
+  private getConfigurationErrorRecovery(error: any, _operation: string): string[] {
+    const suggestions = [
+      'Check your client configuration settings',
+      'Verify all required configuration values are provided',
+      'Refer to the documentation for proper configuration format',
+      'Use environment variables for sensitive configuration'
+    ];
+
+    if (error.message?.includes('baseURL')) {
+      suggestions.push('Ensure the baseURL is a valid HTTP/HTTPS URL');
+      suggestions.push('Example: https://frontend-api-v3.pump.fun');
+    }
+
+    if (error.message?.includes('timeout')) {
+      suggestions.push('Ensure timeout is a positive number in milliseconds');
+      suggestions.push('Recommended range: 5000ms to 30000ms');
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Get appropriate timeout error message based on operation
+   */
+  private getTimeoutErrorMessage(operation: string, timeout: number): string {
+    return `Request timeout during ${operation} operation. The server did not respond within ${timeout}ms. This could be due to network issues or high server load.`;
+  }
+
+  /**
+   * Get appropriate configuration error message
+   */
+  private getConfigurationErrorMessage(error: any, operation: string): string {
+    if (error.message?.includes('baseURL')) {
+      return `Invalid API base URL configuration for ${operation}. Please ensure the baseURL is a valid HTTP/HTTPS URL.`;
+    }
+    if (error.message?.includes('timeout')) {
+      return `Invalid timeout configuration for ${operation}. Timeout must be a positive number in milliseconds.`;
+    }
+    return `Configuration error occurred during ${operation}: ${error.message}`;
+  }
+
+  /**
+   * Sanitize configuration for error reporting (remove sensitive data)
+   */
+  private sanitizeConfigForError(): any {
+    return {
+      baseURL: this.config.baseURL,
+      timeout: this.config.timeout,
+      hasLoggerConfig: !!this.loggerConfig,
+      hasRateLimitConfig: !!this.rateLimitConfig,
+      hasRetryConfig: !!this.retryConfig
+    };
+  }
+
+  /**
+   * Ensure client is properly initialized before operations
+   */
+  private ensureInitialized(): void {
+    if (!this.isInitialized) {
+      throw new ConfigurationError({
+        message: 'PumpFunAPIClient is not properly initialized. Check the client configuration and try again.',
+        details: {
+          isInitialized: this.isInitialized,
+          hasHTTPClient: !!this.httpClient,
+          hasLogger: !!this.logger,
+          hasRateLimiter: !!this.rateLimiter
+        }
+      });
+    }
+  }
+
+  /**
+   * Get comprehensive error diagnostics for troubleshooting
+   *
+   * @returns Object containing diagnostic information for error troubleshooting
+   */
+  public getErrorDiagnostics(): {
+    client: any;
+    network: any;
+    configuration: any;
+    suggestions: string[];
+  } {
+    return {
+      client: {
+        isInitialized: this.isInitialized,
+        baseURL: this.config.baseURL,
+        timeout: this.config.timeout,
+        requestCount: this.state.requestCount,
+        errorCount: this.state.errorCount,
+        errorRate: this.getStatistics().errorRate,
+        isRateLimited: this.isRateLimited(),
+        rateLimitBackoffRemaining: this.getRateLimitBackoffRemaining()
+      },
+      network: {
+        canConnect: 'Unknown - run testConnection() to verify',
+        lastRequestTime: this.state.lastRequestTime,
+        timeSinceLastRequest: this.state.lastRequestTime ? Date.now() - this.state.lastRequestTime : null
+      },
+      configuration: {
+        hasCustomConfig: !!this.config.baseURL || this.config.timeout !== DEFAULT_CLIENT_CONFIG.timeout,
+        hasCustomLoggerConfig: Object.keys(this.loggerConfig || {}).length > 0,
+        hasCustomRateLimitConfig: Object.keys(this.rateLimitConfig || {}).length > 0,
+        hasCustomRetryConfig: Object.keys(this.retryConfig || {}).length > 0,
+        configSource: this.detectConfigSource()
+      },
+      suggestions: this.getGeneralTroubleshootingSuggestions()
+    };
+  }
+
+  /**
+   * Detect where configuration is coming from
+   */
+  private detectConfigSource(): string {
+    const hasEnvVars = Object.keys(process.env).some(key =>
+      key.startsWith('PUMPFUN_') || key.startsWith('TIMEOUT_') || key.startsWith('RATE_')
+    );
+
+    if (hasEnvVars) {
+      return 'Environment variables detected';
+    }
+
+    return 'Default configuration';
+  }
+
+  /**
+   * Get general troubleshooting suggestions
+   */
+  private getGeneralTroubleshootingSuggestions(): string[] {
+    const suggestions = [
+      'Run client.testConnection() to verify API connectivity',
+      'Check client.getErrorDiagnostics() for detailed information',
+      'Verify your network connection and firewall settings',
+      'Ensure you are using the correct API endpoint URL',
+      'Check if the PumpFun service is operational'
+    ];
+
+    if (this.state.errorCount > 0) {
+      suggestions.push(`High error rate detected (${this.state.errorCount}/${this.state.requestCount}) - consider checking configuration`);
+    }
+
+    if (this.isRateLimited()) {
+      suggestions.push(`Currently rate limited - wait ${Math.ceil(this.getRateLimitBackoffRemaining() / 1000)}s before retrying`);
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Attempt to recover from common error conditions automatically
+   *
+   * @param error The error to attempt recovery from
+   * @returns Promise that resolves to true if recovery was successful
+   */
+  public async attemptErrorRecovery(error: PumpFunError): Promise<boolean> {
+    this.logger.info('Attempting automatic error recovery', {
+      errorCode: error.getErrorCode(),
+      isRetryable: error.canRetry(),
+      retryDelay: error.getRetryDelay()
+    });
+
+    try {
+      // Recovery for rate limit errors
+      if (error instanceof RateLimitError) {
+        return await this.recoverFromRateLimit(error);
+      }
+
+      // Recovery for network errors
+      if (error instanceof NetworkError) {
+        return await this.recoverFromNetworkError(error);
+      }
+
+      // Recovery for timeout errors
+      if (error instanceof TimeoutError) {
+        return await this.recoverFromTimeoutError(error);
+      }
+
+      // Recovery for server errors
+      if (error instanceof ServerError) {
+        return await this.recoverFromServerError(error);
+      }
+
+      this.logger.warn('No automatic recovery available for error type', {
+        errorType: error.constructor.name
+      });
+
+      return false;
+
+    } catch (recoveryError) {
+      this.logger.error('Automatic error recovery failed', {
+        originalError: error.toJSON(),
+        recoveryError: ErrorUtils.formatForLogging(recoveryError)
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Attempt recovery from rate limit errors
+   */
+  private async recoverFromRateLimit(error: RateLimitError): Promise<boolean> {
+    const retryDelay = error.getRetryDelay();
+
+    this.logger.info(`Rate limited - waiting ${retryDelay}ms before retry`, {
+      retryAfter: error.retryAfter,
+      calculatedDelay: retryDelay
+    });
+
+    // Wait the recommended time
+    await new Promise(resolve => setTimeout(resolve, retryDelay));
+
+    // Reset rate limit state
+    this.state.rateLimitInfo.backoffUntil = 0;
+    this.state.rateLimitInfo.consecutiveErrors = 0;
+
+    // Test connection to verify recovery
+    return await this.testConnection();
+  }
+
+  /**
+   * Attempt recovery from network errors
+   */
+  private async recoverFromNetworkError(error: NetworkError): Promise<boolean> {
+    this.logger.info('Attempting network error recovery', {
+      errorCode: error.getErrorCode(),
+      retryDelay: error.getRetryDelay()
+    });
+
+    // Wait before retrying
+    const retryDelay = error.getRetryDelay();
+    await new Promise(resolve => setTimeout(resolve, retryDelay));
+
+    // Test connection to verify recovery
+    return await this.testConnection();
+  }
+
+  /**
+   * Attempt recovery from timeout errors
+   */
+  private async recoverFromTimeoutError(_error: TimeoutError): Promise<boolean> {
+    this.logger.info('Attempting timeout error recovery', {
+      currentTimeout: this.config.timeout,
+      suggestedTimeout: this.config.timeout * 1.5
+    });
+
+    // Temporarily increase timeout
+    const originalTimeout = this.config.timeout;
+    this.config.timeout = Math.min(originalTimeout * 1.5, 60000); // Cap at 60 seconds
+
+    try {
+      // Test with increased timeout
+      const result = await this.testConnection();
+
+      // Restore original timeout if successful
+      this.config.timeout = originalTimeout;
+
+      return result;
+    } catch (testError) {
+      // Restore original timeout even if test failed
+      this.config.timeout = originalTimeout;
+      return false;
+    }
+  }
+
+  /**
+   * Attempt recovery from server errors
+   */
+  private async recoverFromServerError(error: ServerError): Promise<boolean> {
+    this.logger.info('Attempting server error recovery', {
+      statusCode: error.statusCode,
+      retryDelay: error.getRetryDelay()
+    });
+
+    // Wait before retrying (server errors need longer delays)
+    const retryDelay = Math.max(error.getRetryDelay(), 5000);
+    await new Promise(resolve => setTimeout(resolve, retryDelay));
+
+    // Test connection to verify recovery
+    return await this.testConnection();
   }
 }
