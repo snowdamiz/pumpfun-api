@@ -17,7 +17,15 @@ export * from './utils/errors';
 // Re-export commonly used utilities
 export { HTTPClient, createHTTPClient, httpClient } from './utils/http-client';
 export { Logger } from './utils/logger';
-export { RateLimiter } from './utils/rate-limiter';
+export {
+  RateLimiter,
+  createRateLimiter,
+  createLiveStreamingRateLimiter,
+  rateLimitMiddleware,
+  liveStreamingRateLimitMiddleware,
+  rateLimiter,
+  RateLimitUtils
+} from './utils/rate-limiter';
 
 // Default export
 import { PumpFunAPIClient } from './client/PumpFunAPIClient';

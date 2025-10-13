@@ -49,6 +49,23 @@ const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
 };
 
 /**
+ * Live streaming optimized rate limiting configuration
+ * Specifically tuned for live streaming data endpoints with conservative limits
+ */
+const LIVE_STREAMING_RATE_LIMIT_CONFIG: RateLimitConfig = {
+  maxRequestsPerWindow: 55, // Slightly under the 60/minute limit to provide buffer
+  windowMs: 60000, // 1 minute
+  enableRetryAfter: true,
+  enableSlidingWindow: true,
+  enableBurstProtection: true,
+  maxBurst: 8, // More conservative burst protection for live streaming
+  enableBackoff: true,
+  baseBackoffMs: 1500, // More conservative base delay for live streaming
+  maxBackoffMs: 90000, // Longer max backoff for live streaming endpoints
+  backoffMultiplier: 2.5, // More aggressive backoff for live streaming
+};
+
+/**
  * Rate limiting state tracker
  */
 interface RateLimitState {
@@ -520,10 +537,122 @@ export async function rateLimitMiddleware<T>(
 }
 
 /**
+ * Middleware function specifically optimized for live streaming endpoints
+ *
+ * This middleware uses a live streaming optimized rate limiter to ensure
+ * reliable operation while respecting the 60 requests/minute API limit.
+ * It includes enhanced error handling and logging for live streaming use cases.
+ *
+ * @param requestFn The request function to execute with rate limiting
+ * @param options Optional configuration including custom limiter and request metadata
+ * @returns Promise that resolves to the result of the request function
+ */
+export async function liveStreamingRateLimitMiddleware<T>(
+  requestFn: () => Promise<T>,
+  options?: {
+    customLimiter?: RateLimiter;
+    endpointName?: string;
+    metadata?: Record<string, any>;
+  }
+): Promise<T> {
+  const limiter = options?.customLimiter ?? createLiveStreamingRateLimiter();
+
+  // Enhanced waiting with logging for live streaming
+  const canMakeRequest = await limiter.canMakeRequest();
+  if (!canMakeRequest) {
+    const stats = limiter.getStats();
+    const waitTime = limiter.getTimeUntilNextRequest();
+
+    // Log waiting for debugging (useful for live streaming applications)
+    if (waitTime > 0) {
+      console.debug(`[LiveStreamingRateLimit] Waiting ${waitTime}ms before request to ${options?.endpointName || 'live streaming endpoint'}`, {
+        currentRequests: stats.requests,
+        maxRequests: stats.maxRequests,
+        windowStart: stats.windowStart,
+        windowEnd: stats.windowEnd,
+        isBackoffActive: stats.isBackoffActive,
+        errorRate: stats.errorRate,
+        metadata: options?.metadata
+      });
+    }
+  }
+
+  // Wait until we can make a request
+  await limiter.waitForRequest();
+
+  try {
+    // Make the request
+    const result = await requestFn();
+
+    // Record successful request with live streaming context
+    limiter.recordRequest();
+
+    // Optional success logging for monitoring
+    if (options?.endpointName) {
+      const stats = limiter.getStats();
+      console.debug(`[LiveStreamingRateLimit] Request to ${options.endpointName} completed successfully`, {
+        requestsInWindow: stats.requests,
+        maxRequests: stats.maxRequests,
+        remainingRequests: stats.maxRequests - stats.requests,
+        errorRate: stats.errorRate,
+        metadata: options?.metadata
+      });
+    }
+
+    return result;
+  } catch (error) {
+    // Enhanced error handling for live streaming
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const statusCode = (error as any).statusCode;
+      if (statusCode === 429) {
+        // Record rate limit error with live streaming context
+        limiter.recordRateLimitError({
+          retryAfter: (error as any).retryAfter,
+          limit: (error as any).limit,
+          remaining: (error as any).remaining,
+          resetTime: (error as any).resetTime
+            ? new Date((error as any).resetTime).getTime()
+            : undefined,
+        });
+
+        // Enhanced logging for rate limit issues
+        console.warn(`[LiveStreamingRateLimit] Rate limit exceeded for ${options?.endpointName || 'live streaming endpoint'}`, {
+          statusCode,
+          retryAfter: (error as any).retryAfter,
+          limit: (error as any).limit,
+          remaining: (error as any).remaining,
+          endpointName: options?.endpointName,
+          metadata: options?.metadata,
+          rateLimitInfo: limiter.getRateLimitInfo(),
+          stats: limiter.getStats()
+        });
+      }
+    }
+
+    throw error;
+  }
+}
+
+/**
  * Create a rate limiter with custom configuration
  */
 export function createRateLimiter(config: Partial<RateLimitConfig>): RateLimiter {
   return new RateLimiter(config);
+}
+
+/**
+ * Create a rate limiter optimized for live streaming endpoints
+ *
+ * This factory function creates a rate limiter specifically tuned for
+ * live streaming data endpoints with conservative limits to ensure
+ * reliable operation while respecting the 60 requests/minute API limit.
+ *
+ * @param config Optional custom configuration to override live streaming defaults
+ * @returns RateLimiter instance optimized for live streaming
+ */
+export function createLiveStreamingRateLimiter(config: Partial<RateLimitConfig> = {}): RateLimiter {
+  const liveStreamingConfig = { ...LIVE_STREAMING_RATE_LIMIT_CONFIG, ...config };
+  return new RateLimiter(liveStreamingConfig);
 }
 
 /**
@@ -588,5 +717,102 @@ export const RateLimitUtils = {
       baseBackoffMs: 2000,
       maxBackoffMs: 120000,
     });
+  },
+
+  /**
+   * Create a rate limiter specifically optimized for PumpFun live streaming endpoints
+   *
+   * This creates a conservative rate limiter that stays well under the 60 requests/minute
+   * API limit to ensure reliable operation for live streaming applications.
+   *
+   * @param customConfig Optional configuration to override live streaming defaults
+   * @returns RateLimiter optimized for PumpFun live streaming
+   */
+  createPumpFunLiveStreamingLimiter(customConfig?: Partial<RateLimitConfig>): RateLimiter {
+    return createLiveStreamingRateLimiter(customConfig);
+  },
+
+  /**
+   * Calculate safe request intervals for live streaming to avoid rate limits
+   *
+   * @param requestsPerMinute Desired requests per minute (max 60)
+   * @returns Object with timing recommendations
+   */
+  calculateLiveStreamingIntervals(requestsPerMinute: number): {
+    requestIntervalMs: number;
+    burstSize: number;
+    recommendedMaxPerMinute: number;
+    safetyBufferMs: number;
+  } {
+    // Clamp to safe limits
+    const safeRequestsPerMinute = Math.min(requestsPerMinute, 55); // Stay under the limit
+    const requestIntervalMs = Math.ceil(60000 / safeRequestsPerMinute);
+
+    return {
+      requestIntervalMs,
+      burstSize: Math.min(8, Math.floor(safeRequestsPerMinute / 10)), // Conservative burst
+      recommendedMaxPerMinute: safeRequestsPerMinute,
+      safetyBufferMs: 1000, // 1 second buffer between requests
+    };
+  },
+
+  /**
+   * Get recommended configuration for different live streaming use cases
+   */
+  getLiveStreamingRecommendations(): {
+    polling: { interval: number; maxRequestsPerMinute: number };
+    pagination: { delayBetweenPages: number; maxRequestsPerMinute: number };
+    burst: { maxBurstSize: number; recoveryTime: number };
+  } {
+    return {
+      polling: {
+        interval: 2000, // Poll every 2 seconds
+        maxRequestsPerMinute: 30, // Conservative limit for continuous polling
+      },
+      pagination: {
+        delayBetweenPages: 1500, // Wait between paginated requests
+        maxRequestsPerMinute: 40, // Slightly higher for pagination
+      },
+      burst: {
+        maxBurstSize: 5, // Conservative burst size
+        recoveryTime: 30000, // 30 seconds recovery between bursts
+      },
+    };
+  },
+
+  /**
+   * Analyze current rate limiting status and provide recommendations
+   */
+  analyzeLiveStreamingRateLimit(limiter: RateLimiter): {
+    status: 'healthy' | 'warning' | 'critical';
+    currentUsage: number;
+    recommendedAction: string;
+    nextSafeRequestTime: number;
+    utilizationRate: number;
+  } {
+    const stats = limiter.getStats();
+    const utilizationRate = (stats.requests / stats.maxRequests) * 100;
+
+    let status: 'healthy' | 'warning' | 'critical';
+    let recommendedAction: string;
+
+    if (utilizationRate < 70) {
+      status = 'healthy';
+      recommendedAction = 'Continue with current request pattern';
+    } else if (utilizationRate < 90) {
+      status = 'warning';
+      recommendedAction = 'Consider reducing request frequency or adding delays';
+    } else {
+      status = 'critical';
+      recommendedAction = 'Immediately reduce request frequency to avoid rate limits';
+    }
+
+    return {
+      status,
+      currentUsage: stats.requests,
+      recommendedAction,
+      nextSafeRequestTime: limiter.getTimeUntilNextRequest(),
+      utilizationRate: Math.round(utilizationRate * 100) / 100,
+    };
   },
 };
