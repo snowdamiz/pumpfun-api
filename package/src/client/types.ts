@@ -430,7 +430,7 @@ export enum LogLevel {
   INFO = 'INFO',
   WARN = 'WARN',
   ERROR = 'ERROR',
-  CRITICAL = 'CRITICAL'
+  CRITICAL = 'CRITICAL',
 }
 
 /**
@@ -443,7 +443,7 @@ export enum HTTPMethod {
   DELETE = 'DELETE',
   PATCH = 'PATCH',
   HEAD = 'HEAD',
-  OPTIONS = 'OPTIONS'
+  OPTIONS = 'OPTIONS',
 }
 
 /**
@@ -454,7 +454,7 @@ export enum StreamStatus {
   LIVE = 'LIVE',
   ENDING = 'ENDING',
   ENDED = 'ENDED',
-  ERROR = 'ERROR'
+  ERROR = 'ERROR',
 }
 
 // ============================================================================
@@ -501,7 +501,7 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxDelay: 30000,
   backoffFactor: 2,
   retryableStatusCodes: [408, 429, 500, 502, 503, 504],
-  retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED']
+  retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED'],
 };
 
 /**
@@ -517,7 +517,7 @@ export const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
   enableBackoff: true,
   baseBackoffMs: 1000,
   maxBackoffMs: 30000,
-  backoffMultiplier: 2
+  backoffMultiplier: 2,
 };
 
 /**
@@ -527,13 +527,15 @@ export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
   level: LogLevel.INFO,
   enableConsole: true,
   enableColors: true,
-  enableTimestamps: true
+  enableTimestamps: true,
 };
 
 /**
  * Default client configuration
  */
-export const DEFAULT_CLIENT_CONFIG: Required<Omit<ClientConfig, 'retryConfig' | 'loggerConfig' | 'rateLimitConfig'>> = {
+export const DEFAULT_CLIENT_CONFIG: Required<
+  Omit<ClientConfig, 'retryConfig' | 'loggerConfig' | 'rateLimitConfig'>
+> = {
   baseURL: 'https://frontend-api-v3.pump.fun',
-  timeout: 10000
+  timeout: 10000,
 };

@@ -24,7 +24,7 @@ export {
   rateLimitMiddleware,
   liveStreamingRateLimitMiddleware,
   rateLimiter,
-  RateLimitUtils
+  RateLimitUtils,
 } from './utils/rate-limiter';
 
 // Default export

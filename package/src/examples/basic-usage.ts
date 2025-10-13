@@ -46,19 +46,19 @@ export function customConfiguration() {
       maxRetries: 5,
       baseDelay: 2000,
       maxDelay: 10000,
-      backoffFactor: 2
+      backoffFactor: 2,
     },
     rateLimitConfig: {
       maxRequestsPerWindow: 50,
       windowMs: 60000,
-      enableBackoff: true
+      enableBackoff: true,
     },
     loggerConfig: {
       level: LogLevel.DEBUG,
       enableConsole: true,
       enableColors: true,
-      enableTimestamps: true
-    }
+      enableTimestamps: true,
+    },
   });
 
   console.log('✅ Client initialized with custom configuration!');
@@ -127,8 +127,8 @@ export async function clientHealthCheck() {
     loggerConfig: {
       level: LogLevel.INFO,
       enableConsole: true,
-      enableColors: true
-    }
+      enableColors: true,
+    },
   });
 
   // Get client state
@@ -137,7 +137,9 @@ export async function clientHealthCheck() {
     initialized: state.isInitialized,
     requestCount: state.requestCount,
     errorCount: state.errorCount,
-    lastRequestTime: state.lastRequestTime ? new Date(state.lastRequestTime).toISOString() : 'Never'
+    lastRequestTime: state.lastRequestTime
+      ? new Date(state.lastRequestTime).toISOString()
+      : 'Never',
   });
 
   // Get statistics
@@ -147,7 +149,7 @@ export async function clientHealthCheck() {
     errors: stats.errorCount,
     errorRate: `${stats.errorRate}%`,
     rateLimited: client.isRateLimited(),
-    backoffRemaining: client.getRateLimitBackoffRemaining()
+    backoffRemaining: client.getRateLimitBackoffRemaining(),
   });
 
   // Test connection
@@ -159,7 +161,7 @@ export async function clientHealthCheck() {
     client,
     state,
     stats,
-    connected
+    connected,
   };
 }
 
@@ -177,8 +179,8 @@ export async function basicErrorHandling() {
     timeout: 5000, // Short timeout for demonstration
     retryConfig: {
       maxRetries: 2,
-      baseDelay: 1000
-    }
+      baseDelay: 1000,
+    },
   });
 
   try {
@@ -189,7 +191,6 @@ export async function basicErrorHandling() {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     console.log('✅ Operation completed successfully');
-
   } catch (error) {
     console.error('❌ Operation failed:', error);
 
@@ -215,11 +216,10 @@ export function configurationValidation() {
     // This will throw an error due to invalid timeout
     new PumpFunAPIClient({
       timeout: -1000, // Invalid timeout
-      baseURL: 'not-a-valid-url' // Invalid URL
+      baseURL: 'not-a-valid-url', // Invalid URL
     });
 
     console.log('❌ This should not execute due to validation error');
-
   } catch (error) {
     console.log('✅ Configuration validation working correctly');
     console.log('🚫 Validation Error:', error instanceof Error ? error.message : String(error));
@@ -229,12 +229,11 @@ export function configurationValidation() {
     // This will work fine
     const validClient = new PumpFunAPIClient({
       timeout: 15000, // Valid timeout
-      baseURL: 'https://frontend-api-v3.pump.fun' // Valid URL
+      baseURL: 'https://frontend-api-v3.pump.fun', // Valid URL
     });
 
     console.log('✅ Valid configuration accepted');
     return validClient;
-
   } catch (error) {
     console.error('❌ Unexpected validation error:', error);
     throw error;
@@ -254,8 +253,8 @@ export function runtimeConfiguration() {
   const client = new PumpFunAPIClient({
     loggerConfig: {
       level: LogLevel.INFO,
-      enableConsole: true
-    }
+      enableConsole: true,
+    },
   });
 
   console.log('📋 Initial configuration:');
@@ -265,7 +264,7 @@ export function runtimeConfiguration() {
   client.updateLoggerConfig({
     level: LogLevel.DEBUG,
     enableColors: true,
-    enableTimestamps: true
+    enableTimestamps: true,
   });
 
   console.log('✅ Logger configuration updated:');
@@ -274,7 +273,7 @@ export function runtimeConfiguration() {
   // Update rate limit configuration
   client.updateRateLimitConfig({
     maxRequestsPerWindow: 30,
-    enableBackoff: true
+    enableBackoff: true,
   });
 
   console.log('✅ Rate limit configuration updated');
@@ -321,19 +320,19 @@ export function futureAdvancedExample() {
     retryConfig: {
       maxRetries: 5,
       baseDelay: 2000,
-      maxDelay: 15000
+      maxDelay: 15000,
     },
     rateLimitConfig: {
       maxRequestsPerWindow: 60,
       enableBurstProtection: true,
-      enableBackoff: true
+      enableBackoff: true,
     },
     loggerConfig: {
       level: LogLevel.DEBUG,
       enableConsole: true,
       enableColors: true,
-      enableTimestamps: true
-    }
+      enableTimestamps: true,
+    },
   });
 
   console.log('🔄 When implemented, this will:');
@@ -362,21 +361,21 @@ export function productionBestPractices() {
     retryConfig: {
       maxRetries: 3, // Don't overdo retries
       baseDelay: 1000,
-      maxDelay: 10000
+      maxDelay: 10000,
     },
     rateLimitConfig: {
       maxRequestsPerWindow: 50, // Conservative rate limiting
       windowMs: 60000,
       enableBackoff: true,
-      enableBurstProtection: true
+      enableBurstProtection: true,
     },
     loggerConfig: {
       level: LogLevel.WARN, // Only log warnings and errors in production
       enableConsole: false, // Disable console logs in production
       enableFile: true, // Enable file logging
       filePath: './logs/pumpfun-api.log',
-      enableTimestamps: true
-    }
+      enableTimestamps: true,
+    },
   });
 
   console.log('✅ Production client configured with:');
@@ -406,7 +405,6 @@ export async function clientLifecycleManagement() {
     // Get final statistics
     const finalStats = client.getStatistics();
     console.log('📊 Final statistics:', finalStats);
-
   } finally {
     // Always clean up
     console.log('🔄 Shutting down client...');
@@ -451,7 +449,7 @@ export async function runAllBasicExamples() {
     validation: null,
     runtimeConfig: null,
     production: null,
-    lifecycle: null
+    lifecycle: null,
   };
 
   try {
@@ -491,7 +489,6 @@ export async function runAllBasicExamples() {
     console.log();
 
     console.log('✅ All basic examples completed successfully!');
-
   } catch (error) {
     console.error('💥 Example execution failed:', error);
   }
@@ -513,7 +510,7 @@ export const examples = {
   futureAdvancedExample,
   productionBestPractices,
   clientLifecycleManagement,
-  runAllBasicExamples
+  runAllBasicExamples,
 };
 
 // Export default example runner

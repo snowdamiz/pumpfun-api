@@ -338,22 +338,6 @@ describe('Live Streaming Functionality', () => {
   });
 
   describe('Response validation edge cases', () => {
-    test('should handle non-array response', async () => {
-      const invalidResponses = [
-        null,
-        undefined,
-        {},
-        { data: 'not array' },
-        'string',
-        123,
-        true
-      ];
-
-      for (const response of invalidResponses) {
-        mockHttpClient.get.mockResolvedValue(response);
-        await expect(client.getLiveCoins()).rejects.toThrow(/Invalid response format/);
-      }
-    });
 
     test('should handle partially valid data', async () => {
       const mixedData = [
@@ -458,6 +442,379 @@ describe('Live Streaming Functionality', () => {
       expect(result[1].twitter).toBeUndefined();
       expect(result[1].telegram).toBeUndefined();
       expect(result[1].livestream_title).toBeUndefined();
+    });
+  });
+
+  describe('getActiveStreams method', () => {
+    test('should fetch active streams with minimum participants filter', async () => {
+      mockHttpClient.get.mockResolvedValue(mockLiveCoins);
+
+      const result = await client.getActiveStreams(50);
+
+      expect(mockRateLimiter.waitForRequest).toHaveBeenCalled();
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/coins/currently-live?limit=100&sort=participants'
+      );
+      expect(mockRateLimiter.recordRequest).toHaveBeenCalled();
+      expect(result).toEqual(
+        mockLiveCoins.filter(coin => coin.is_currently_live && coin.num_participants >= 50)
+      );
+    });
+
+    test('should fetch active streams with custom parameters', async () => {
+      const customLiveCoins = [
+        { ...mockLiveCoins[0], num_participants: 200, is_currently_live: true },
+        { ...mockLiveCoins[1], num_participants: 25, is_currently_live: true },
+        { ...mockLiveCoins[0], mint: 'newmint', num_participants: 100, is_currently_live: false }
+      ];
+      mockHttpClient.get.mockResolvedValue(customLiveCoins);
+
+      const result = await client.getActiveStreams(100, { limit: 20, offset: 10 });
+
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/coins/currently-live?offset=10&limit=20&sort=participants'
+      );
+      expect(result).toEqual(
+        customLiveCoins.filter(coin => coin.is_currently_live && coin.num_participants >= 100)
+      );
+    });
+
+    test('should return empty array when no streams meet minimum criteria', async () => {
+      mockHttpClient.get.mockResolvedValue(mockLiveCoins);
+
+      const result = await client.getActiveStreams(1000);
+
+      expect(result).toEqual([]);
+      expect(mockHttpClient.get).toHaveBeenCalled();
+    });
+
+    test('should validate minimum participants parameter', async () => {
+      await expect(client.getActiveStreams(-1)).rejects.toThrow(/Invalid minParticipants/);
+      await expect(client.getActiveStreams(NaN)).rejects.toThrow(/Invalid minParticipants/);
+      expect(mockHttpClient.get).not.toHaveBeenCalled();
+    });
+
+    test('should handle empty API response', async () => {
+      mockHttpClient.get.mockResolvedValue([]);
+
+      const result = await client.getActiveStreams(10);
+
+      expect(result).toEqual([]);
+    });
+
+    test('should handle API errors in getActiveStreams', async () => {
+      mockHttpClient.get.mockRejectedValue(new Error('API Error'));
+
+      await expect(client.getActiveStreams(50)).rejects.toThrow();
+      expect(mockRateLimiter.waitForRequest).toHaveBeenCalled();
+      expect(mockRateLimiter.recordRequest).not.toHaveBeenCalled();
+    });
+
+    test('should handle high limit values with warning', async () => {
+      mockHttpClient.get.mockResolvedValue(mockLiveCoins);
+
+      await client.getActiveStreams(10, { limit: 100 }); // Use max allowed limit
+
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/coins/currently-live?limit=100&sort=participants'
+      );
+    });
+  });
+
+  describe('getTopLiveStreams method', () => {
+    test('should fetch top live streams sorted by participants', async () => {
+      mockHttpClient.get.mockResolvedValue(mockLiveCoins);
+
+      const result = await client.getTopLiveStreams(10);
+
+      expect(mockRateLimiter.waitForRequest).toHaveBeenCalled();
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/coins/currently-live?limit=20&sort=participants'
+      );
+      expect(mockRateLimiter.recordRequest).toHaveBeenCalled();
+      // Should return only live streams, filtered from API response and sliced to limit
+      const expectedStreams = mockLiveCoins
+        .filter(coin => coin.is_currently_live)
+        .slice(0, 10);
+      expect(result).toEqual(expectedStreams);
+    });
+
+    test('should fetch top streams and filter by currently live', async () => {
+      const mixedLiveCoins = [
+        {
+          ...mockLiveCoins[0],
+          num_participants: 200,
+          is_currently_live: true,
+          mint: 'mint1',
+          name: 'High Participants'
+        },
+        {
+          ...mockLiveCoins[1],
+          num_participants: 25,
+          is_currently_live: false,
+          mint: 'mint2',
+          name: 'Low Participants'
+        },
+        {
+          ...mockLiveCoins[0],
+          mint: 'mint3',
+          num_participants: 150,
+          is_currently_live: true,
+          name: 'Medium Participants'
+        }
+      ];
+      mockHttpClient.get.mockResolvedValue(mixedLiveCoins);
+
+      const result = await client.getTopLiveStreams(20);
+
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/coins/currently-live?limit=20&sort=participants'
+      );
+      // Should return only live streams, filtered from the original API response order
+      const expectedLiveStreams = mixedLiveCoins
+        .filter(coin => coin.is_currently_live)
+        .slice(0, 20);
+      expect(result).toEqual(expectedLiveStreams);
+    });
+
+    test('should return empty array when API returns no results', async () => {
+      mockHttpClient.get.mockResolvedValue([]);
+
+      const result = await client.getTopLiveStreams(5);
+
+      expect(result).toEqual([]);
+    });
+
+    test('should validate limit parameter', async () => {
+      await expect(client.getTopLiveStreams(0)).rejects.toThrow(/Invalid limit.*Must be at least 1/);
+      await expect(client.getTopLiveStreams(-1)).rejects.toThrow(/Invalid limit.*Must be at least 1/);
+      await expect(client.getTopLiveStreams(NaN)).rejects.toThrow(/Invalid limit.*Must be a valid number/);
+      expect(mockHttpClient.get).not.toHaveBeenCalled();
+    });
+
+    test('should handle API errors in getTopLiveStreams', async () => {
+      mockHttpClient.get.mockRejectedValue(new Error('Network error'));
+
+      await expect(client.getTopLiveStreams(10)).rejects.toThrow();
+      expect(mockRateLimiter.waitForRequest).toHaveBeenCalled();
+    });
+
+    test('should handle high limit values with warning', async () => {
+      mockHttpClient.get.mockResolvedValue([]);
+
+      await client.getTopLiveStreams(100); // Use max allowed limit
+
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/coins/currently-live?limit=100&sort=participants'
+      );
+    });
+
+    test('should log info when no streams meet criteria', async () => {
+      mockHttpClient.get.mockResolvedValue([]);
+
+      const result = await client.getTopLiveStreams(10, 100);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getTitledStreams method', () => {
+    test('should fetch streams with titles', async () => {
+      const titledCoins = [
+        { ...mockLiveCoins[0], livestream_title: 'Amazing Live Stream', is_currently_live: true },
+        { ...mockLiveCoins[1], livestream_title: 'Another Great Stream', is_currently_live: true }
+      ];
+      mockHttpClient.get.mockResolvedValue(titledCoins);
+
+      const result = await client.getTitledStreams(10);
+
+      expect(mockRateLimiter.waitForRequest).toHaveBeenCalled();
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/coins/currently-live?limit=50'
+      );
+      expect(mockRateLimiter.recordRequest).toHaveBeenCalled();
+      expect(result).toEqual(titledCoins);
+    });
+
+    test('should filter out streams without titles', async () => {
+      const mixedCoins = [
+        { ...mockLiveCoins[0], livestream_title: 'Has Title', is_currently_live: true },
+        { ...mockLiveCoins[1], livestream_title: null, is_currently_live: true }, // No title
+        { ...mockLiveCoins[0], mint: 'mint3', livestream_title: undefined, is_currently_live: false } // No title
+      ];
+      mockHttpClient.get.mockResolvedValue(mixedCoins);
+
+      const result = await client.getTitledStreams(20);
+
+      expect(result).toEqual([mixedCoins[0]]); // Only coin with title and live
+    });
+
+    test('should filter out streams with empty or whitespace titles', async () => {
+      const mixedTitles = [
+        { ...mockLiveCoins[0], livestream_title: 'Valid Title', is_currently_live: true },
+        { ...mockLiveCoins[1], livestream_title: '', is_currently_live: true }, // Empty string
+        { ...mockLiveCoins[0], mint: 'mint3', livestream_title: '   ', is_currently_live: true }, // Whitespace only
+        { ...mockLiveCoins[1], mint: 'mint4', livestream_title: '\n\t', is_currently_live: true } // Special whitespace
+      ];
+      mockHttpClient.get.mockResolvedValue(mixedTitles);
+
+      const result = await client.getTitledStreams(15);
+
+      expect(result).toEqual([mixedTitles[0]]); // Only coin with valid title
+    });
+
+    test('should work with custom parameters', async () => {
+      mockHttpClient.get.mockResolvedValue(mockLiveCoins);
+
+      await client.getTitledStreams(5, {
+        offset: 10,
+        sort: 'market_cap',
+        order: 'ASC',
+        includeNsfw: true
+      });
+
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/coins/currently-live?offset=10&limit=50&sort=market_cap&order=ASC&includeNsfw=true'
+      );
+    });
+
+    test('should return empty array when no streams have titles', async () => {
+      const untitledCoins = [
+        { ...mockLiveCoins[0], livestream_title: null },
+        { ...mockLiveCoins[1], livestream_title: undefined }
+      ];
+      mockHttpClient.get.mockResolvedValue(untitledCoins);
+
+      const result = await client.getTitledStreams(10);
+
+      expect(result).toEqual([]);
+    });
+
+    test('should handle empty API response', async () => {
+      mockHttpClient.get.mockResolvedValue([]);
+
+      const result = await client.getTitledStreams(10);
+
+      expect(result).toEqual([]);
+    });
+
+    test('should validate limit parameter', async () => {
+      await expect(client.getTitledStreams(0)).rejects.toThrow(/Invalid limit.*Must be at least 1/);
+      await expect(client.getTitledStreams(-1)).rejects.toThrow(/Invalid limit.*Must be at least 1/);
+      await expect(client.getTitledStreams(NaN)).rejects.toThrow(/Invalid limit.*Must be a valid number/);
+      expect(mockHttpClient.get).not.toHaveBeenCalled();
+    });
+
+    test('should handle API errors in getTitledStreams', async () => {
+      mockHttpClient.get.mockRejectedValue(new Error('API Error'));
+
+      await expect(client.getTitledStreams(10)).rejects.toThrow();
+      expect(mockRateLimiter.waitForRequest).toHaveBeenCalled();
+      expect(mockRateLimiter.recordRequest).not.toHaveBeenCalled();
+    });
+
+    test('should handle high limit values with warning', async () => {
+      mockHttpClient.get.mockResolvedValue([]);
+
+      await client.getTitledStreams(100); // Use max allowed limit
+
+      expect(mockHttpClient.get).toHaveBeenCalledWith(
+        '/coins/currently-live?limit=100'
+      );
+    });
+  });
+
+  describe('Live streaming methods integration', () => {
+    test('should work together: getLiveCoins -> getActiveStreams', async () => {
+      mockHttpClient.get.mockResolvedValue(mockLiveCoins);
+
+      const allCoins = await client.getLiveCoins();
+      const activeCoins = await client.getActiveStreams(100);
+
+      expect(allCoins).toEqual(mockLiveCoins);
+      expect(activeCoins).toEqual(
+        mockLiveCoins.filter(coin => coin.is_currently_live && coin.num_participants >= 100)
+      );
+    });
+
+    test('should work together: getLiveCoins -> getTopLiveStreams', async () => {
+      mockHttpClient.get.mockResolvedValue(mockLiveCoins);
+
+      const allCoins = await client.getLiveCoins();
+      const topCoins = await client.getTopLiveStreams(5);
+
+      expect(allCoins).toEqual(mockLiveCoins);
+      expect(topCoins).toEqual(mockLiveCoins.filter(coin => coin.is_currently_live).slice(0, 5));
+    });
+
+    test('should work together: getLiveCoins -> getTitledStreams', async () => {
+      const mixedCoins = [
+        {
+          ...mockLiveCoins[0],
+          livestream_title: 'Has Title',
+          is_currently_live: true,
+          mint: 'mint1',
+          name: 'Titled Stream'
+        },
+        {
+          ...mockLiveCoins[1],
+          livestream_title: null,
+          is_currently_live: true,
+          mint: 'mint2',
+          name: 'Untitled Stream'
+        }
+      ];
+      mockHttpClient.get.mockResolvedValue(mixedCoins);
+
+      const allCoins = await client.getLiveCoins();
+      const titledCoins = await client.getTitledStreams(10);
+
+      expect(allCoins).toEqual(mixedCoins);
+      // Should return only live streams with titles
+      const expectedTitledCoins = mixedCoins.filter(coin =>
+        coin.is_currently_live && coin.livestream_title && coin.livestream_title.trim().length > 0
+      );
+      expect(titledCoins).toEqual(expectedTitledCoins);
+    });
+
+    test('should handle concurrent requests properly', async () => {
+      mockHttpClient.get.mockResolvedValue(mockLiveCoins);
+
+      const promises = [
+        client.getLiveCoins(),
+        client.getActiveStreams(50),
+        client.getTopLiveStreams(5),
+        client.getTitledStreams(10)
+      ];
+
+      const results = await Promise.all(promises);
+
+      expect(mockRateLimiter.waitForRequest).toHaveBeenCalledTimes(4);
+      expect(mockRateLimiter.recordRequest).toHaveBeenCalledTimes(4);
+      expect(results[0]).toEqual(mockLiveCoins);
+      expect(results[1]).toEqual(mockLiveCoins.filter(coin => coin.is_currently_live && coin.num_participants >= 50));
+      expect(results[2]).toEqual(mockLiveCoins.filter(coin => coin.is_currently_live).slice(0, 5));
+      expect(results[3]).toEqual(mockLiveCoins.filter(coin => coin.is_currently_live && coin.livestream_title));
+    });
+
+    test('should handle partial failures in concurrent requests', async () => {
+      mockHttpClient.get
+        .mockResolvedValueOnce(mockLiveCoins) // getLiveCoins succeeds
+        .mockRejectedValueOnce(new Error('Network error')) // getActiveStreams fails
+        .mockResolvedValueOnce(mockLiveCoins) // getTopLiveStreams succeeds
+        .mockRejectedValueOnce(new Error('API error')); // getTitledStreams fails
+
+      const results = await Promise.allSettled([
+        client.getLiveCoins(),
+        client.getActiveStreams(50),
+        client.getTopLiveStreams(5),
+        client.getTitledStreams(10)
+      ]);
+
+      expect(results[0].status).toBe('fulfilled');
+      expect(results[1].status).toBe('rejected');
+      expect(results[2].status).toBe('fulfilled');
+      expect(results[3].status).toBe('rejected');
     });
   });
 

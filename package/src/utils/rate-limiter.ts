@@ -565,15 +565,18 @@ export async function liveStreamingRateLimitMiddleware<T>(
 
     // Log waiting for debugging (useful for live streaming applications)
     if (waitTime > 0) {
-      console.debug(`[LiveStreamingRateLimit] Waiting ${waitTime}ms before request to ${options?.endpointName || 'live streaming endpoint'}`, {
-        currentRequests: stats.requests,
-        maxRequests: stats.maxRequests,
-        windowStart: stats.windowStart,
-        windowEnd: stats.windowEnd,
-        isBackoffActive: stats.isBackoffActive,
-        errorRate: stats.errorRate,
-        metadata: options?.metadata
-      });
+      console.debug(
+        `[LiveStreamingRateLimit] Waiting ${waitTime}ms before request to ${options?.endpointName || 'live streaming endpoint'}`,
+        {
+          currentRequests: stats.requests,
+          maxRequests: stats.maxRequests,
+          windowStart: stats.windowStart,
+          windowEnd: stats.windowEnd,
+          isBackoffActive: stats.isBackoffActive,
+          errorRate: stats.errorRate,
+          metadata: options?.metadata,
+        }
+      );
     }
   }
 
@@ -590,13 +593,16 @@ export async function liveStreamingRateLimitMiddleware<T>(
     // Optional success logging for monitoring
     if (options?.endpointName) {
       const stats = limiter.getStats();
-      console.debug(`[LiveStreamingRateLimit] Request to ${options.endpointName} completed successfully`, {
-        requestsInWindow: stats.requests,
-        maxRequests: stats.maxRequests,
-        remainingRequests: stats.maxRequests - stats.requests,
-        errorRate: stats.errorRate,
-        metadata: options?.metadata
-      });
+      console.debug(
+        `[LiveStreamingRateLimit] Request to ${options.endpointName} completed successfully`,
+        {
+          requestsInWindow: stats.requests,
+          maxRequests: stats.maxRequests,
+          remainingRequests: stats.maxRequests - stats.requests,
+          errorRate: stats.errorRate,
+          metadata: options?.metadata,
+        }
+      );
     }
 
     return result;
@@ -616,16 +622,19 @@ export async function liveStreamingRateLimitMiddleware<T>(
         });
 
         // Enhanced logging for rate limit issues
-        console.warn(`[LiveStreamingRateLimit] Rate limit exceeded for ${options?.endpointName || 'live streaming endpoint'}`, {
-          statusCode,
-          retryAfter: (error as any).retryAfter,
-          limit: (error as any).limit,
-          remaining: (error as any).remaining,
-          endpointName: options?.endpointName,
-          metadata: options?.metadata,
-          rateLimitInfo: limiter.getRateLimitInfo(),
-          stats: limiter.getStats()
-        });
+        console.warn(
+          `[LiveStreamingRateLimit] Rate limit exceeded for ${options?.endpointName || 'live streaming endpoint'}`,
+          {
+            statusCode,
+            retryAfter: (error as any).retryAfter,
+            limit: (error as any).limit,
+            remaining: (error as any).remaining,
+            endpointName: options?.endpointName,
+            metadata: options?.metadata,
+            rateLimitInfo: limiter.getRateLimitInfo(),
+            stats: limiter.getStats(),
+          }
+        );
       }
     }
 

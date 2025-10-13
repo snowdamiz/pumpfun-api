@@ -15,7 +15,7 @@ async function testPackageFunctionality() {
     const client = new PumpFunAPIClient();
     console.log('✅ Client created successfully');
     console.log('📡 Base URL:', client.getBaseURL());
-    console.log('⏱️ Timeout:', client.getTimeout() + 'ms');
+    console.log('⏱️ Timeout:', `${client.getTimeout()}ms`);
     console.log('🔧 Initialized:', client.isClientInitialized());
 
     // Test 2: Custom configuration
@@ -26,8 +26,8 @@ async function testPackageFunctionality() {
         level: LogLevel.DEBUG,
         enableConsole: true,
         enableColors: true,
-        enableTimestamps: true
-      }
+        enableTimestamps: true,
+      },
     });
     console.log('✅ Custom client created');
     console.log('📊 Log level:', customClient.getLogger().getConfig().level);
@@ -48,11 +48,10 @@ async function testPackageFunctionality() {
     console.log('📋 State:', {
       initialized: state.isInitialized,
       requestCount: state.requestCount,
-      errorCount: state.errorCount
+      errorCount: state.errorCount,
     });
 
     console.log('\n✅ All package functionality tests completed successfully!');
-
   } catch (error) {
     console.error('\n❌ Test failed:', error instanceof Error ? error.message : String(error));
   }

@@ -202,7 +202,7 @@
   - Filter and return streams that have titles indicating more active content
   - Story: US2
 
-- [ ] **T032** - Create unit tests for live streaming methods
+- [x] **T032** - Create unit tests for live streaming methods ✅
   - File: `package/tests/unit/live-streams.test.ts`
   - Test all live streaming methods with various parameters and edge cases
   - Story: US2

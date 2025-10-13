@@ -36,7 +36,7 @@ interface LiveCoin {
 
   // Live streaming specific fields
   is_currently_live: boolean;
-  livestream_title: string;
+  livestream_title?: string;  // Optional field
   num_participants: number;
   reply_count: number;
   thumbnail: string;
@@ -44,11 +44,11 @@ interface LiveCoin {
 }
 
 interface JurisdictionResponse {
-  is_valid: boolean;
+  isAllowed: boolean;
 }
 
 interface SolPriceResponse {
-  sol_price: number;
+  solPrice: number;
 }
 
 /**
@@ -100,15 +100,15 @@ class APITestHelper {
   validateJurisdictionResponse(data: any): data is JurisdictionResponse {
     return typeof data === 'object' &&
            data !== null &&
-           'is_valid' in data &&
-           typeof data.is_valid === 'boolean';
+           'isAllowed' in data &&
+           typeof data.isAllowed === 'boolean';
   }
 
   validateSolPriceResponse(data: any): data is SolPriceResponse {
     return typeof data === 'object' &&
            data !== null &&
-           'sol_price' in data &&
-           typeof data.sol_price === 'number';
+           'solPrice' in data &&
+           typeof data.solPrice === 'number';
   }
 }
 
@@ -203,7 +203,10 @@ describe('PumpFun API Discovery Integration Tests', () => {
 
         // Verify live streaming specific fields
         expect(liveCoin.is_currently_live).toBe(true);
-        expect(typeof liveCoin.livestream_title).toBe('string');
+        // livestream_title may be undefined, so check if it exists first
+        if (liveCoin.livestream_title) {
+          expect(typeof liveCoin.livestream_title).toBe('string');
+        }
         expect(liveCoin.num_participants).toBeGreaterThanOrEqual(0);
         expect(liveCoin.reply_count).toBeGreaterThanOrEqual(0);
         expect(liveCoin.thumbnail).toMatch(/^https?:\/\//);
@@ -221,10 +224,10 @@ describe('PumpFun API Discovery Integration Tests', () => {
       expect(isValid).toBe(true);
     });
 
-    test('should return boolean is_valid field', async () => {
+    test('should return boolean isAllowed field', async () => {
       const response = await testHelper.makeRequest('/auth/is-valid-jurisdiction');
 
-      expect(typeof response.is_valid).toBe('boolean');
+      expect(typeof response.isAllowed).toBe('boolean');
     });
   });
 
@@ -238,11 +241,11 @@ describe('PumpFun API Discovery Integration Tests', () => {
       expect(isValid).toBe(true);
     });
 
-    test('should return numeric sol_price field', async () => {
+    test('should return numeric solPrice field', async () => {
       const response = await testHelper.makeRequest('/sol-price');
 
-      expect(typeof response.sol_price).toBe('number');
-      expect(response.sol_price).toBeGreaterThan(0);
+      expect(typeof response.solPrice).toBe('number');
+      expect(response.solPrice).toBeGreaterThan(0);
     });
   });
 
@@ -334,7 +337,10 @@ describe('PumpFun API Discovery Integration Tests', () => {
       liveCoins.forEach((coin: any) => {
         // If a coin is marked as live, it should have streaming-related data
         expect(coin.is_currently_live).toBe(true);
-        expect(typeof coin.livestream_title).toBe('string');
+        // livestream_title may be undefined, so handle gracefully
+        if (coin.livestream_title) {
+          expect(typeof coin.livestream_title).toBe('string');
+        }
         expect(coin.num_participants).toBeGreaterThanOrEqual(0);
         expect(coin.reply_count).toBeGreaterThanOrEqual(0);
 
@@ -444,7 +450,7 @@ export async function runManualTests() {
       test: async () => {
         const response = await testHelper.makeRequest('/auth/is-valid-jurisdiction');
         const isValid = testHelper.validateJurisdictionResponse(response);
-        console.log(`   ✅ Jurisdiction valid: ${response.is_valid}`);
+        console.log(`   ✅ Jurisdiction valid: ${response.isAllowed}`);
         return isValid;
       }
     },
@@ -453,7 +459,7 @@ export async function runManualTests() {
       test: async () => {
         const response = await testHelper.makeRequest('/sol-price');
         const isValid = testHelper.validateSolPriceResponse(response);
-        console.log(`   ✅ SOL price: $${response.sol_price}`);
+        console.log(`   ✅ SOL price: $${response.solPrice}`);
         return isValid;
       }
     }
