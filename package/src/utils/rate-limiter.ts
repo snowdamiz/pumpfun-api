@@ -12,18 +12,26 @@ import {
   RateLimiterState,
   DEFAULT_RATE_LIMIT_CONFIG,
   LIVE_STREAMING_RATE_LIMIT_CONFIG,
+  NUMERIC_CONSTANTS,
 } from '../client/types';
 import {
   ONE_SECOND_MS,
   BURST_WINDOW_MS,
   ADAPTIVE_ADJUSTMENT_INTERVAL_MS,
+  RATE_LIMIT_WARNING_THRESHOLD,
+  RATE_LIMIT_CRITICAL_THRESHOLD,
+  DEFAULT_LIVE_STREAMING_RATE_LIMIT,
+  MAX_LIVE_STREAMING_BURST,
+  CONSERVATIVE_RATE_LIMIT,
+  PAGINATION_RATE_LIMIT,
+  RATE_LIMIT_RECOVERY_TIME_MS,
+  REQUEST_SAFETY_BUFFER_MS,
+  ERROR_RATE_WARNING_THRESHOLD,
+  ERROR_RATE_CRITICAL_THRESHOLD,
 } from './constants';
 
 // Re-export types for backward compatibility
 export type { RateLimitConfig, RateLimitInfo };
-
-
-
 
 /**
  * Rate Limiter class for managing API request rates
@@ -54,7 +62,7 @@ export class RateLimiter {
    * Load rate limit configuration from environment variables
    */
   private loadFromEnvironment(): void {
-    if (typeof process !== 'undefined' && process.env) {
+    if (typeof process !== 'undefined' && process?.env) {
       if (process.env.MAX_REQUESTS_PER_MINUTE) {
         this.config.maxRequestsPerWindow = parseInt(process.env.MAX_REQUESTS_PER_MINUTE, 10);
       }
@@ -76,7 +84,7 @@ export class RateLimiter {
   /**
    * Check if a request can be made immediately
    */
-  async canMakeRequest(): Promise<boolean> {
+  canMakeRequest(): boolean {
     // Check if we're in backoff period
     if (this.state.backoffUntil && Date.now() < this.state.backoffUntil) {
       return false;
@@ -99,7 +107,7 @@ export class RateLimiter {
    * Wait until a request can be made
    */
   async waitForRequest(): Promise<void> {
-    while (!(await this.canMakeRequest())) {
+    while (!this.canMakeRequest()) {
       const delay = this.calculateDelay();
       if (delay > 0) {
         await this.sleep(delay);
@@ -148,10 +156,10 @@ export class RateLimiter {
     // Update rate limit info from response
     if (response) {
       this.rateLimitInfo = {
-        limit: response.limit || this.rateLimitInfo?.limit,
-        remaining: response.remaining || 0,
-        resetTime: response.resetTime || now + this.config.windowMs,
-        retryAfter: response.retryAfter || Math.ceil(this.config.windowMs / ONE_SECOND_MS),
+        limit: response.limit ?? this.rateLimitInfo?.limit,
+        remaining: response.remaining ?? 0,
+        resetTime: response.resetTime ?? now + this.config.windowMs,
+        retryAfter: response.retryAfter ?? Math.ceil(this.config.windowMs / ONE_SECOND_MS),
       };
     }
 
@@ -173,7 +181,7 @@ export class RateLimiter {
    */
   isRateLimited(): boolean {
     const now = Date.now();
-    const effectiveLimit = this.state.adaptiveRateLimit || this.config.maxRequestsPerWindow;
+    const effectiveLimit = this.state.adaptiveRateLimit ?? this.config.maxRequestsPerWindow;
 
     // Check window-based rate limiting
     if (this.config.enableSlidingWindow) {
@@ -235,11 +243,11 @@ export class RateLimiter {
 
     return {
       requests: this.state.requests,
-      maxRequests: this.state.adaptiveRateLimit || this.config.maxRequestsPerWindow,
+      maxRequests: this.state.adaptiveRateLimit ?? this.config.maxRequestsPerWindow,
       windowStart: this.state.windowStart,
       windowEnd: this.state.windowStart + this.config.windowMs,
       burstCount: this.state.burstCount,
-      maxBurst: this.config.maxBurst || 0,
+      maxBurst: this.config.maxBurst ?? 0,
       consecutiveErrors: this.state.consecutiveErrors,
       isBackoffActive: !!(this.state.backoffUntil && Date.now() < this.state.backoffUntil),
       totalRequests: this.state.totalRequests,
@@ -361,14 +369,17 @@ export class RateLimiter {
     const stats = this.getStats();
 
     // If error rate is low and we're near the limit, try to increase
-    if (stats.errorRate < 5 && stats.requests >= stats.maxRequests * 0.9) {
+    if (
+      stats.errorRate < ERROR_RATE_WARNING_THRESHOLD &&
+      stats.requests >= stats.maxRequests * 0.9
+    ) {
       this.state.adaptiveRateLimit = Math.min(
         Math.floor(stats.maxRequests * 1.1),
         this.config.maxRequestsPerWindow * 2 // Never exceed 2x original limit
       );
     }
     // If error rate is high, reduce the limit
-    else if (stats.errorRate > 20) {
+    else if (stats.errorRate > ERROR_RATE_CRITICAL_THRESHOLD) {
       this.state.adaptiveRateLimit = Math.max(
         Math.floor(stats.maxRequests * 0.8),
         Math.floor(this.config.maxRequestsPerWindow * 0.5) // Never go below 50% of original
@@ -384,7 +395,7 @@ export class RateLimiter {
   private adjustAdaptiveRateLimitForErrors(now: number): void {
     // Immediate reduction on rate limit errors
     this.state.adaptiveRateLimit = Math.max(
-      Math.floor((this.state.adaptiveRateLimit || this.config.maxRequestsPerWindow) * 0.7),
+      Math.floor((this.state.adaptiveRateLimit ?? this.config.maxRequestsPerWindow) * 0.7),
       Math.floor(this.config.maxRequestsPerWindow * 0.3) // Minimum 30% of original
     );
 
@@ -501,7 +512,7 @@ export async function liveStreamingRateLimitMiddleware<T>(
   const limiter = options?.customLimiter ?? createLiveStreamingRateLimiter();
 
   // Enhanced waiting with logging for live streaming
-  const canMakeRequest = await limiter.canMakeRequest();
+  const canMakeRequest = limiter.canMakeRequest();
   if (!canMakeRequest) {
     const stats = limiter.getStats();
     const waitTime = limiter.getTimeUntilNextRequest();
@@ -647,8 +658,10 @@ export const RateLimitUtils = {
    */
   createHighFrequencyLimiter(requestsPerSecond: number): RateLimiter {
     return new RateLimiter({
-      maxRequestsPerWindow: Math.floor(requestsPerSecond * 60), // Convert to per-minute
-      windowMs: 60000,
+      maxRequestsPerWindow: Math.floor(
+        requestsPerSecond * NUMERIC_CONSTANTS.RATE_LIMIT_WINDOW_SIZE
+      ), // Convert to per-minute
+      windowMs: NUMERIC_CONSTANTS.RATE_LIMIT_WINDOW_MS,
       enableBurstProtection: true,
       maxBurst: Math.ceil(requestsPerSecond * 2), // Allow 2-second bursts
       enableBackoff: true,
@@ -663,7 +676,7 @@ export const RateLimitUtils = {
   createLowFrequencyLimiter(requestsPerMinute: number): RateLimiter {
     return new RateLimiter({
       maxRequestsPerWindow: requestsPerMinute,
-      windowMs: 60000,
+      windowMs: NUMERIC_CONSTANTS.RATE_LIMIT_WINDOW_MS,
       enableBurstProtection: false,
       enableBackoff: true,
       baseBackoffMs: 2000,
@@ -697,14 +710,16 @@ export const RateLimitUtils = {
     safetyBufferMs: number;
   } {
     // Clamp to safe limits
-    const safeRequestsPerMinute = Math.min(requestsPerMinute, 55); // Stay under the limit
-    const requestIntervalMs = Math.ceil(60000 / safeRequestsPerMinute);
+    const safeRequestsPerMinute = Math.min(requestsPerMinute, DEFAULT_LIVE_STREAMING_RATE_LIMIT); // Stay under the limit
+    const requestIntervalMs = Math.ceil(
+      NUMERIC_CONSTANTS.RATE_LIMIT_WINDOW_MS / safeRequestsPerMinute
+    );
 
     return {
       requestIntervalMs,
-      burstSize: Math.min(8, Math.floor(safeRequestsPerMinute / 10)), // Conservative burst
+      burstSize: Math.min(MAX_LIVE_STREAMING_BURST, Math.floor(safeRequestsPerMinute / 10)), // Conservative burst
       recommendedMaxPerMinute: safeRequestsPerMinute,
-      safetyBufferMs: 1000, // 1 second buffer between requests
+      safetyBufferMs: REQUEST_SAFETY_BUFFER_MS, // 1 second buffer between requests
     };
   },
 
@@ -719,15 +734,15 @@ export const RateLimitUtils = {
     return {
       polling: {
         interval: 2000, // Poll every 2 seconds
-        maxRequestsPerMinute: 30, // Conservative limit for continuous polling
+        maxRequestsPerMinute: CONSERVATIVE_RATE_LIMIT, // Conservative limit for continuous polling
       },
       pagination: {
         delayBetweenPages: 1500, // Wait between paginated requests
-        maxRequestsPerMinute: 40, // Slightly higher for pagination
+        maxRequestsPerMinute: PAGINATION_RATE_LIMIT, // Slightly higher for pagination
       },
       burst: {
         maxBurstSize: 5, // Conservative burst size
-        recoveryTime: 30000, // 30 seconds recovery between bursts
+        recoveryTime: RATE_LIMIT_RECOVERY_TIME_MS, // 30 seconds recovery between bursts
       },
     };
   },
@@ -748,10 +763,10 @@ export const RateLimitUtils = {
     let status: 'healthy' | 'warning' | 'critical';
     let recommendedAction: string;
 
-    if (utilizationRate < 70) {
+    if (utilizationRate < RATE_LIMIT_WARNING_THRESHOLD) {
       status = 'healthy';
       recommendedAction = 'Continue with current request pattern';
-    } else if (utilizationRate < 90) {
+    } else if (utilizationRate < RATE_LIMIT_CRITICAL_THRESHOLD) {
       status = 'warning';
       recommendedAction = 'Consider reducing request frequency or adding delays';
     } else {

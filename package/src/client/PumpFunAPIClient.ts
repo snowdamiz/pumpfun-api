@@ -20,6 +20,7 @@ import {
   LiveCoin,
   GetLiveCoinsParams,
   LiveStreamInfo,
+  NUMERIC_CONSTANTS,
 } from './types';
 import { HTTPClient } from '../utils/http-client';
 import { Logger } from '../utils/logger';
@@ -108,6 +109,9 @@ export class PumpFunAPIClient {
     this.config = {
       baseURL: mergedConfig.baseURL,
       timeout: mergedConfig.timeout,
+      wsURL: mergedConfig.wsURL,
+      apiKey: mergedConfig.apiKey,
+      authToken: mergedConfig.authToken,
     };
 
     // Store additional configuration options
@@ -162,7 +166,7 @@ export class PumpFunAPIClient {
       const wsURL = process.env.PUMPFUN_WS_URL.trim();
       if (wsURL) {
         // Store in client config for future WebSocket support
-        (envConfig as any).wsURL = wsURL;
+        envConfig.wsURL = wsURL;
       }
     }
 
@@ -170,13 +174,13 @@ export class PumpFunAPIClient {
     if (process.env.PUMPFUN_API_KEY) {
       const apiKey = process.env.PUMPFUN_API_KEY.trim();
       if (apiKey) {
-        (envConfig as any).apiKey = apiKey;
+        envConfig.apiKey = apiKey;
       }
     }
     if (process.env.PUMPFUN_AUTH_TOKEN) {
       const authToken = process.env.PUMPFUN_AUTH_TOKEN.trim();
       if (authToken) {
-        (envConfig as any).authToken = authToken;
+        envConfig.authToken = authToken;
       }
     }
 
@@ -195,17 +199,17 @@ export class PumpFunAPIClient {
     }
 
     // Load logger configuration from environment
-    const loggerConfig: any = {};
+    const loggerConfig: Partial<import('./types').LoggerConfig> = {};
     if (process.env.PUMPFUN_LOG_LEVEL) {
       const level = process.env.PUMPFUN_LOG_LEVEL.toUpperCase();
-      if (Object.values(LogLevel).includes(level as any)) {
-        loggerConfig.level = level as any;
+      if (Object.values(LogLevel).includes(level as LogLevel)) {
+        loggerConfig.level = level as LogLevel;
       }
     } else if (process.env.LOG_LEVEL) {
       // Support legacy variable name
       const level = process.env.LOG_LEVEL.toUpperCase();
-      if (Object.values(LogLevel).includes(level as any)) {
-        loggerConfig.level = level as any;
+      if (Object.values(LogLevel).includes(level as LogLevel)) {
+        loggerConfig.level = level as LogLevel;
       }
     }
     if (process.env.PUMPFUN_LOG_CONSOLE !== undefined) {
@@ -231,7 +235,7 @@ export class PumpFunAPIClient {
     }
 
     // Load rate limit configuration from environment
-    const rateLimitConfig: any = {};
+    const rateLimitConfig: Partial<import('./types').RateLimitConfig> = {};
     if (process.env.PUMPFUN_RATE_LIMIT_REQUESTS) {
       const requests = parseInt(process.env.PUMPFUN_RATE_LIMIT_REQUESTS, 10);
       if (!isNaN(requests) && requests > 0) {
@@ -346,13 +350,13 @@ export class PumpFunAPIClient {
         errors.push(
           `Invalid timeout: ${config.timeout}ms. Must be a positive number greater than 0.`
         );
-      } else if (config.timeout > 60000) {
+      } else if (config.timeout > NUMERIC_CONSTANTS.MAX_RETRY_DELAY) {
         warnings.push(
           `Timeout very high: ${config.timeout}ms. Consider reducing to 30000ms (30 seconds) for better responsiveness.`
         );
-      } else if (config.timeout < 1000) {
+      } else if (config.timeout < NUMERIC_CONSTANTS.MIN_RETRY_DELAY) {
         warnings.push(
-          `Timeout very low: ${config.timeout}ms. Consider increasing to at least 5000ms (5 seconds) to avoid timeouts.`
+          `Timeout very low: ${config.timeout}ms. Consider increasing to at least ${NUMERIC_CONSTANTS.MIN_RECOMMENDED_TIMEOUT}ms (5 seconds) to avoid timeouts.`
         );
       }
     }
@@ -380,7 +384,7 @@ export class PumpFunAPIClient {
           errors.push(
             `Invalid baseDelay: ${retryConfig.baseDelay}ms. Minimum is 100ms to prevent spam.`
           );
-        } else if (retryConfig.baseDelay > 10000) {
+        } else if (retryConfig.baseDelay > NUMERIC_CONSTANTS.MAX_BASE_DELAY) {
           errors.push(
             `Invalid baseDelay: ${retryConfig.baseDelay}ms. Maximum is 10000ms (10 seconds).`
           );
@@ -392,9 +396,9 @@ export class PumpFunAPIClient {
           errors.push(`Invalid maxDelay: ${retryConfig.maxDelay}. Must be a valid number.`);
         } else if (retryConfig.maxDelay < 1000) {
           errors.push(`Invalid maxDelay: ${retryConfig.maxDelay}ms. Minimum is 1000ms (1 second).`);
-        } else if (retryConfig.maxDelay > 300000) {
+        } else if (retryConfig.maxDelay > NUMERIC_CONSTANTS.MAX_MAX_DELAY) {
           errors.push(
-            `Invalid maxDelay: ${retryConfig.maxDelay}ms. Maximum is 300000ms (5 minutes).`
+            `Invalid maxDelay: ${retryConfig.maxDelay}ms. Maximum is ${NUMERIC_CONSTANTS.MAX_MAX_DELAY}ms (5 minutes).`
           );
         }
       }
@@ -406,9 +410,9 @@ export class PumpFunAPIClient {
           );
         } else if (retryConfig.backoffFactor < 1) {
           errors.push(`Invalid backoffFactor: ${retryConfig.backoffFactor}. Must be at least 1.0.`);
-        } else if (retryConfig.backoffFactor > 5) {
+        } else if (retryConfig.backoffFactor > NUMERIC_CONSTANTS.MAX_BACKOFF_FACTOR) {
           errors.push(
-            `Invalid backoffFactor: ${retryConfig.backoffFactor}. Maximum is 5.0 to prevent excessive delays.`
+            `Invalid backoffFactor: ${retryConfig.backoffFactor}. Maximum is ${NUMERIC_CONSTANTS.MAX_BACKOFF_FACTOR}.0 to prevent excessive delays.`
           );
         }
       }
@@ -455,9 +459,9 @@ export class PumpFunAPIClient {
           errors.push(
             `Invalid windowMs: ${rateLimitConfig.windowMs}ms. Minimum is 1000ms (1 second).`
           );
-        } else if (rateLimitConfig.windowMs > 3600000) {
+        } else if (rateLimitConfig.windowMs > NUMERIC_CONSTANTS.MAX_RATE_LIMIT_WINDOW_MS) {
           errors.push(
-            `Invalid windowMs: ${rateLimitConfig.windowMs}ms. Maximum is 3600000ms (1 hour).`
+            `Invalid windowMs: ${rateLimitConfig.windowMs}ms. Maximum is ${NUMERIC_CONSTANTS.MAX_RATE_LIMIT_WINDOW_MS}ms (1 hour).`
           );
         }
       }
@@ -482,7 +486,7 @@ export class PumpFunAPIClient {
           errors.push(
             `Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}ms. Minimum is 100ms.`
           );
-        } else if (rateLimitConfig.baseBackoffMs > 10000) {
+        } else if (rateLimitConfig.baseBackoffMs > NUMERIC_CONSTANTS.MAX_BASE_DELAY) {
           errors.push(
             `Invalid baseBackoffMs: ${rateLimitConfig.baseBackoffMs}ms. Maximum is 10000ms (10 seconds).`
           );
@@ -501,9 +505,9 @@ export class PumpFunAPIClient {
           errors.push(
             `Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}ms. Minimum is 1000ms (1 second).`
           );
-        } else if (rateLimitConfig.maxBackoffMs > 300000) {
+        } else if (rateLimitConfig.maxBackoffMs > NUMERIC_CONSTANTS.MAX_MAX_DELAY) {
           errors.push(
-            `Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}ms. Maximum is 300000ms (5 minutes).`
+            `Invalid maxBackoffMs: ${rateLimitConfig.maxBackoffMs}ms. Maximum is ${NUMERIC_CONSTANTS.MAX_MAX_DELAY}ms (5 minutes).`
           );
         }
       }
@@ -747,7 +751,7 @@ export class PumpFunAPIClient {
   /**
    * Gracefully shutdown the client
    */
-  public async shutdown(): Promise<void> {
+  public shutdown(): Promise<void> {
     this.logger.info('Shutting down PumpFunAPIClient...');
 
     // Clear any pending requests
@@ -757,6 +761,7 @@ export class PumpFunAPIClient {
     this.isInitialized = false;
 
     this.logger.info('PumpFunAPIClient shutdown complete');
+    return Promise.resolve();
   }
 
   /**
@@ -957,8 +962,8 @@ export class PumpFunAPIClient {
     let lastError: any;
 
     // Implement retry logic specifically for API failures
-    const maxRetries = this.retryConfig?.maxRetries || 3;
-    const baseDelay = this.retryConfig?.baseDelay || 1000;
+    const maxRetries = this.retryConfig?.maxRetries ?? 3;
+    const baseDelay = this.retryConfig?.baseDelay ?? 1000;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -2069,7 +2074,7 @@ export class PumpFunAPIClient {
     }
 
     // Default retry time for rate limit errors (60 seconds)
-    return 60;
+    return NUMERIC_CONSTANTS.RATE_LIMIT_WINDOW_SIZE;
   }
 
   /**
@@ -2176,9 +2181,9 @@ export class PumpFunAPIClient {
       configuration: {
         hasCustomConfig:
           !!this.config.baseURL || this.config.timeout !== DEFAULT_CLIENT_CONFIG.timeout,
-        hasCustomLoggerConfig: Object.keys(this.loggerConfig || {}).length > 0,
-        hasCustomRateLimitConfig: Object.keys(this.rateLimitConfig || {}).length > 0,
-        hasCustomRetryConfig: Object.keys(this.retryConfig || {}).length > 0,
+        hasCustomLoggerConfig: Object.keys(this.loggerConfig ?? {}).length > 0,
+        hasCustomRateLimitConfig: Object.keys(this.rateLimitConfig ?? {}).length > 0,
+        hasCustomRetryConfig: Object.keys(this.retryConfig ?? {}).length > 0,
         configSource: this.detectConfigSource(),
       },
       suggestions: this.getGeneralTroubleshootingSuggestions(),
@@ -2325,7 +2330,7 @@ export class PumpFunAPIClient {
 
     // Temporarily increase timeout
     const originalTimeout = this.config.timeout;
-    this.config.timeout = Math.min(originalTimeout * 1.5, 60000); // Cap at 60 seconds
+    this.config.timeout = Math.min(originalTimeout * 1.5, NUMERIC_CONSTANTS.MAX_RETRY_DELAY); // Cap at 60 seconds
 
     try {
       // Test with increased timeout
@@ -2688,14 +2693,14 @@ export class PumpFunAPIClient {
             name: topStream.name,
             symbol: topStream.symbol,
             participants: topStream.num_participants,
-            title: topStream.livestream_title || null,
+            title: topStream.livestream_title ?? null,
           },
           bottomStream: bottomStream
             ? {
                 name: bottomStream.name,
                 symbol: bottomStream.symbol,
                 participants: bottomStream.num_participants,
-                title: bottomStream.livestream_title || null,
+                title: bottomStream.livestream_title ?? null,
               }
             : null,
         });

@@ -13,6 +13,7 @@
 
 import { PumpFunAPIClient } from '../../src/client/PumpFunAPIClient';
 import { Logger } from '../../src/utils/logger';
+import { LogLevel } from '../../src/client/types';
 import { RateLimiter } from '../../src/utils/rate-limiter';
 
 describe('PumpFun API Integration Tests', () => {
@@ -37,7 +38,7 @@ describe('PumpFun API Integration Tests', () => {
     client = new PumpFunAPIClient({
       timeout: 10000,
       loggerConfig: {
-        level: 'ERROR', // Only show errors in tests
+        level: LogLevel.ERROR, // Only show errors in tests
         enableConsole: true,
         enableColors: false,
         enableTimestamps: false,
@@ -63,7 +64,7 @@ describe('PumpFun API Integration Tests', () => {
 
     // Cleanup client
     if (client && client.isClientInitialized()) {
-      client.shutdown();
+      void client.shutdown();
     }
   });
 
@@ -94,7 +95,7 @@ describe('PumpFun API Integration Tests', () => {
         delete process.env.PUMPFUN_API_BASE_URL;
       }
 
-      envClient.shutdown();
+      void envClient.shutdown();
     });
 
     test('should handle configuration validation errors', () => {
@@ -130,7 +131,7 @@ describe('PumpFun API Integration Tests', () => {
 
       // Test that logger can be updated
       expect(() => {
-        client.updateLoggerConfig({ level: 'DEBUG' });
+        client.updateLoggerConfig({ level: LogLevel.DEBUG });
       }).not.toThrow();
     });
 
@@ -171,22 +172,23 @@ describe('PumpFun API Integration Tests', () => {
   });
 
   describe('Rate Limiting Integration', () => {
-    test('should handle rate limit backoff', async () => {
+    test('should handle rate limit backoff', () => {
       const rateLimiter = client.getRateLimiter();
 
       // Test rate limiter directly
-      expect(await rateLimiter.canMakeRequest()).toBe(true);
+      expect(rateLimiter.canMakeRequest()).toBe(true);
 
       // Simulate reaching rate limit
-      for (let i = 0; i < 65; i++) { // More than the default 60
+      for (let i = 0; i < 65; i++) {
+        // More than the default 60
         rateLimiter.recordRequest();
       }
 
       // Should be rate limited now
-      expect(await rateLimiter.canMakeRequest()).toBe(false);
+      expect(rateLimiter.canMakeRequest()).toBe(false);
     });
 
-    test('should track request statistics correctly', async () => {
+    test('should track request statistics correctly', () => {
       const rateLimiter = client.getRateLimiter();
 
       // Record some requests
@@ -195,11 +197,11 @@ describe('PumpFun API Integration Tests', () => {
       rateLimiter.recordRequest();
 
       // Rate limiter should track the requests
-      expect(await rateLimiter.canMakeRequest()).toBe(true); // Still should be able to make requests
+      expect(rateLimiter.canMakeRequest()).toBe(true); // Still should be able to make requests
 
       // Reset and verify
       rateLimiter.reset();
-      expect(await rateLimiter.canMakeRequest()).toBe(true);
+      expect(rateLimiter.canMakeRequest()).toBe(true);
     });
   });
 
@@ -234,7 +236,7 @@ describe('PumpFun API Integration Tests', () => {
     test('should support configuration updates', () => {
       // Should not throw for valid configuration updates
       expect(() => {
-        client.updateLoggerConfig({ level: 'DEBUG' });
+        client.updateLoggerConfig({ level: LogLevel.DEBUG });
         client.updateRateLimitConfig({ maxRequestsPerWindow: 100 });
       }).not.toThrow();
     });
@@ -251,7 +253,7 @@ describe('PumpFun API Integration Tests', () => {
       const newClient = new PumpFunAPIClient();
       expect(newClient.isClientInitialized()).toBe(true);
 
-      newClient.shutdown();
+      void newClient.shutdown();
     });
 
     test('should maintain state consistency during operations', () => {
@@ -347,10 +349,10 @@ describe('PumpFun API Integration Tests', () => {
       // Create client with custom configuration
       const customClient = new PumpFunAPIClient({
         loggerConfig: {
-          level: 'DEBUG',
+          level: LogLevel.DEBUG,
           enableConsole: true,
           enableColors: true,
-          enableTimestamps: true
+          enableTimestamps: true,
         },
         rateLimitConfig: {
           maxRequestsPerWindow: 30,
@@ -362,37 +364,44 @@ describe('PumpFun API Integration Tests', () => {
           enableBackoff: true,
           baseBackoffMs: 500,
           maxBackoffMs: 15000,
-          backoffMultiplier: 2
-        }
+          backoffMultiplier: 2,
+        },
       });
 
-      expect(() => new PumpFunAPIClient({
-        loggerConfig: {
-          level: 'DEBUG',
-          enableConsole: true,
-          enableColors: true,
-          enableTimestamps: true
-        },
-        rateLimitConfig: {
-          maxRequestsPerWindow: 30,
-          windowMs: 30000,
-          enableRetryAfter: true,
-          enableSlidingWindow: true,
-          enableBurstProtection: true,
-          maxBurst: 5,
-          enableBackoff: true,
-          baseBackoffMs: 500,
-          maxBackoffMs: 15000,
-          backoffMultiplier: 2
-        }
-      })).not.toThrow();
+      // Use the customClient to avoid unused variable warning
+      expect(customClient.isClientInitialized()).toBe(true);
+      void customClient.shutdown();
+
+      expect(
+        () =>
+          new PumpFunAPIClient({
+            loggerConfig: {
+              level: LogLevel.DEBUG,
+              enableConsole: true,
+              enableColors: true,
+              enableTimestamps: true,
+            },
+            rateLimitConfig: {
+              maxRequestsPerWindow: 30,
+              windowMs: 30000,
+              enableRetryAfter: true,
+              enableSlidingWindow: true,
+              enableBurstProtection: true,
+              maxBurst: 5,
+              enableBackoff: true,
+              baseBackoffMs: 500,
+              maxBackoffMs: 15000,
+              backoffMultiplier: 2,
+            },
+          })
+      ).not.toThrow();
 
       const testClient = new PumpFunAPIClient({
         loggerConfig: {
-          level: 'DEBUG',
+          level: LogLevel.DEBUG,
           enableConsole: true,
           enableColors: true,
-          enableTimestamps: true
+          enableTimestamps: true,
         },
         rateLimitConfig: {
           maxRequestsPerWindow: 30,
@@ -404,8 +413,8 @@ describe('PumpFun API Integration Tests', () => {
           enableBackoff: true,
           baseBackoffMs: 500,
           maxBackoffMs: 15000,
-          backoffMultiplier: 2
-        }
+          backoffMultiplier: 2,
+        },
       });
 
       // Components should be properly initialized
@@ -413,7 +422,7 @@ describe('PumpFun API Integration Tests', () => {
       expect(testClient.getRateLimiter()).toBeDefined();
       expect(testClient.isClientInitialized()).toBe(true);
 
-      testClient.shutdown();
+      void testClient.shutdown();
     });
   });
 
@@ -443,12 +452,12 @@ describe('PumpFun API Integration Tests', () => {
         new PumpFunAPIClient({
           timeout: 60000, // Maximum allowed
           loggerConfig: {
-            level: 'DEBUG',
+            level: LogLevel.DEBUG,
             enableConsole: false,
             enableColors: false,
             enableFile: true,
             filePath: '/tmp/test.log',
-            enableTimestamps: true
+            enableTimestamps: true,
           },
           rateLimitConfig: {
             maxRequestsPerWindow: 1000,
@@ -459,8 +468,8 @@ describe('PumpFun API Integration Tests', () => {
             enableBackoff: false,
             baseBackoffMs: 100,
             maxBackoffMs: 1000,
-            backoffMultiplier: 1
-          }
+            backoffMultiplier: 1,
+          },
         });
       }).not.toThrow();
     });
@@ -469,7 +478,7 @@ describe('PumpFun API Integration Tests', () => {
       expect(() => {
         new PumpFunAPIClient({
           baseURL: 'https://valid-api.example.com', // Valid
-          timeout: -1000 // Invalid
+          timeout: -1000, // Invalid
         });
       }).toThrow();
     });
@@ -485,20 +494,22 @@ describe('PumpFun API Integration Tests', () => {
       const creationTime = Date.now() - startTime;
 
       // All clients should be initialized
-      clients.forEach(c => expect(c.isClientInitialized()).toBe(true));
+      clients.forEach(c => {
+        expect(c.isClientInitialized()).toBe(true);
+      });
 
       // Should complete quickly
       expect(creationTime).toBeLessThan(1000); // 1 second for 10 clients
 
       // Cleanup
-      clients.forEach(c => c.shutdown());
+      clients.forEach(c => void c.shutdown());
     });
 
-    test('should handle concurrent configuration updates', async () => {
+    test('should handle concurrent configuration updates', () => {
       expect(() => {
         // Perform multiple logger config updates
         for (let i = 0; i < 5; i++) {
-          client.updateLoggerConfig({ level: i % 2 === 0 ? 'DEBUG' : 'INFO' });
+          client.updateLoggerConfig({ level: i % 2 === 0 ? LogLevel.DEBUG : LogLevel.INFO });
         }
       }).not.toThrow();
 

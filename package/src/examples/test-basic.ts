@@ -58,4 +58,4 @@ async function testPackageFunctionality() {
 }
 
 // Run the test
-testPackageFunctionality();
+testPackageFunctionality().catch(console.error);

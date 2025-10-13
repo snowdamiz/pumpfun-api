@@ -349,7 +349,7 @@ export class HTTPClient {
   private isRetryableError(error: AxiosError): boolean {
     return !!(
       (error.response?.status &&
-        this.retryConfig.retryableStatusCodes.includes(error.response.status)) ||
+        this.retryConfig.retryableStatusCodes.includes(error.response.status)) ??
       (error.code && this.retryConfig.retryableErrors.includes(error.code))
     );
   }

@@ -1,5 +1,5 @@
 /** @type {import('jest').Config} */
-module.exports = {
+export default {
   // TypeScript configuration
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -57,5 +57,4 @@ module.exports = {
 
   // Reporter configuration
   reporters: ['default'],
-
-  };
+};

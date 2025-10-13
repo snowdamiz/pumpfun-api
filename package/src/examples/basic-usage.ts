@@ -288,7 +288,7 @@ export function runtimeConfiguration() {
 /**
  * Example 9: Future API usage - Live streams (placeholder)
  */
-export async function futureLiveStreamsExample() {
+export function futureLiveStreamsExample() {
   console.log('=== Future: Live Streams Example ===');
   console.log('📝 This example will work once API methods are implemented');
 

@@ -14,6 +14,8 @@ import {
   DEFAULT_LOGGER_CONFIG,
 } from '../client/types';
 
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Re-export types for backward compatibility
 export type { LogLevel, LogContext, LogEntry, LoggerConfig };
@@ -23,7 +25,7 @@ export type { LogLevel, LogContext, LogEntry, LoggerConfig };
  */
 const getDefaultLoggerConfig = (): LoggerConfig => ({
   ...DEFAULT_LOGGER_CONFIG,
-  level: (process?.env?.LOG_LEVEL as LogLevel) || DEFAULT_LOGGER_CONFIG.level,
+  level: (process?.env?.LOG_LEVEL as LogLevel) ?? DEFAULT_LOGGER_CONFIG.level,
 });
 
 /**
@@ -172,7 +174,7 @@ export class Logger {
    * Check if file logging is available (Node.js environment)
    */
   private isFileLoggingAvailable(): boolean {
-    return !!(typeof process !== 'undefined' && process.versions && process.versions.node);
+    return !!(typeof process !== 'undefined' && process?.versions?.node);
   }
 
   /**
@@ -211,9 +213,6 @@ export class Logger {
     }
 
     try {
-      const fs = require('fs');
-      const path = require('path');
-
       // Ensure log directory exists
       const logDir = path.dirname(this.config.logFilePath);
       if (!fs.existsSync(logDir)) {
@@ -231,7 +230,7 @@ export class Logger {
    * Format log message
    */
   private formatLogMessage(logEntry: LogEntry, useConsoleFormat: boolean = true): string {
-    if (this.config.enableStructuredLogs || !useConsoleFormat) {
+    if (this.config.enableStructuredLogs ?? !useConsoleFormat) {
       return JSON.stringify(logEntry, null, 2);
     }
 
@@ -341,7 +340,7 @@ export class Logger {
     const duration = Date.now() - startTime;
     this.performanceTimers.delete(name);
 
-    const logMessage = message || `Performance: ${name}`;
+    const logMessage = message ?? `Performance: ${name}`;
     this.debug(logMessage, { duration, timer: name });
 
     return duration;
@@ -566,7 +565,7 @@ export const LoggerUtils = {
    * Validate log level
    */
   isValidLogLevel(level: string): level is LogLevel {
-    return Object.values(LOG_LEVELS).hasOwnProperty(level.toUpperCase());
+    return Object.prototype.hasOwnProperty.call(Object.values(LOG_LEVELS), level.toUpperCase());
   },
 
   /**

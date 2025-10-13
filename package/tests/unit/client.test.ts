@@ -12,14 +12,7 @@
  */
 
 import { PumpFunAPIClient } from '../../src/client/PumpFunAPIClient';
-import {
-  ClientConfig,
-  DEFAULT_CLIENT_CONFIG,
-  LogLevel,
-  DEFAULT_RETRY_CONFIG,
-  DEFAULT_RATE_LIMIT_CONFIG,
-  DEFAULT_LOGGER_CONFIG
-} from '../../src/client/types';
+import { ClientConfig, DEFAULT_CLIENT_CONFIG, LogLevel } from '../../src/client/types';
 
 // Mock environment variables
 const originalEnv = process.env;
@@ -122,7 +115,7 @@ describe('PumpFunAPIClient Initialization', () => {
     test('should accept custom baseURL and timeout', () => {
       const customConfig: ClientConfig = {
         baseURL: 'https://custom-api.example.com',
-        timeout: 15000
+        timeout: 15000,
       };
 
       const client = new PumpFunAPIClient(customConfig);
@@ -133,7 +126,7 @@ describe('PumpFunAPIClient Initialization', () => {
 
     test('should merge partial configuration with defaults', () => {
       const customConfig: ClientConfig = {
-        baseURL: 'https://custom-api.example.com'
+        baseURL: 'https://custom-api.example.com',
         // timeout should use default
       };
 
@@ -151,8 +144,8 @@ describe('PumpFunAPIClient Initialization', () => {
           maxDelay: 60000,
           backoffFactor: 3,
           retryableStatusCodes: [500, 502, 503],
-          retryableErrors: ['SERVER_ERROR', 'TIMEOUT']
-        }
+          retryableErrors: ['SERVER_ERROR', 'TIMEOUT'],
+        },
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).not.toThrow();
@@ -170,8 +163,8 @@ describe('PumpFunAPIClient Initialization', () => {
           enableBackoff: true,
           baseBackoffMs: 2000,
           maxBackoffMs: 60000,
-          backoffMultiplier: 3
-        }
+          backoffMultiplier: 3,
+        },
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).not.toThrow();
@@ -185,8 +178,8 @@ describe('PumpFunAPIClient Initialization', () => {
           enableColors: false,
           enableFile: true,
           filePath: '/tmp/pumpfun.log',
-          enableTimestamps: true
-        }
+          enableTimestamps: true,
+        },
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).not.toThrow();
@@ -274,7 +267,7 @@ describe('PumpFunAPIClient Initialization', () => {
 
       const customConfig: ClientConfig = {
         baseURL: 'https://explicit-api.example.com',
-        timeout: 15000
+        timeout: 15000,
       };
 
       const client = new PumpFunAPIClient(customConfig);
@@ -297,19 +290,6 @@ describe('PumpFunAPIClient Initialization', () => {
       process.env.PUMPFUN_API_BASE_URL = 'https://env-api.example.com';
       process.env.PUMPFUN_RETRY_MAX_RETRIES = '5';
 
-      const customConfig: ClientConfig = {
-        baseURL: 'https://explicit-api.example.com',
-        // retryConfig should come from environment
-        retryConfig: {
-          maxRetries: 3,
-          baseDelay: 1000,
-          maxDelay: 30000,
-          backoffFactor: 2,
-          retryableStatusCodes: [408, 429, 500, 502, 503, 504],
-          retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED']
-        }
-      };
-
       const client = new PumpFunAPIClient();
 
       // For baseURL, explicit should win over environment
@@ -324,7 +304,7 @@ describe('PumpFunAPIClient Initialization', () => {
   describe('Configuration Validation Errors', () => {
     test('should throw error for invalid baseURL protocol', () => {
       const customConfig: ClientConfig = {
-        baseURL: 'ftp://api.example.com'
+        baseURL: 'ftp://api.example.com',
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid baseURL protocol/);
@@ -332,7 +312,7 @@ describe('PumpFunAPIClient Initialization', () => {
 
     test('should throw error for invalid baseURL format', () => {
       const customConfig: ClientConfig = {
-        baseURL: 'not-a-valid-url'
+        baseURL: 'not-a-valid-url',
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid baseURL format/);
@@ -340,7 +320,7 @@ describe('PumpFunAPIClient Initialization', () => {
 
     test('should throw error for invalid timeout type', () => {
       const customConfig: ClientConfig = {
-        timeout: 'invalid' as any
+        timeout: 'invalid' as any,
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid timeout/);
@@ -348,7 +328,7 @@ describe('PumpFunAPIClient Initialization', () => {
 
     test('should throw error for negative timeout', () => {
       const customConfig: ClientConfig = {
-        timeout: -1000
+        timeout: -1000,
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid timeout.*positive number/);
@@ -356,7 +336,7 @@ describe('PumpFunAPIClient Initialization', () => {
 
     test('should throw error for zero timeout', () => {
       const customConfig: ClientConfig = {
-        timeout: 0
+        timeout: 0,
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid timeout.*positive number/);
@@ -364,7 +344,7 @@ describe('PumpFunAPIClient Initialization', () => {
 
     test('should throw error for excessive timeout', () => {
       const customConfig: ClientConfig = {
-        timeout: 120000 // 2 minutes
+        timeout: 120000, // 2 minutes
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).not.toThrow(); // This should warn but not error
@@ -378,11 +358,13 @@ describe('PumpFunAPIClient Initialization', () => {
           maxDelay: 30000,
           backoffFactor: 2,
           retryableStatusCodes: [408, 429, 500, 502, 503, 504],
-          retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED']
-        }
+          retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED'],
+        },
       };
 
-      expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid maxRetries.*Cannot be negative/);
+      expect(() => new PumpFunAPIClient(customConfig)).toThrow(
+        /Invalid maxRetries.*Cannot be negative/
+      );
     });
 
     test('should throw error for invalid rate limit configuration', () => {
@@ -397,11 +379,13 @@ describe('PumpFunAPIClient Initialization', () => {
           enableBackoff: true,
           baseBackoffMs: 1000,
           maxBackoffMs: 30000,
-          backoffMultiplier: 2
-        }
+          backoffMultiplier: 2,
+        },
       };
 
-      expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid maxRequestsPerWindow.*Must be at least 1/);
+      expect(() => new PumpFunAPIClient(customConfig)).toThrow(
+        /Invalid maxRequestsPerWindow.*Must be at least 1/
+      );
     });
 
     test('should throw error for invalid log level', () => {
@@ -410,8 +394,8 @@ describe('PumpFunAPIClient Initialization', () => {
           level: 'INVALID_LEVEL' as any,
           enableConsole: true,
           enableColors: true,
-          enableTimestamps: true
-        }
+          enableTimestamps: true,
+        },
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid log level/);
@@ -425,11 +409,13 @@ describe('PumpFunAPIClient Initialization', () => {
           enableColors: true,
           enableFile: true,
           filePath: '',
-          enableTimestamps: true
-        }
+          enableTimestamps: true,
+        },
       };
 
-      expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid log file path.*cannot be empty/);
+      expect(() => new PumpFunAPIClient(customConfig)).toThrow(
+        /Invalid log file path.*cannot be empty/
+      );
     });
 
     test('should throw error for logical inconsistencies in retry config', () => {
@@ -440,11 +426,13 @@ describe('PumpFunAPIClient Initialization', () => {
           maxDelay: 3000, // Less than baseDelay
           backoffFactor: 2,
           retryableStatusCodes: [408, 429, 500, 502, 503, 504],
-          retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED']
-        }
+          retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED'],
+        },
       };
 
-      expect(() => new PumpFunAPIClient(customConfig)).toThrow(/baseDelay.*must be less than maxDelay/);
+      expect(() => new PumpFunAPIClient(customConfig)).toThrow(
+        /baseDelay.*must be less than maxDelay/
+      );
     });
 
     test('should throw comprehensive error for multiple validation failures', () => {
@@ -457,11 +445,13 @@ describe('PumpFunAPIClient Initialization', () => {
           maxDelay: 30000,
           backoffFactor: 2,
           retryableStatusCodes: [408, 429, 500, 502, 503, 504],
-          retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED']
-        }
+          retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED'],
+        },
       };
 
-      expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Configuration validation failed with 3 errors/);
+      expect(() => new PumpFunAPIClient(customConfig)).toThrow(
+        /Configuration validation failed with 3 errors/
+      );
     });
   });
 
@@ -485,7 +475,7 @@ describe('PumpFunAPIClient Initialization', () => {
         timeout: undefined,
         retryConfig: undefined,
         loggerConfig: undefined,
-        rateLimitConfig: undefined
+        rateLimitConfig: undefined,
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).not.toThrow();
@@ -498,7 +488,7 @@ describe('PumpFunAPIClient Initialization', () => {
     test('should handle mixed valid and invalid configuration', () => {
       const customConfig: ClientConfig = {
         baseURL: 'https://valid-api.example.com', // Valid
-        timeout: -1000 // Invalid
+        timeout: -1000, // Invalid
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).toThrow(/Invalid timeout/);
@@ -513,7 +503,7 @@ describe('PumpFunAPIClient Initialization', () => {
 
     test('should handle very large valid timeout values', () => {
       const customConfig: ClientConfig = {
-        timeout: 60000 // Maximum allowed
+        timeout: 60000, // Maximum allowed
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).not.toThrow();
@@ -522,7 +512,7 @@ describe('PumpFunAPIClient Initialization', () => {
 
     test('should handle minimum valid timeout values', () => {
       const customConfig: ClientConfig = {
-        timeout: 1 // Minimum positive value
+        timeout: 1, // Minimum positive value
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).not.toThrow();
@@ -665,7 +655,7 @@ describe('PumpFunAPIClient Initialization', () => {
           level: LogLevel.DEBUG,
           enableConsole: true,
           enableColors: true,
-          enableTimestamps: true
+          enableTimestamps: true,
         },
         rateLimitConfig: {
           maxRequestsPerWindow: 30,
@@ -677,8 +667,8 @@ describe('PumpFunAPIClient Initialization', () => {
           enableBackoff: true,
           baseBackoffMs: 500,
           maxBackoffMs: 15000,
-          backoffMultiplier: 2
-        }
+          backoffMultiplier: 2,
+        },
       };
 
       expect(() => new PumpFunAPIClient(customConfig)).not.toThrow();
