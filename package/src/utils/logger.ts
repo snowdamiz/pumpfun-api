@@ -6,80 +6,35 @@
  * Optimized for npm package usage with minimal dependencies.
  */
 
-// Re-export types for compatibility
-export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
+import {
+  LogLevel,
+  LogContext,
+  LogEntry,
+  LoggerConfig,
+  DEFAULT_LOGGER_CONFIG,
+} from '../client/types';
 
-export interface LogContext {
-  component?: string;
-  requestId?: string;
-  userId?: string;
-  sessionId?: string;
-  mintId?: string;
-  endpoint?: string;
-  [key: string]: any;
-}
 
-export interface LogEntry {
-  timestamp: string;
-  level: LogLevel;
-  message: string;
-  data?: any;
-  context?: LogContext;
-  logger: string;
-  error?: {
-    name: string;
-    message: string;
-    stack?: string;
-  };
-  performance?: {
-    activeTimers: number;
-    totalRequests: number;
-    totalErrors: number;
-    errorRate: number;
-  };
-}
+// Re-export types for backward compatibility
+export type { LogLevel, LogContext, LogEntry, LoggerConfig };
 
 /**
- * Logger configuration optimized for npm package
+ * Default logger configuration for npm package with environment variable support
  */
-export interface LoggerConfig {
-  level: LogLevel;
-  enableConsole: boolean;
-  enableTimestamps: boolean;
-  enableColors: boolean;
-  enableStructuredLogs: boolean;
-  enablePerformanceLogging: boolean;
-  enableRequestLogging: boolean;
-  enableErrorTracking: boolean;
-  enableFileLogging?: boolean; // Optional for browser compatibility
-  logFilePath?: string;
-}
-
-/**
- * Default logger configuration for npm package
- */
-const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
-  level: (process?.env?.LOG_LEVEL as LogLevel) || 'INFO',
-  enableConsole: true,
-  enableTimestamps: true,
-  enableColors: true,
-  enableStructuredLogs: false,
-  enablePerformanceLogging: true,
-  enableRequestLogging: true,
-  enableErrorTracking: true,
-  enableFileLogging: false, // Disabled by default for browser compatibility
-  logFilePath: undefined,
-};
+const getDefaultLoggerConfig = (): LoggerConfig => ({
+  ...DEFAULT_LOGGER_CONFIG,
+  level: (process?.env?.LOG_LEVEL as LogLevel) || DEFAULT_LOGGER_CONFIG.level,
+});
 
 /**
  * Log levels in order of severity
  */
 const LOG_LEVELS: Record<LogLevel, number> = {
-  DEBUG: 0,
-  INFO: 1,
-  WARN: 2,
-  ERROR: 3,
-  CRITICAL: 4,
+  [LogLevel.DEBUG]: 0,
+  [LogLevel.INFO]: 1,
+  [LogLevel.WARN]: 2,
+  [LogLevel.ERROR]: 3,
+  [LogLevel.CRITICAL]: 4,
 };
 
 /**
@@ -93,7 +48,7 @@ export class Logger {
   private errorCounter: number = 0;
 
   constructor(config: Partial<LoggerConfig> = {}, context?: LogContext) {
-    this.config = { ...DEFAULT_LOGGER_CONFIG, ...config };
+    this.config = { ...getDefaultLoggerConfig(), ...config };
     this.context = context;
 
     // Validate configuration
@@ -104,9 +59,9 @@ export class Logger {
    * Validate logger configuration
    */
   private validateConfig(): void {
-    if (!Object.keys(LOG_LEVELS).includes(this.config.level)) {
+    if (!Object.values(LogLevel).includes(this.config.level)) {
       console.warn(`Invalid log level: ${this.config.level}. Using INFO.`);
-      this.config.level = 'INFO';
+      this.config.level = LogLevel.INFO;
     }
   }
 
@@ -122,28 +77,28 @@ export class Logger {
    * Log a debug message
    */
   debug(message: string, data?: any, context?: LogContext): void {
-    this.log('DEBUG', message, data, context);
+    this.log(LogLevel.DEBUG, message, data, context);
   }
 
   /**
    * Log an info message
    */
   info(message: string, data?: any, context?: LogContext): void {
-    this.log('INFO', message, data, context);
+    this.log(LogLevel.INFO, message, data, context);
   }
 
   /**
    * Log a warning message
    */
   warn(message: string, data?: any, context?: LogContext): void {
-    this.log('WARN', message, data, context);
+    this.log(LogLevel.WARN, message, data, context);
   }
 
   /**
    * Log an error message
    */
   error(message: string, error?: Error | any, context?: LogContext): void {
-    this.log('ERROR', message, error, context);
+    this.log(LogLevel.ERROR, message, error, context);
     this.errorCounter++;
   }
 
@@ -151,7 +106,7 @@ export class Logger {
    * Log a critical error message
    */
   critical(message: string, error?: Error | any, context?: LogContext): void {
-    this.log('CRITICAL', message, error, context);
+    this.log(LogLevel.CRITICAL, message, error, context);
     this.errorCounter++;
   }
 
@@ -321,11 +276,11 @@ export class Logger {
    */
   private getColorCode(level: LogLevel): string {
     const colors: Record<LogLevel, string> = {
-      DEBUG: '\x1b[36m', // Cyan
-      INFO: '\x1b[32m', // Green
-      WARN: '\x1b[33m', // Yellow
-      ERROR: '\x1b[31m', // Red
-      CRITICAL: '\x1b[35m', // Magenta
+      [LogLevel.DEBUG]: '\x1b[36m', // Cyan
+      [LogLevel.INFO]: '\x1b[32m', // Green
+      [LogLevel.WARN]: '\x1b[33m', // Yellow
+      [LogLevel.ERROR]: '\x1b[31m', // Red
+      [LogLevel.CRITICAL]: '\x1b[35m', // Magenta
     };
 
     return colors[level] || '\x1b[0m';
@@ -435,7 +390,7 @@ export class Logger {
    * Log API client activity
    */
   logAPICall(method: string, endpoint: string, success: boolean, details?: any): void {
-    const level: LogLevel = success ? 'INFO' : 'ERROR';
+    const level: LogLevel = success ? LogLevel.INFO : LogLevel.ERROR;
     this.log(
       level,
       `API ${method} ${endpoint}`,
@@ -618,14 +573,14 @@ export const LoggerUtils = {
    * Get available log levels
    */
   getLogLevels(): LogLevel[] {
-    return Object.keys(LOG_LEVELS) as LogLevel[];
+    return Object.values(LogLevel);
   },
 
   /**
    * Create a no-op logger for testing
    */
   createNoOpLogger(): Logger {
-    return new Logger({ level: 'CRITICAL', enableConsole: false });
+    return new Logger({ level: LogLevel.CRITICAL, enableConsole: false });
   },
 };
 

@@ -1,0 +1,195 @@
+/**
+ * Constants for PumpFun API Client
+ *
+ * Centralized constants to avoid magic numbers throughout the codebase
+ * and improve maintainability.
+ */
+
+// ============================================================================
+// Time Constants (milliseconds)
+// ============================================================================
+
+/** One second in milliseconds */
+export const ONE_SECOND_MS = 1000;
+
+/** One minute in milliseconds */
+export const ONE_MINUTE_MS = 60 * ONE_SECOND_MS;
+
+/** Thirty seconds in milliseconds */
+export const THIRTY_SECONDS_MS = 30 * ONE_SECOND_MS;
+
+/** Five seconds in milliseconds */
+export const FIVE_SECONDS_MS = 5 * ONE_SECOND_MS;
+
+/** Ten seconds in milliseconds */
+export const TEN_SECONDS_MS = 10 * ONE_SECOND_MS;
+
+/** Fifteen seconds in milliseconds */
+export const FIFTEEN_SECONDS_MS = 15 * ONE_SECOND_MS;
+
+/** Thirty seconds in milliseconds */
+export const THIRTY_SECONDS_MS_ALIAS = 30 * ONE_SECOND_MS;
+
+/** One hour in milliseconds */
+export const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
+
+// ============================================================================
+// Default Configuration Values
+// ============================================================================
+
+/** Default request timeout in milliseconds */
+export const DEFAULT_TIMEOUT_MS = TEN_SECONDS_MS;
+
+/** Maximum request timeout in milliseconds */
+export const MAX_TIMEOUT_MS = ONE_MINUTE_MS;
+
+/** Minimum request timeout in milliseconds */
+export const MIN_TIMEOUT_MS = ONE_SECOND_MS;
+
+/** Default retry delay in milliseconds */
+export const DEFAULT_RETRY_DELAY_MS = ONE_SECOND_MS;
+
+/** Maximum retry delay in milliseconds */
+export const MAX_RETRY_DELAY_MS = THIRTY_SECONDS_MS_ALIAS;
+
+/** Default rate limit window in milliseconds */
+export const DEFAULT_RATE_LIMIT_WINDOW_MS = ONE_MINUTE_MS;
+
+/** Minimum rate limit window in milliseconds */
+export const MIN_RATE_LIMIT_WINDOW_MS = ONE_SECOND_MS;
+
+/** Maximum requests per window */
+export const MAX_REQUESTS_PER_WINDOW = 1000;
+
+/** Default burst window duration in milliseconds */
+export const BURST_WINDOW_MS = ONE_SECOND_MS;
+
+/** Default backoff delay in milliseconds */
+export const DEFAULT_BACKOFF_DELAY_MS = ONE_SECOND_MS;
+
+/** Maximum backoff delay in milliseconds */
+export const MAX_BACKOFF_DELAY_MS = TEN_SECONDS_MS;
+
+/** Adaptive adjustment interval in milliseconds */
+export const ADAPTIVE_ADJUSTMENT_INTERVAL_MS = THIRTY_SECONDS_MS;
+
+/** Minimum delay between requests in milliseconds */
+export const MIN_REQUEST_DELAY_MS = 100;
+
+// ============================================================================
+// Rate Limiting Constants
+// ============================================================================
+
+/** Default rate limit for live streaming (requests per minute) */
+export const DEFAULT_LIVE_STREAMING_RATE_LIMIT = 55;
+
+/** Conservative rate limit (requests per minute) */
+export const CONSERVATIVE_RATE_LIMIT = 30;
+
+/** Moderate rate limit for pagination (requests per minute) */
+export const PAGINATION_RATE_LIMIT = 40;
+
+/** Maximum burst size for live streaming */
+export const MAX_LIVE_STREAMING_BURST = 8;
+
+/** Conservative burst size */
+export const CONSERVATIVE_BURST_SIZE = 5;
+
+/** Rate limit recovery time in milliseconds */
+export const RATE_LIMIT_RECOVERY_TIME_MS = THIRTY_SECONDS_MS;
+
+/** Safety buffer between requests in milliseconds */
+export const REQUEST_SAFETY_BUFFER_MS = ONE_SECOND_MS;
+
+// ============================================================================
+// Validation Constants
+// ============================================================================
+
+/** Maximum description length */
+export const MAX_DESCRIPTION_LENGTH = 1000;
+
+/** Maximum reasonable participant count */
+export const MAX_REASONABLE_PARTICIPANTS = 10000;
+
+/** Maximum retry attempts */
+export const MAX_RETRY_ATTEMPTS = 5;
+
+/** Maximum concurrent errors before backoff */
+export const MAX_CONSECUTIVE_ERRORS = 5;
+
+// ============================================================================
+// Error Thresholds
+// ============================================================================
+
+/** Error rate threshold for warnings (percentage) */
+export const ERROR_RATE_WARNING_THRESHOLD = 5;
+
+/** Error rate threshold for critical (percentage) */
+export const ERROR_RATE_CRITICAL_THRESHOLD = 20;
+
+/** Rate limit utilization warning threshold (percentage) */
+export const RATE_LIMIT_WARNING_THRESHOLD = 70;
+
+/** Rate limit utilization critical threshold (percentage) */
+export const RATE_LIMIT_CRITICAL_THRESHOLD = 90;
+
+// ============================================================================
+// API Constants
+// ============================================================================
+
+/** Default API base URL */
+export const DEFAULT_API_BASE_URL = 'https://frontend-api-v3.pump.fun';
+
+/** User agent string */
+export const USER_AGENT = '@pumpfun/api-client/1.0.0';
+
+// ============================================================================
+// Logging Constants
+// ============================================================================
+
+/** Default log level */
+export const DEFAULT_LOG_LEVEL = 'INFO';
+
+/** Maximum log file size (not implemented yet) */
+export const MAX_LOG_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+// ============================================================================
+// Performance Constants
+// ============================================================================
+
+/** Jitter percentage for backoff calculations */
+export const JITTER_PERCENTAGE = 0.1; // 10%
+
+/** Adaptive rate limit increase factor */
+export const ADAPTIVE_INCREASE_FACTOR = 1.1;
+
+/** Adaptive rate limit decrease factor */
+export const ADAPTIVE_DECREASE_FACTOR = 0.8;
+
+/** Minimum adaptive rate limit factor */
+export const MIN_ADAPTIVE_FACTOR = 0.3;
+
+/** Maximum adaptive rate limit factor */
+export const MAX_ADAPTIVE_FACTOR = 2.0;
+
+// ============================================================================
+// HTTP Status Codes
+// ============================================================================
+
+/** HTTP Too Many Requests status code */
+export const HTTP_TOO_MANY_REQUESTS = 429;
+
+/** HTTP Internal Server Error status code */
+export const HTTP_INTERNAL_SERVER_ERROR = 500;
+
+/** HTTP Bad Gateway status code */
+export const HTTP_BAD_GATEWAY = 502;
+
+/** HTTP Service Unavailable status code */
+export const HTTP_SERVICE_UNAVAILABLE = 503;
+
+/** HTTP Gateway Timeout status code */
+export const HTTP_GATEWAY_TIMEOUT = 504;
+
+/** HTTP Request Timeout status code */
+export const HTTP_REQUEST_TIMEOUT = 408;

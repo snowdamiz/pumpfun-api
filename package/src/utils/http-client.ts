@@ -6,6 +6,15 @@
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import {
+  RetryConfig,
+  RateLimitConfig,
+  PerformanceMetrics,
+  HTTPClientConfig,
+  APIError as APIErrorInterface,
+  DEFAULT_RETRY_CONFIG,
+  DEFAULT_RATE_LIMIT_CONFIG,
+} from '../client/types';
 
 // Extend AxiosRequestConfig to include metadata
 declare module 'axios' {
@@ -16,58 +25,9 @@ declare module 'axios' {
   }
 }
 
-// Enhanced types for the npm package
-export interface RetryConfig {
-  maxRetries: number;
-  baseDelay: number;
-  maxDelay: number;
-  backoffFactor: number;
-  retryableStatusCodes: number[];
-  retryableErrors: string[];
-  enableJitter?: boolean;
-}
-
-export interface ClientRateLimitConfig {
-  maxRequestsPerWindow: number;
-  windowMs: number;
-  enableRetryAfter: boolean;
-  enableSlidingWindow: boolean;
-  enableBurstProtection: boolean;
-  maxBurst?: number;
-  enableBackoff: boolean;
-  baseBackoffMs: number;
-  maxBackoffMs: number;
-  backoffMultiplier: number;
-}
-
-export interface PerformanceMetrics {
-  totalRequests: number;
-  successfulRequests: number;
-  failedRequests: number;
-  averageResponseTime: number;
-  lastRequestTime: number;
-  errorRate: number;
-}
-
-export interface HTTPClientConfig {
-  baseURL?: string;
-  timeout?: number;
-  headers?: Record<string, string>;
-  retryConfig?: Partial<RetryConfig>;
-  rateLimitConfig?: Partial<ClientRateLimitConfig>;
-  enablePerformanceMonitoring?: boolean;
-  enableLogging?: boolean;
-}
-
-export interface APIErrorData {
-  code: string;
-  message: string;
-  statusCode: number;
-  details?: Record<string, any>;
-  timestamp: string;
-  isRetryable: boolean;
-  originalError?: any;
-}
+// Type alias for backward compatibility
+type ClientRateLimitConfig = RateLimitConfig;
+type APIErrorData = Omit<APIErrorInterface, 'message'> & { message: string };
 
 /**
  * Default configuration for HTTP requests
@@ -78,35 +38,6 @@ const DEFAULT_CONFIG: Partial<AxiosRequestConfig> = {
     'Content-Type': 'application/json',
     'User-Agent': 'pumpfun-api/1.0.0',
   },
-};
-
-/**
- * Default retry configuration with enhanced settings
- */
-const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 3,
-  baseDelay: 1000, // 1 second
-  maxDelay: 30000, // 30 seconds
-  backoffFactor: 2,
-  retryableStatusCodes: [408, 429, 500, 502, 503, 504],
-  retryableErrors: ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENOTFOUND'],
-  enableJitter: true,
-};
-
-/**
- * Default rate limit configuration
- */
-const DEFAULT_RATE_LIMIT_CONFIG: ClientRateLimitConfig = {
-  maxRequestsPerWindow: 60,
-  windowMs: 60000, // 1 minute
-  enableRetryAfter: true,
-  enableSlidingWindow: true,
-  enableBurstProtection: true,
-  maxBurst: 10,
-  enableBackoff: true,
-  baseBackoffMs: 1000,
-  maxBackoffMs: 10000,
-  backoffMultiplier: 1.5,
 };
 
 /**
@@ -581,9 +512,9 @@ export class HTTPClient {
 }
 
 /**
- * Enhanced API Error class
+ * Enhanced API Error class that implements the APIErrorInterface
  */
-export class APIError extends Error {
+export class APIError extends Error implements APIErrorInterface {
   public readonly code: string;
   public readonly statusCode: number;
   public readonly details?: Record<string, any>;

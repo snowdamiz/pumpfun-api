@@ -3106,10 +3106,11 @@ export class PumpFunAPIClient {
         baseURL: 'https://livestream-api.pump.fun',
         timeout: this.config.timeout,
         headers: {
-          'Origin': 'https://pump.fun',
-          'Referer': 'https://pump.fun/',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
-        }
+          Origin: 'https://pump.fun',
+          Referer: 'https://pump.fun/',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+        },
       });
 
       // Make request to livestream API (matching basic-usage.ts pattern)
@@ -3150,13 +3151,11 @@ export class PumpFunAPIClient {
         });
 
         return streamInfo;
-      } else {
-        this.logger.info('No active stream found for mint', {
-          mintId,
-        });
-        return null;
       }
-
+      this.logger.info('No active stream found for mint', {
+        mintId,
+      });
+      return null;
     } catch (error: unknown) {
       this.logger.error('Failed to get live stream information', {
         mintId,
@@ -3219,7 +3218,11 @@ export class PumpFunAPIClient {
       }
 
       // Handle network errors
-      if (axiosError.code === 'ECONNREFUSED' || axiosError.code === 'ENOTFOUND' || axiosError.code === 'ETIMEDOUT') {
+      if (
+        axiosError.code === 'ECONNREFUSED' ||
+        axiosError.code === 'ENOTFOUND' ||
+        axiosError.code === 'ETIMEDOUT'
+      ) {
         throw new NetworkError({
           message: `Network error connecting to livestream API: ${axiosError.message}`,
           code: axiosError.code,

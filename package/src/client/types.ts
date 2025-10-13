@@ -168,6 +168,8 @@ export interface RetryConfig {
   retryableStatusCodes: number[];
   /** Error codes to retry */
   retryableErrors: string[];
+  /** Enable jitter for retry delays */
+  enableJitter?: boolean;
 }
 
 /**
@@ -206,14 +208,123 @@ export interface LoggerConfig {
   enableConsole: boolean;
   /** Enable colored output */
   enableColors: boolean;
-  /** Enable file output (optional) */
-  enableFile?: boolean;
-  /** Log file path (optional) */
-  filePath?: string;
   /** Enable timestamps */
   enableTimestamps: boolean;
+  /** Enable structured JSON logs */
+  enableStructuredLogs?: boolean;
+  /** Enable performance logging */
+  enablePerformanceLogging?: boolean;
+  /** Enable HTTP request logging */
+  enableRequestLogging?: boolean;
+  /** Enable error tracking */
+  enableErrorTracking?: boolean;
+  /** Enable file output (optional, Node.js only) */
+  enableFileLogging?: boolean;
+  /** Enable file output (alias for enableFileLogging, optional) */
+  enableFile?: boolean;
+  /** Log file path (optional) */
+  logFilePath?: string;
+  /** Log file path (alias for logFilePath, optional) */
+  filePath?: string;
   /** Custom logger function (optional) */
   customLogger?: (level: LogLevel, message: string, data?: any) => void;
+}
+
+// ============================================================================
+// Logger Types
+// ============================================================================
+
+/**
+ * Context information for log entries
+ */
+export interface LogContext {
+  /** Component name */
+  component?: string;
+  /** Request identifier */
+  requestId?: string;
+  /** User identifier */
+  userId?: string;
+  /** Session identifier */
+  sessionId?: string;
+  /** Token mint identifier */
+  mintId?: string;
+  /** API endpoint */
+  endpoint?: string;
+  /** Additional context data */
+  [key: string]: any;
+}
+
+/**
+ * Individual log entry structure
+ */
+export interface LogEntry {
+  /** Log timestamp */
+  timestamp: string;
+  /** Log level */
+  level: LogLevel;
+  /** Log message */
+  message: string;
+  /** Additional data */
+  data?: any;
+  /** Log context */
+  context?: LogContext;
+  /** Logger name */
+  logger: string;
+  /** Error information */
+  error?: {
+    name: string;
+    message: string;
+    stack?: string;
+  };
+  /** Performance metrics */
+  performance?: {
+    activeTimers: number;
+    totalRequests: number;
+    totalErrors: number;
+    errorRate: number;
+  };
+}
+
+// ============================================================================
+// HTTP Client Types
+// ============================================================================
+
+/**
+ * Performance metrics for HTTP client monitoring
+ */
+export interface PerformanceMetrics {
+  /** Total number of requests */
+  totalRequests: number;
+  /** Number of successful requests */
+  successfulRequests: number;
+  /** Number of failed requests */
+  failedRequests: number;
+  /** Average response time in milliseconds */
+  averageResponseTime: number;
+  /** Timestamp of last request */
+  lastRequestTime: number;
+  /** Error rate (0-1) */
+  errorRate: number;
+}
+
+/**
+ * Configuration options for HTTP client
+ */
+export interface HTTPClientConfig {
+  /** Custom API base URL */
+  baseURL?: string;
+  /** Request timeout in milliseconds */
+  timeout?: number;
+  /** Default headers */
+  headers?: Record<string, string>;
+  /** Retry configuration */
+  retryConfig?: Partial<RetryConfig>;
+  /** Rate limiting configuration */
+  rateLimitConfig?: Partial<RateLimitConfig>;
+  /** Enable performance monitoring */
+  enablePerformanceMonitoring?: boolean;
+  /** Enable logging */
+  enableLogging?: boolean;
 }
 
 // ============================================================================
@@ -236,6 +347,8 @@ export interface APIError {
   timestamp: string;
   /** Whether error can be retried */
   isRetryable: boolean;
+  /** Original error object (optional) */
+  originalError?: any;
 }
 
 // Note: Error classes (PumpFunError, NetworkError, etc.) are imported from '../utils/errors'
@@ -419,6 +532,52 @@ export interface RateLimitState {
 }
 
 // ============================================================================
+// Rate Limiter Types
+// ============================================================================
+
+/**
+ * Rate limit information from API responses
+ */
+export interface RateLimitInfo {
+  /** Rate limit from response headers */
+  limit?: number;
+  /** Remaining requests in current window */
+  remaining?: number;
+  /** Window reset time timestamp */
+  resetTime?: number;
+  /** Retry after delay in seconds */
+  retryAfter?: number;
+}
+
+/**
+ * Enhanced rate limiting state tracker for internal use
+ */
+export interface RateLimiterState {
+  /** Requests in current window */
+  requests: number;
+  /** Window start timestamp */
+  windowStart: number;
+  /** Last request timestamp */
+  lastRequestTime: number;
+  /** Current burst count */
+  burstCount: number;
+  /** Burst window start timestamp */
+  burstStartTime: number;
+  /** Consecutive errors count */
+  consecutiveErrors: number;
+  /** Total requests made */
+  totalRequests: number;
+  /** Total errors encountered */
+  totalErrors: number;
+  /** Backoff end timestamp */
+  backoffUntil?: number;
+  /** Adaptive rate limit (adjusted based on performance) */
+  adaptiveRateLimit?: number;
+  /** Last adaptive adjustment timestamp */
+  lastAdaptiveAdjustment?: number;
+}
+
+// ============================================================================
 // Enumerations
 // ============================================================================
 
@@ -501,7 +660,8 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxDelay: 30000,
   backoffFactor: 2,
   retryableStatusCodes: [408, 429, 500, 502, 503, 504],
-  retryableErrors: ['NETWORK_ERROR', 'SERVER_ERROR', 'RATE_LIMITED'],
+  retryableErrors: ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENOTFOUND'],
+  enableJitter: true,
 };
 
 /**
@@ -516,8 +676,25 @@ export const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
   maxBurst: 10,
   enableBackoff: true,
   baseBackoffMs: 1000,
-  maxBackoffMs: 30000,
-  backoffMultiplier: 2,
+  maxBackoffMs: 10000,
+  backoffMultiplier: 1.5,
+};
+
+/**
+ * Live streaming optimized rate limiting configuration
+ * Specifically tuned for live streaming data endpoints with conservative limits
+ */
+export const LIVE_STREAMING_RATE_LIMIT_CONFIG: RateLimitConfig = {
+  maxRequestsPerWindow: 55, // Slightly under the 60/minute limit to provide buffer
+  windowMs: 60000, // 1 minute
+  enableRetryAfter: true,
+  enableSlidingWindow: true,
+  enableBurstProtection: true,
+  maxBurst: 8, // More conservative burst protection for live streaming
+  enableBackoff: true,
+  baseBackoffMs: 1500, // More conservative base delay for live streaming
+  maxBackoffMs: 90000, // Longer max backoff for live streaming endpoints
+  backoffMultiplier: 2.5, // More aggressive backoff for live streaming
 };
 
 /**
@@ -526,8 +703,14 @@ export const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
 export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
   level: LogLevel.INFO,
   enableConsole: true,
-  enableColors: true,
   enableTimestamps: true,
+  enableColors: true,
+  enableStructuredLogs: false,
+  enablePerformanceLogging: true,
+  enableRequestLogging: true,
+  enableErrorTracking: true,
+  enableFileLogging: false,
+  logFilePath: undefined,
 };
 
 /**

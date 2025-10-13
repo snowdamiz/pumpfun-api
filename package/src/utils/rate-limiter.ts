@@ -6,88 +6,31 @@
  * Enhanced version with adaptive backoff and burst protection.
  */
 
-/**
- * Rate limiting configuration (will be moved to types.ts in T013)
- */
-export interface RateLimitConfig {
-  maxRequestsPerWindow: number;
-  windowMs: number;
-  enableRetryAfter: boolean;
-  enableSlidingWindow: boolean;
-  enableBurstProtection: boolean;
-  maxBurst?: number;
-  enableBackoff: boolean;
-  baseBackoffMs: number;
-  maxBackoffMs: number;
-  backoffMultiplier: number;
-}
+import {
+  RateLimitConfig,
+  RateLimitInfo,
+  RateLimiterState,
+  DEFAULT_RATE_LIMIT_CONFIG,
+  LIVE_STREAMING_RATE_LIMIT_CONFIG,
+} from '../client/types';
+import {
+  ONE_SECOND_MS,
+  BURST_WINDOW_MS,
+  ADAPTIVE_ADJUSTMENT_INTERVAL_MS,
+} from './constants';
 
-/**
- * Rate limit information (will be moved to types.ts in T013)
- */
-export interface RateLimitInfo {
-  limit?: number;
-  remaining?: number;
-  resetTime?: number;
-  retryAfter?: number;
-}
+// Re-export types for backward compatibility
+export type { RateLimitConfig, RateLimitInfo };
 
-/**
- * Default rate limiting configuration
- */
-const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
-  maxRequestsPerWindow: 60,
-  windowMs: 60000, // 1 minute
-  enableRetryAfter: true,
-  enableSlidingWindow: true,
-  enableBurstProtection: true,
-  maxBurst: 10,
-  enableBackoff: true,
-  baseBackoffMs: 1000,
-  maxBackoffMs: 60000,
-  backoffMultiplier: 2,
-};
 
-/**
- * Live streaming optimized rate limiting configuration
- * Specifically tuned for live streaming data endpoints with conservative limits
- */
-const LIVE_STREAMING_RATE_LIMIT_CONFIG: RateLimitConfig = {
-  maxRequestsPerWindow: 55, // Slightly under the 60/minute limit to provide buffer
-  windowMs: 60000, // 1 minute
-  enableRetryAfter: true,
-  enableSlidingWindow: true,
-  enableBurstProtection: true,
-  maxBurst: 8, // More conservative burst protection for live streaming
-  enableBackoff: true,
-  baseBackoffMs: 1500, // More conservative base delay for live streaming
-  maxBackoffMs: 90000, // Longer max backoff for live streaming endpoints
-  backoffMultiplier: 2.5, // More aggressive backoff for live streaming
-};
 
-/**
- * Rate limiting state tracker
- */
-interface RateLimitState {
-  requests: number;
-  windowStart: number;
-  lastRequestTime: number;
-  burstCount: number;
-  burstStartTime: number;
-  consecutiveErrors: number;
-  backoffUntil?: number;
-  totalRequests: number;
-  totalErrors: number;
-  adaptiveRateLimit?: number;
-  lastAdaptiveAdjustment?: number;
-}
 
 /**
  * Rate Limiter class for managing API request rates
  */
 export class RateLimiter {
   private config: RateLimitConfig;
-  private state: RateLimitState;
+  private state: RateLimiterState;
   private rateLimitInfo?: RateLimitInfo;
 
   constructor(config: Partial<RateLimitConfig> = {}) {
@@ -208,7 +151,7 @@ export class RateLimiter {
         limit: response.limit || this.rateLimitInfo?.limit,
         remaining: response.remaining || 0,
         resetTime: response.resetTime || now + this.config.windowMs,
-        retryAfter: response.retryAfter || Math.ceil(this.config.windowMs / 1000),
+        retryAfter: response.retryAfter || Math.ceil(this.config.windowMs / ONE_SECOND_MS),
       };
     }
 
@@ -252,10 +195,10 @@ export class RateLimiter {
     }
 
     const now = Date.now();
-    const burstWindow = 1000; // 1 second burst window
+    // Use BURST_WINDOW_MS constant
 
     // Reset burst window if needed
-    if (now - this.state.burstStartTime >= burstWindow) {
+    if (now - this.state.burstStartTime >= BURST_WINDOW_MS) {
       this.state.burstCount = 0;
       this.state.burstStartTime = now;
     }
@@ -322,10 +265,10 @@ export class RateLimiter {
       return;
     }
 
-    const burstWindow = 1000; // 1 second burst window
+    // Use BURST_WINDOW_MS constant
 
     // Reset burst window if needed
-    if (now - this.state.burstStartTime >= burstWindow) {
+    if (now - this.state.burstStartTime >= BURST_WINDOW_MS) {
       this.state.burstCount = 0;
       this.state.burstStartTime = now;
     }
@@ -383,7 +326,7 @@ export class RateLimiter {
 
     // Check burst reset time
     if (this.isBurstLimited()) {
-      const burstEnd = this.state.burstStartTime + 1000;
+      const burstEnd = this.state.burstStartTime + BURST_WINDOW_MS;
       if (now < burstEnd) {
         return burstEnd - now;
       }
@@ -411,7 +354,7 @@ export class RateLimiter {
     const timeSinceLastAdjustment = now - this.state.lastAdaptiveAdjustment;
 
     // Only adjust every 30 seconds
-    if (timeSinceLastAdjustment < 30000) {
+    if (timeSinceLastAdjustment < ADAPTIVE_ADJUSTMENT_INTERVAL_MS) {
       return;
     }
 
@@ -566,7 +509,7 @@ export async function liveStreamingRateLimitMiddleware<T>(
     // Log waiting for debugging (useful for live streaming applications)
     if (waitTime > 0) {
       console.debug(
-        `[LiveStreamingRateLimit] Waiting ${waitTime}ms before request to ${options?.endpointName || 'live streaming endpoint'}`,
+        `[LiveStreamingRateLimit] Waiting ${waitTime}ms before request to ${options?.endpointName ?? 'live streaming endpoint'}`,
         {
           currentRequests: stats.requests,
           maxRequests: stats.maxRequests,
@@ -623,7 +566,7 @@ export async function liveStreamingRateLimitMiddleware<T>(
 
         // Enhanced logging for rate limit issues
         console.warn(
-          `[LiveStreamingRateLimit] Rate limit exceeded for ${options?.endpointName || 'live streaming endpoint'}`,
+          `[LiveStreamingRateLimit] Rate limit exceeded for ${options?.endpointName ?? 'live streaming endpoint'}`,
           {
             statusCode,
             retryAfter: (error as any).retryAfter,
