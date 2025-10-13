@@ -987,7 +987,11 @@ export class PumpFunAPIClient {
   }
 
   /**
-   * Validate a single LiveCoin object
+   * Validate a single LiveCoin object against TypeScript interface specification
+   *
+   * This method performs comprehensive runtime validation to ensure the API response
+   * matches the LiveCoin TypeScript interface exactly, including type checking,
+   * value constraints, and format validation.
    *
    * @param coin The coin object to validate
    * @param index The index of the coin in the array (for error reporting)
@@ -996,9 +1000,10 @@ export class PumpFunAPIClient {
    */
   private validateLiveCoin(coin: any, index: number): LiveCoin {
     const errors: string[] = [];
+    const warnings: string[] = [];
 
-    // Required field validation
-    const requiredFields = [
+    // Required field validation (all required fields from LiveCoin interface)
+    const requiredFields: (keyof LiveCoin)[] = [
       'mint', 'name', 'symbol', 'description', 'image_uri', 'creator',
       'created_timestamp', 'market_cap', 'usd_market_cap', 'is_currently_live',
       'num_participants', 'reply_count', 'thumbnail', 'last_reply'
@@ -1010,54 +1015,243 @@ export class PumpFunAPIClient {
       }
     }
 
-    // Type validation
-    if (coin.mint && typeof coin.mint !== 'string') {
-      errors.push(`mint must be string, got ${typeof coin.mint}`);
+    // Optional field validation (should be undefined, null, or correct type)
+    const optionalFields: (keyof LiveCoin)[] = ['twitter', 'telegram', 'livestream_title'];
+    for (const field of optionalFields) {
+      if (coin[field] !== undefined && coin[field] !== null && typeof coin[field] !== 'string') {
+        errors.push(`Optional field ${field} must be string or undefined/null, got ${typeof coin[field]}`);
+      }
     }
-    if (coin.name && typeof coin.name !== 'string') {
-      errors.push(`name must be string, got ${typeof coin.name}`);
+
+    // Strict type validation for all fields
+    if (coin.mint !== undefined) {
+      if (typeof coin.mint !== 'string') {
+        errors.push(`mint must be string, got ${typeof coin.mint}`);
+      } else {
+        // Validate Solana address format (base58, 32-44 characters)
+        if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(coin.mint)) {
+          errors.push(`mint must be valid Solana address (base58, 32-44 chars), got: "${coin.mint}"`);
+        }
+      }
     }
-    if (coin.symbol && typeof coin.symbol !== 'string') {
-      errors.push(`symbol must be string, got ${typeof coin.symbol}`);
+
+    if (coin.name !== undefined) {
+      if (typeof coin.name !== 'string') {
+        errors.push(`name must be string, got ${typeof coin.name}`);
+      } else {
+        if (coin.name.length === 0) {
+          errors.push(`name cannot be empty string`);
+        } else if (coin.name.length > 100) {
+          errors.push(`name exceeds maximum length of 100 characters (${coin.name.length})`);
+        }
+      }
     }
-    if (coin.market_cap !== undefined && typeof coin.market_cap !== 'number') {
-      errors.push(`market_cap must be number, got ${typeof coin.market_cap}`);
+
+    if (coin.symbol !== undefined) {
+      if (typeof coin.symbol !== 'string') {
+        errors.push(`symbol must be string, got ${typeof coin.symbol}`);
+      } else {
+        if (coin.symbol.length === 0) {
+          errors.push(`symbol cannot be empty string`);
+        } else if (coin.symbol.length > 20) {
+          errors.push(`symbol exceeds maximum length of 20 characters (${coin.symbol.length})`);
+        }
+      }
     }
-    if (coin.usd_market_cap !== undefined && typeof coin.usd_market_cap !== 'number') {
-      errors.push(`usd_market_cap must be number, got ${typeof coin.usd_market_cap}`);
+
+    if (coin.description !== undefined) {
+      if (typeof coin.description !== 'string') {
+        errors.push(`description must be string, got ${typeof coin.description}`);
+      } else {
+        if (coin.description.length === 0) {
+          errors.push(`description cannot be empty string`);
+        } else if (coin.description.length > 1000) {
+          errors.push(`description exceeds maximum length of 1000 characters (${coin.description.length})`);
+        }
+      }
     }
+
+    if (coin.image_uri !== undefined) {
+      if (typeof coin.image_uri !== 'string') {
+        errors.push(`image_uri must be string, got ${typeof coin.image_uri}`);
+      } else {
+        try {
+          const url = new URL(coin.image_uri);
+          if (!['http:', 'https:'].includes(url.protocol)) {
+            errors.push(`image_uri must use HTTP or HTTPS protocol, got: ${url.protocol}`);
+          }
+        } catch {
+          errors.push(`image_uri must be valid URL, got: "${coin.image_uri}"`);
+        }
+      }
+    }
+
+    if (coin.thumbnail !== undefined) {
+      if (typeof coin.thumbnail !== 'string') {
+        errors.push(`thumbnail must be string, got ${typeof coin.thumbnail}`);
+      } else {
+        try {
+          const url = new URL(coin.thumbnail);
+          if (!['http:', 'https:'].includes(url.protocol)) {
+            errors.push(`thumbnail must use HTTP or HTTPS protocol, got: ${url.protocol}`);
+          }
+        } catch {
+          errors.push(`thumbnail must be valid URL, got: "${coin.thumbnail}"`);
+        }
+      }
+    }
+
+    if (coin.creator !== undefined) {
+      if (typeof coin.creator !== 'string') {
+        errors.push(`creator must be string, got ${typeof coin.creator}`);
+      } else {
+        // Validate Solana address format
+        if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(coin.creator)) {
+          errors.push(`creator must be valid Solana address (base58, 32-44 chars), got: "${coin.creator}"`);
+        }
+      }
+    }
+
+    // Optional social media validation
+    if (coin.twitter !== undefined && coin.twitter !== null) {
+      if (typeof coin.twitter === 'string') {
+        // Twitter handle validation (1-15 chars, alphanumeric + underscore)
+        if (!/^[a-zA-Z0-9_]{1,15}$/.test(coin.twitter)) {
+          warnings.push(`twitter handle appears invalid: "${coin.twitter}" (should be 1-15 chars, alphanumeric + underscore)`);
+        }
+      }
+    }
+
+    if (coin.telegram !== undefined && coin.telegram !== null) {
+      if (typeof coin.telegram === 'string') {
+        try {
+          const url = new URL(coin.telegram);
+          if (!['http:', 'https:'].includes(url.protocol)) {
+            errors.push(`telegram must use HTTP or HTTPS protocol, got: ${url.protocol}`);
+          }
+        } catch {
+          errors.push(`telegram must be valid URL, got: "${coin.telegram}"`);
+        }
+      }
+    }
+
+    if (coin.livestream_title !== undefined && coin.livestream_title !== null) {
+      if (typeof coin.livestream_title === 'string') {
+        if (coin.livestream_title.length > 200) {
+          errors.push(`livestream_title exceeds maximum length of 200 characters (${coin.livestream_title.length})`);
+        }
+      }
+    }
+
+    // Numeric field validation with constraints
+    const numericFields = [
+      { name: 'created_timestamp', min: 0, max: Date.now() + 86400000 }, // Allow some future time for server clock differences
+      { name: 'market_cap', min: 0 },
+      { name: 'usd_market_cap', min: 0 },
+      { name: 'num_participants', min: 0, max: 10000 }, // Reasonable upper bound
+      { name: 'reply_count', min: 0, max: 100000 }, // Reasonable upper bound
+      { name: 'last_reply', min: 0, max: Date.now() + 86400000 }
+    ];
+
+    for (const field of numericFields) {
+      const value = coin[field.name];
+      if (value !== undefined) {
+        if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
+          errors.push(`${field.name} must be finite number, got: ${value}`);
+        } else {
+          if (field.min !== undefined && value < field.min) {
+            errors.push(`${field.name} must be >= ${field.min}, got: ${value}`);
+          }
+          if (field.max !== undefined && value > field.max) {
+            warnings.push(`${field.name} exceeds expected maximum (${field.max}): ${value}`);
+          }
+        }
+      }
+    }
+
+    // Boolean field validation
     if (coin.is_currently_live !== undefined && typeof coin.is_currently_live !== 'boolean') {
       errors.push(`is_currently_live must be boolean, got ${typeof coin.is_currently_live}`);
     }
-    if (coin.num_participants !== undefined && (typeof coin.num_participants !== 'number' || coin.num_participants < 0)) {
-      errors.push(`num_participants must be non-negative number, got ${coin.num_participants}`);
-    }
-    if (coin.reply_count !== undefined && (typeof coin.reply_count !== 'number' || coin.reply_count < 0)) {
-      errors.push(`reply_count must be non-negative number, got ${coin.reply_count}`);
+
+    // Business logic validation
+    if (coin.created_timestamp !== undefined && coin.last_reply !== undefined) {
+      if (coin.last_reply < coin.created_timestamp) {
+        warnings.push(`last_reply (${coin.last_reply}) is before created_timestamp (${coin.created_timestamp})`);
+      }
     }
 
-    // Value validation
-    if (coin.created_timestamp !== undefined && (typeof coin.created_timestamp !== 'number' || coin.created_timestamp < 0)) {
-      errors.push(`created_timestamp must be non-negative number, got ${coin.created_timestamp}`);
+    if (coin.is_currently_live === true && coin.num_participants === 0) {
+      warnings.push(`Stream marked as live but has 0 participants`);
     }
-    if (coin.last_reply !== undefined && (typeof coin.last_reply !== 'number' || coin.last_reply < 0)) {
-      errors.push(`last_reply must be non-negative number, got ${coin.last_reply}`);
+
+    if (coin.is_currently_live === false && coin.num_participants > 0) {
+      warnings.push(`Stream marked as not live but has ${coin.num_participants} participants`);
+    }
+
+    // Log warnings if any exist
+    if (warnings.length > 0) {
+      this.logger.warn('Live coin validation warnings', {
+        coinIndex: index,
+        mint: coin.mint,
+        warnings,
+        coinData: this.sanitizeCoinForLogging(coin)
+      });
     }
 
     if (errors.length > 0) {
       throw new ServerError({
-        message: `Invalid live coin data at index ${index}:\n${errors.map((error, index) => `  ${index + 1}. ${error}`).join('\n')}`,
+        message: `Invalid live coin data at index ${index}:\n${errors.map((error, idx) => `  ${idx + 1}. ${error}`).join('\n')}`,
         statusCode: 500,
         details: {
           coinIndex: index,
           validationErrors: errors,
-          coinData: coin
+          validationWarnings: warnings,
+          coinData: this.sanitizeCoinForLogging(coin)
         }
       });
     }
 
-    // Return validated coin (casting to LiveCoin type)
-    return coin as LiveCoin;
+    // Create a clean, validated LiveCoin object with proper typing
+    const validatedCoin: LiveCoin = {
+      mint: coin.mint,
+      name: coin.name,
+      symbol: coin.symbol,
+      description: coin.description,
+      image_uri: coin.image_uri,
+      creator: coin.creator,
+      created_timestamp: coin.created_timestamp,
+      market_cap: coin.market_cap,
+      usd_market_cap: coin.usd_market_cap,
+      is_currently_live: coin.is_currently_live,
+      num_participants: coin.num_participants,
+      reply_count: coin.reply_count,
+      thumbnail: coin.thumbnail,
+      last_reply: coin.last_reply,
+      // Only include optional fields if they exist and are valid
+      ...(coin.twitter && { twitter: coin.twitter }),
+      ...(coin.telegram && { telegram: coin.telegram }),
+      ...(coin.livestream_title && { livestream_title: coin.livestream_title })
+    };
+
+    return validatedCoin;
+  }
+
+  /**
+   * Sanitize coin data for logging (remove potentially sensitive info)
+   *
+   * @param coin The coin object to sanitize
+   * @returns Sanitized coin object safe for logging
+   */
+  private sanitizeCoinForLogging(coin: any): any {
+    const sanitized = { ...coin };
+
+    // Remove or truncate potentially sensitive fields
+    if (sanitized.description && sanitized.description.length > 100) {
+      sanitized.description = sanitized.description.substring(0, 100) + '...';
+    }
+
+    return sanitized;
   }
 
   /**
