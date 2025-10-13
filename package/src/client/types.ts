@@ -236,6 +236,68 @@ export interface LoggerConfig {
   customLogger?: (level: LogLevel, message: string, data?: any) => void;
 }
 
+/**
+ * Validated configuration object for ConfigurationManager
+ */
+export interface ValidatedConfig {
+  /** API base URL */
+  baseURL: string;
+  /** Request timeout in milliseconds */
+  timeout: number;
+  /** WebSocket URL */
+  wsURL: string;
+  /** API key for authentication (optional) */
+  apiKey?: string;
+  /** Auth token for authentication (optional) */
+  authToken?: string;
+  /** Logger configuration */
+  loggerConfig?: Partial<typeof DEFAULT_LOGGER_CONFIG>;
+  /** Rate limiting configuration */
+  rateLimitConfig?: Partial<typeof DEFAULT_RATE_LIMIT_CONFIG>;
+  /** Retry configuration */
+  retryConfig?: Partial<typeof DEFAULT_RETRY_CONFIG>;
+}
+
+/**
+ * Configuration for ErrorHandler
+ */
+export interface ErrorHandlerConfig {
+  /** API base URL */
+  baseURL: string;
+  /** Request timeout in milliseconds */
+  timeout: number;
+  /** Logger configuration (optional) */
+  loggerConfig?: any;
+  /** Rate limiting configuration (optional) */
+  rateLimitConfig?: any;
+  /** Retry configuration (optional) */
+  retryConfig?: any;
+}
+
+/**
+ * Configuration for LiveStreamsService
+ */
+export interface LiveStreamsServiceConfig {
+  /** API base URL */
+  baseURL: string;
+  /** Request timeout in milliseconds */
+  timeout: number;
+  /** Retry configuration (optional) */
+  retryConfig?: any;
+}
+
+/**
+ * Runtime state for services
+ */
+export interface ServiceState {
+  /** Total request count */
+  requestCount: number;
+  /** Total error count */
+  errorCount: number;
+  /** Timestamp of last request */
+  lastRequestTime: number;
+}
+
 // ============================================================================
 // Logger Types
 // ============================================================================
@@ -744,6 +806,8 @@ export const NUMERIC_CONSTANTS = {
   RATE_LIMIT_TIMEOUT_MS: 60000,
   /** HTTP status code for rate limit exceeded */
   RATE_LIMIT_STATUS: 429,
+  /** Maximum timeout in milliseconds */
+  MAX_TIMEOUT: 300000,
   /** WebSocket close code for normal closure */
   WS_CLOSE_NORMAL: 1000,
   /** WebSocket close code for going away */
