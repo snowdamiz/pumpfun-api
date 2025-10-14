@@ -303,7 +303,7 @@
   - Validate clip data against StreamClip TypeScript interfaces
   - Story: US5
 
-- [ ] **T050** - Add clip type filtering and sorting [P]
+- [x] **T050** - Add clip type filtering and sorting [P] ✅
   - File: `package/src/services/live/stream-filters.service.ts`
   - Support filtering by COMPLETE/HIGHLIGHT types and various sorting options
   - Story: US5

@@ -1644,3 +1644,286 @@ export async function getStreamClipsExample() {
     throw error;
   }
 }
+
+/**
+ * Example 22: Advanced Clip Filtering and Sorting (T050)
+ *
+ * This example demonstrates the new T050 functionality for advanced clip filtering
+ * and sorting with type filtering, duration ranges, view count filtering, and custom criteria.
+ */
+export async function demonstrateClipFilteringT050() {
+  console.log('=== T050: Advanced Clip Filtering and Sorting Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 15000,
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableColors: true,
+    },
+  });
+
+  try {
+    // First get some live coins to test with
+    console.log('🔍 Getting live coins to test advanced clip filtering...');
+    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
+
+    if (liveCoins.length === 0) {
+      console.log('⚠️ No live coins found to test clip filtering');
+      return { client, filterTests: [] };
+    }
+
+    console.log(
+      `🎬 Testing T050 clip filtering for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
+    );
+
+    const filterTests: Array<{
+      mint: string;
+      name: string;
+      symbol: string;
+      tests: {
+        testName: string;
+        result: any;
+        error?: string;
+      }[];
+    }> = [];
+
+    for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
+      const coin = liveCoins[i];
+      if (!coin) {
+        console.log(`${i + INDEX_OFFSET}. ⚠️ Skipping undefined coin data`);
+        continue;
+      }
+
+      console.log(`${i + INDEX_OFFSET}. Testing T050 filtering for: ${coin.name} (${coin.symbol})`);
+      console.log(`   🔗 Mint: ${coin.mint}`);
+      console.log(`   👥 Live Participants: ${coin.num_participants}`);
+
+      const tests: { testName: string; result: any; error?: string }[] = [];
+
+      try {
+        // Test 1: Get complete clips only with new T050 method
+        console.log(`   🎬 Testing getCompleteClips...`);
+        const completeClips = await client.getCompleteClips(coin.mint, {
+          limit: 5,
+          sortBy: 'created_at',
+          sortOrder: 'DESC'
+        });
+        tests.push({ testName: 'getCompleteClips', result: completeClips });
+        console.log(`      ✅ Found ${completeClips.clips.length} complete clips (${completeClips.metrics.processingTimeMs}ms)`);
+
+        // Test 2: Get highlight clips only
+        console.log(`   🌟 Testing getHighlightClips...`);
+        const highlightClips = await client.getHighlightClips(coin.mint, {
+          limit: 5,
+          sortBy: 'view_count',
+          sortOrder: 'DESC'
+        });
+        tests.push({ testName: 'getHighlightClips', result: highlightClips });
+        console.log(`      ✅ Found ${highlightClips.clips.length} highlight clips (${highlightClips.metrics.processingTimeMs}ms)`);
+
+        // Test 3: Get clips sorted by duration
+        console.log(`   ⏱️ Testing getClipsByDuration...`);
+        const clipsByDuration = await client.getClipsByDuration(coin.mint, 'DESC', {
+          limit: 5,
+          minDuration: 10
+        });
+        tests.push({ testName: 'getClipsByDuration', result: clipsByDuration });
+        console.log(`      ✅ Found ${clipsByDuration.clips.length} clips by duration (${clipsByDuration.metrics.processingTimeMs}ms)`);
+
+        // Test 4: Get clips sorted by view count
+        console.log(`   👀 Testing getClipsByViewCount...`);
+        const clipsByViewCount = await client.getClipsByViewCount(coin.mint, 'DESC', {
+          limit: 5,
+          minViewCount: 10
+        });
+        tests.push({ testName: 'getClipsByViewCount', result: clipsByViewCount });
+        console.log(`      ✅ Found ${clipsByViewCount.clips.length} clips by view count (${clipsByViewCount.metrics.processingTimeMs}ms)`);
+
+        // Test 5: Get clips by duration range
+        console.log(`   📏 Testing getClipsByDurationRange...`);
+        const clipsByDurationRange = await client.getClipsByDurationRange(coin.mint, 15, 300, {
+          limit: 5,
+          sortBy: 'duration',
+          sortOrder: 'ASC'
+        });
+        tests.push({ testName: 'getClipsByDurationRange', result: clipsByDurationRange });
+        console.log(`      ✅ Found ${clipsByDurationRange.clips.length} clips in duration range (${clipsByDurationRange.metrics.processingTimeMs}ms)`);
+
+        // Test 6: Get clips by view count range
+        console.log(`   📊 Testing getClipsByViewCountRange...`);
+        const clipsByViewRange = await client.getClipsByViewCountRange(coin.mint, 50, 5000, {
+          limit: 5,
+          sortBy: 'view_count',
+          sortOrder: 'DESC'
+        });
+        tests.push({ testName: 'getClipsByViewCountRange', result: clipsByViewRange });
+        console.log(`      ✅ Found ${clipsByViewRange.clips.length} clips in view count range (${clipsByViewRange.metrics.processingTimeMs}ms)`);
+
+        // Test 7: Get clips with URLs available
+        console.log(`   🔗 Testing getClipsWithUrls...`);
+        const clipsWithUrls = await client.getClipsWithUrls(coin.mint, {
+          limit: 5,
+          clipType: 'COMPLETE',
+          sortBy: 'view_count',
+          sortOrder: 'DESC'
+        });
+        tests.push({ testName: 'getClipsWithUrls', result: clipsWithUrls });
+        console.log(`      ✅ Found ${clipsWithUrls.clips.length} clips with URLs (${clipsWithUrls.metrics.processingTimeMs}ms)`);
+
+        // Test 8: Advanced filtering with multiple criteria
+        console.log(`   🎯 Testing filterStreamClips (advanced criteria)...`);
+        const advancedFiltered = await client.filterStreamClips(coin.mint, {
+          clipType: 'HIGHLIGHT',
+          minDuration: 10,
+          maxDuration: 180,
+          minViewCount: 20,
+          hasUrl: true,
+          sortBy: 'view_count',
+          sortOrder: 'DESC',
+          limit: 3
+        });
+        tests.push({ testName: 'filterStreamClips (Advanced)', result: advancedFiltered });
+        console.log(`      ✅ Advanced filter: ${advancedFiltered.clips.length} clips (${advancedFiltered.metrics.processingTimeMs}ms)`);
+        console.log(`         📊 Total before filter: ${advancedFiltered.totalBeforeFilter}`);
+        console.log(`         🚫 Filtered out: ${advancedFiltered.filteredOut}`);
+        console.log(`         🔧 Filters applied: ${advancedFiltered.metrics.filtersApplied}`);
+
+        filterTests.push({
+          mint: coin.mint,
+          name: coin.name,
+          symbol: coin.symbol,
+          tests
+        });
+
+      } catch (error) {
+        console.log(`   ❌ Error in T050 filtering: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+        // Add error entry for all tests
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        tests.push(
+          { testName: 'getCompleteClips', result: null, error: errorMsg },
+          { testName: 'getHighlightClips', result: null, error: errorMsg },
+          { testName: 'getClipsByDuration', result: null, error: errorMsg },
+          { testName: 'getClipsByViewCount', result: null, error: errorMsg },
+          { testName: 'getClipsByDurationRange', result: null, error: errorMsg },
+          { testName: 'getClipsByViewCountRange', result: null, error: errorMsg },
+          { testName: 'getClipsWithUrls', result: null, error: errorMsg },
+          { testName: 'filterStreamClips (Advanced)', result: null, error: errorMsg }
+        );
+
+        filterTests.push({
+          mint: coin.mint,
+          name: coin.name,
+          symbol: coin.symbol,
+          tests
+        });
+      }
+
+      console.log('');
+    }
+
+    // T050 Summary Statistics
+    console.log(`📊 T050 Clip Filtering Summary:`);
+    console.log(`   Total Tested: ${filterTests.length}`);
+
+    if (filterTests.length > 0) {
+      const allTests = filterTests.flatMap(ft => ft.tests);
+      const successfulTests = allTests.filter(t => !t.error && t.result);
+      const failedTests = allTests.filter(t => t.error);
+
+      console.log(`   Total Tests Run: ${allTests.length}`);
+      console.log(`   Successful: ${successfulTests.length}`);
+      console.log(`   Failed: ${failedTests.length}`);
+
+      if (successfulTests.length > 0) {
+        // Count by test type
+        const testCounts = new Map<string, number>();
+        successfulTests.forEach(test => {
+          const current = testCounts.get(test.testName) || 0;
+          testCounts.set(test.testName, current + 1);
+        });
+
+        console.log(`\n📈 Success by Test Type:`);
+        testCounts.forEach((count, testName) => {
+          console.log(`   ${testName}: ${count} successful`);
+        });
+
+        // Performance metrics
+        const avgProcessingTime = successfulTests.reduce((sum, test) => {
+          return sum + (test.result.metrics?.processingTimeMs || 0);
+        }, 0) / successfulTests.length;
+
+        console.log(`\n⚡ Performance Metrics:`);
+        console.log(`   Average Processing Time: ${avgProcessingTime.toFixed(2)}ms`);
+
+        if (avgProcessingTime < 100) {
+          console.log(`   ✅ Excellent performance (< 100ms)`);
+        } else if (avgProcessingTime < 500) {
+          console.log(`   ✅ Good performance (< 500ms)`);
+        } else {
+          console.log(`   ⚠️ Moderate performance (${avgProcessingTime.toFixed(2)}ms)`);
+        }
+      }
+
+      // Show some successful results
+      const successfulResults = successfulTests.slice(0, 3);
+      if (successfulResults.length > 0) {
+        console.log(`\n🎉 Successful T050 Operations:`);
+        successfulResults.forEach((test, index) => {
+          console.log(`   ${index + 1}. ${test.testName} - Found ${test.result.clips?.length || 0} clips`);
+        });
+      }
+    }
+
+    console.log('\n🎯 T050 Clip Filtering Usage Examples:');
+    console.log('   // Get complete clips sorted by creation date');
+    console.log('   const completeClips = await client.getCompleteClips(mintId, {');
+    console.log('     limit: 10,');
+    console.log('     sortBy: "created_at",');
+    console.log('     sortOrder: "DESC"');
+    console.log('   });');
+    console.log('');
+    console.log('   // Get highlight clips sorted by view count');
+    console.log('   const highlights = await client.getHighlightClips(mintId, {');
+    console.log('     limit: 5,');
+    console.log('     sortBy: "view_count",');
+    console.log('     sortOrder: "DESC"');
+    console.log('   });');
+    console.log('');
+    console.log('   // Get clips within duration range');
+    console.log('   const durationClips = await client.getClipsByDurationRange(mintId, 30, 300, {');
+    console.log('     limit: 10,');
+    console.log('     sortBy: "duration",');
+    console.log('     sortOrder: "ASC"');
+    console.log('   });');
+    console.log('');
+    console.log('   // Advanced filtering with multiple criteria');
+    console.log('   const filteredClips = await client.filterStreamClips(mintId, {');
+    console.log('     clipType: "HIGHLIGHT",');
+    console.log('     minDuration: 15,');
+    console.log('     maxViewCount: 1000,');
+    console.log('     hasUrl: true,');
+    console.log('     sortBy: "view_count",');
+    console.log('     sortOrder: "DESC",');
+    console.log('     limit: 5');
+    console.log('   });');
+    console.log('');
+    console.log('💡 T050 Features (NEW):');
+    console.log('   ✅ Clip type filtering (COMPLETE/HIGHLIGHT)');
+    console.log('   ✅ Duration range filtering');
+    console.log('   ✅ View count range filtering');
+    console.log('   ✅ Date range filtering');
+    console.log('   ✅ URL availability filtering');
+    console.log('   ✅ Multiple sorting options (duration, view_count, created_at, clip_type)');
+    console.log('   ✅ Advanced composite filtering');
+    console.log('   ✅ Performance metrics tracking');
+    console.log('   ✅ Comprehensive error handling');
+    console.log('   ✅ TypeScript type safety');
+
+    return { client, filterTests };
+  } catch (error) {
+    console.error('❌ Error in T050 clip filtering example:', error);
+    throw error;
+  }
+}

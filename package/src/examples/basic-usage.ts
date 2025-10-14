@@ -79,6 +79,7 @@ export const joinLiveStreamExample = livestreamExamples.joinLiveStreamExample;
 export const searchLiveStreamsExample = livestreamExamples.searchLiveStreamsExample;
 export const getStreamStatisticsExample = livestreamExamples.getStreamStatisticsExample;
 export const getStreamClipsExample = livestreamExamples.getStreamClipsExample;
+export const demonstrateClipFilteringT050 = livestreamExamples.demonstrateClipFilteringT050;
 
 // Advanced Filtering Examples (T043)
 export const demonstratePredefinedFilters = advancedFilteringExamples.demonstratePredefinedFilters;
@@ -138,6 +139,9 @@ export async function runAllBasicExamples() {
     joinStream: null as any,
     searchStreams: null as any,
     streamStatistics: null as any,
+
+    // T050 clip filtering examples
+    clipFilteringT050: null as any,
 
     // Advanced filtering examples (T043)
     predefinedFilters: null as any,
@@ -229,6 +233,12 @@ export async function runAllBasicExamples() {
     results.streamStatistics = await getStreamStatisticsExample();
     console.log();
 
+    // T050 clip filtering examples
+    console.log('🎬 T050 CLIP FILTERING EXAMPLES');
+    console.log('='.repeat(REPEAT_COUNT_60));
+    results.clipFilteringT050 = await demonstrateClipFilteringT050();
+    console.log();
+
     // Advanced filtering examples (T043)
     console.log('🔍 ADVANCED FILTERING EXAMPLES (T043)');
     console.log('='.repeat(REPEAT_COUNT_60));
@@ -314,6 +324,7 @@ export const examples = {
   joinLiveStreamExample,
   searchLiveStreamsExample,
   getStreamStatisticsExample,
+  getStreamClipsExample,
   jurisdictionAndConnectionExample,
 
   // Advanced filtering examples (T043)
@@ -323,6 +334,9 @@ export const examples = {
   demonstrateCompoundQueries,
   demonstratePerformanceComparison,
   runAdvancedFilteringExamples,
+
+  // T050 clip filtering examples
+  demonstrateClipFilteringT050,
 
   // Main runner
   runAllBasicExamples,
@@ -409,8 +423,9 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('   7. Join live stream demo (test joinLiveStream)');
   console.log('   8. Stream statistics demo (test getStreamStatistics)');
   console.log('   9. Stream clips demo (test getStreamClips)');
-  console.log('   10. Advanced filtering demo (T043 - custom filters, compound queries)');
-  console.log('   11. All examples (comprehensive demo)');
+  console.log('   10. T050 clip filtering demo (advanced filtering and sorting)');
+  console.log('   11. Advanced filtering demo (T043 - custom filters, compound queries)');
+  console.log('   12. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -544,6 +559,18 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'clip-filtering':
+    case 'advanced-clips':
+      demonstrateClipFilteringT050()
+        .then(() => {
+          console.log('\n✅ T050 clip filtering demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 T050 clip filtering demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'advanced':
     case 'filtering':
     case 'advanced-filtering':
@@ -581,6 +608,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   search        - Search live streams demo (searchLiveStreams)');
       console.log('   statistics    - Stream statistics demo (getStreamStatistics)');
       console.log('   clips         - Stream clips demo (getStreamClips)');
+      console.log('   clip filter   - Clip filtering demo (advanced filtering and sorting)');
       console.log(
         '   advanced      - Advanced filtering demo (T043 - custom filters, compound queries)'
       );

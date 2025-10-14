@@ -29,6 +29,9 @@ import {
   AdvancedFilterResult,
   CompoundFilterQuery,
   StreamFilterFunction,
+  ClipFilterParams,
+  ClipFilterResult,
+  StreamFilters,
 } from '../services/live/stream-filters.service';
 
 interface JurisdictionResponse {
@@ -61,6 +64,7 @@ export class PumpFunAPIClient {
   private configManager!: ConfigurationManager;
   private errorHandler!: ErrorHandler;
   private liveStreamsService!: LiveStreamsService;
+  private streamFilters!: StreamFilters;
 
   /** Runtime state tracking */
   private state!: ClientState;
@@ -148,6 +152,15 @@ export class PumpFunAPIClient {
       this.rateLimiter,
       this.errorHandler,
       this.state
+    );
+
+    // Initialize stream filters service
+    this.streamFilters = new StreamFilters(
+      this.logger,
+      this.errorHandler,
+      (params?: GetLiveCoinsParams) => this.liveStreamsService.getLiveCoins(params),
+      (mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number) =>
+        this.liveStreamsService.getStreamClips(mintId, clipType, limit)
     );
 
     this.logger.debug('All components initialized successfully');
@@ -402,6 +415,177 @@ export class PumpFunAPIClient {
   ): Promise<StreamClip[]> {
     this.ensureInitialized();
     return this.liveStreamsService.getStreamClips(mintId, clipType, limit);
+  }
+
+  /**
+   * Filter stream clips by type and other criteria
+   *
+   * This method provides advanced filtering capabilities for stream clips,
+   * allowing filtering by clip type, duration, view count, date range, and custom criteria.
+   *
+   * @param mintId - The mint identifier of the token to filter clips for
+   * @param params - Filtering and sorting parameters
+   * @returns Promise<ClipFilterResult> - Filtered clips with metadata
+   */
+  public async filterStreamClips(
+    mintId: string,
+    params: ClipFilterParams
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.filterClipsByMint(mintId, params);
+  }
+
+  /**
+   * Get complete clips only
+   *
+   * @param mintId - The mint identifier of the token to get complete clips for
+   * @param params - Optional additional filtering parameters
+   * @returns Promise<ClipFilterResult> - Complete clips with metadata
+   */
+  public async getCompleteClips(
+    mintId: string,
+    params?: Omit<ClipFilterParams, 'clipType'>
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.getCompleteClips(mintId, params);
+  }
+
+  /**
+   * Get highlight clips only
+   *
+   * @param mintId - The mint identifier of the token to get highlight clips for
+   * @param params - Optional additional filtering parameters
+   * @returns Promise<ClipFilterResult> - Highlight clips with metadata
+   */
+  public async getHighlightClips(
+    mintId: string,
+    params?: Omit<ClipFilterParams, 'clipType'>
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.getHighlightClips(mintId, params);
+  }
+
+  /**
+   * Get clips sorted by duration
+   *
+   * @param mintId - The mint identifier of the token to get clips for
+   * @param sortOrder - Sort order ('ASC' for shortest first, 'DESC' for longest first)
+   * @param params - Optional additional filtering parameters
+   * @returns Promise<ClipFilterResult> - Clips sorted by duration with metadata
+   */
+  public async getClipsByDuration(
+    mintId: string,
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+    params?: Omit<ClipFilterParams, 'sortBy' | 'sortOrder'>
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.getClipsByDuration(mintId, sortOrder, params);
+  }
+
+  /**
+   * Get clips sorted by view count
+   *
+   * @param mintId - The mint identifier of the token to get clips for
+   * @param sortOrder - Sort order ('ASC' for lowest first, 'DESC' for highest first)
+   * @param params - Optional additional filtering parameters
+   * @returns Promise<ClipFilterResult> - Clips sorted by view count with metadata
+   */
+  public async getClipsByViewCount(
+    mintId: string,
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+    params?: Omit<ClipFilterParams, 'sortBy' | 'sortOrder'>
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.getClipsByViewCount(mintId, sortOrder, params);
+  }
+
+  /**
+   * Get clips sorted by creation date
+   *
+   * @param mintId - The mint identifier of the token to get clips for
+   * @param sortOrder - Sort order ('ASC' for oldest first, 'DESC' for newest first)
+   * @param params - Optional additional filtering parameters
+   * @returns Promise<ClipFilterResult> - Clips sorted by creation date with metadata
+   */
+  public async getClipsByCreationDate(
+    mintId: string,
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+    params?: Omit<ClipFilterParams, 'sortBy' | 'sortOrder'>
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.getClipsByCreationDate(mintId, sortOrder, params);
+  }
+
+  /**
+   * Get clips with duration within specified range
+   *
+   * @param mintId - The mint identifier of the token to get clips for
+   * @param minDuration - Minimum duration in seconds
+   * @param maxDuration - Maximum duration in seconds
+   * @param params - Optional additional filtering parameters
+   * @returns Promise<ClipFilterResult> - Clips within duration range with metadata
+   */
+  public async getClipsByDurationRange(
+    mintId: string,
+    minDuration: number,
+    maxDuration: number,
+    params?: Omit<ClipFilterParams, 'minDuration' | 'maxDuration'>
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.getClipsByDurationRange(mintId, minDuration, maxDuration, params);
+  }
+
+  /**
+   * Get clips with view count within specified range
+   *
+   * @param mintId - The mint identifier of the token to get clips for
+   * @param minViewCount - Minimum view count
+   * @param maxViewCount - Maximum view count
+   * @param params - Optional additional filtering parameters
+   * @returns Promise<ClipFilterResult> - Clips within view count range with metadata
+   */
+  public async getClipsByViewCountRange(
+    mintId: string,
+    minViewCount: number,
+    maxViewCount: number,
+    params?: Omit<ClipFilterParams, 'minViewCount' | 'maxViewCount'>
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.getClipsByViewCountRange(mintId, minViewCount, maxViewCount, params);
+  }
+
+  /**
+   * Get clips created within date range
+   *
+   * @param mintId - The mint identifier of the token to get clips for
+   * @param startDate - Start date in ISO format
+   * @param endDate - End date in ISO format
+   * @param params - Optional additional filtering parameters
+   * @returns Promise<ClipFilterResult> - Clips within date range with metadata
+   */
+  public async getClipsByDateRange(
+    mintId: string,
+    startDate: string,
+    endDate: string,
+    params?: Omit<ClipFilterParams, 'createdDateRange'>
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.getClipsByDateRange(mintId, startDate, endDate, params);
+  }
+
+  /**
+   * Get clips that have URLs available
+   *
+   * @param mintId - The mint identifier of the token to get clips for
+   * @param params - Optional additional filtering parameters
+   * @returns Promise<ClipFilterResult> - Clips with available URLs with metadata
+   */
+  public async getClipsWithUrls(
+    mintId: string,
+    params?: Omit<ClipFilterParams, 'hasUrl'>
+  ): Promise<ClipFilterResult> {
+    this.ensureInitialized();
+    return this.streamFilters.getClipsWithUrls(mintId, params);
   }
 
   /**

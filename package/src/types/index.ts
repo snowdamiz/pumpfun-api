@@ -94,4 +94,8 @@ export type {
   AdvancedFilterResult,
   CompoundFilterQuery,
   FilterGroup,
+  ClipFilterCriteria,
+  ClipSortOptions,
+  ClipFilterParams,
+  ClipFilterResult,
 } from '../services/live/stream-filters.service';

@@ -10,6 +10,7 @@ import {
   GetLiveCoinsParams,
   SearchLiveStreamsParams,
   StreamSearchResult,
+  StreamClip,
 } from '../../types';
 
 // ============================================================================
@@ -121,6 +122,76 @@ export interface FilterGroup {
   /** Logical operator within group (AND/OR) */
   operator?: 'AND' | 'OR';
 }
+
+// ============================================================================
+// Stream Clip Filtering Types
+// ============================================================================
+
+/**
+ * Stream clip filtering criteria
+ */
+export interface ClipFilterCriteria {
+  /** Filter by clip type */
+  clipType?: 'COMPLETE' | 'HIGHLIGHT';
+  /** Filter by minimum duration in seconds */
+  minDuration?: number;
+  /** Filter by maximum duration in seconds */
+  maxDuration?: number;
+  /** Filter by minimum view count */
+  minViewCount?: number;
+  /** Filter by maximum view count */
+  maxViewCount?: number;
+  /** Filter by creation date range */
+  createdDateRange?: {
+    after?: string; // ISO date string
+    before?: string; // ISO date string
+  };
+  /** Filter by clip URL availability */
+  hasUrl?: boolean;
+  /** Custom filter functions */
+  customFilters?: ((clip: StreamClip) => boolean)[];
+}
+
+/**
+ * Clip sorting options
+ */
+export interface ClipSortOptions {
+  /** Sort field */
+  sortBy?: 'created_at' | 'duration' | 'view_count' | 'clip_type';
+  /** Sort order */
+  sortOrder?: 'ASC' | 'DESC';
+}
+
+/**
+ * Clip filtering and sorting parameters
+ */
+export interface ClipFilterParams extends ClipFilterCriteria, ClipSortOptions {
+  /** Maximum number of clips to return */
+  limit?: number;
+  /** Offset for pagination */
+  offset?: number;
+}
+
+/**
+ * Result of clip filtering operation
+ */
+export interface ClipFilterResult {
+  /** Filtered clips */
+  clips: StreamClip[];
+  /** Total number of clips before filtering */
+  totalBeforeFilter: number;
+  /** Number of clips filtered out */
+  filteredOut: number;
+  /** Applied filter criteria summary */
+  appliedCriteria: {
+    [key: string]: any;
+  };
+  /** Performance metrics */
+  metrics: {
+    processingTimeMs: number;
+    filtersApplied: number;
+  };
+}
 import { ConfigurationError } from '../../infrastructure/error-handling/errors';
 import { Logger } from '../../infrastructure/logging/logger';
 import { ErrorHandler } from '../../infrastructure/error-handling/error-handler';
@@ -133,7 +204,8 @@ export class StreamFilters {
   constructor(
     private logger: Logger,
     private errorHandler: ErrorHandler,
-    private getLiveCoinsFn: (params?: GetLiveCoinsParams) => Promise<LiveCoin[]>
+    private getLiveCoinsFn: (params?: GetLiveCoinsParams) => Promise<LiveCoin[]>,
+    private getStreamClipsFn?: (mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number) => Promise<StreamClip[]>
   ) {
     // Required for parameter properties
   }
@@ -706,6 +778,282 @@ export class StreamFilters {
 
       throw pumpFunError;
     }
+  }
+
+  // ============================================================================
+  // Stream Clip Filtering Methods
+  // ============================================================================
+
+  /**
+   * Filter stream clips by type and other criteria
+   */
+  async filterStreamClips(
+    clips: StreamClip[],
+    params: ClipFilterParams
+  ): Promise<ClipFilterResult> {
+    const startTime = Date.now();
+
+    this.logger.info('Filtering stream clips', {
+      totalClips: clips.length,
+      params: this.summarizeClipParams(params),
+    });
+
+    try {
+      // Apply filtering
+      let filteredClips = this.performClipFiltering(clips, params);
+
+      // Apply sorting
+      if (params.sortBy) {
+        filteredClips = this.sortClips(filteredClips, params.sortBy, params.sortOrder || 'DESC');
+      }
+
+      // Apply pagination
+      const offset = params.offset || 0;
+      const limit = params.limit;
+      let finalClips = filteredClips;
+
+      if (limit !== undefined) {
+        finalClips = filteredClips.slice(offset, offset + limit);
+      } else {
+        finalClips = filteredClips.slice(offset);
+      }
+
+      const processingTime = Date.now() - startTime;
+      const result: ClipFilterResult = {
+        clips: finalClips,
+        totalBeforeFilter: clips.length,
+        filteredOut: clips.length - filteredClips.length,
+        appliedCriteria: this.summarizeClipParams(params),
+        metrics: {
+          processingTimeMs: processingTime,
+          filtersApplied: this.countActiveClipFilters(params),
+        },
+      };
+
+      this.logger.info('Stream clip filtering completed', {
+        totalBeforeFilter: result.totalBeforeFilter,
+        filteredOut: result.filteredOut,
+        finalCount: result.clips.length,
+        processingTimeMs: result.metrics.processingTimeMs,
+        filtersApplied: result.metrics.filtersApplied,
+      });
+
+      return result;
+    } catch (error) {
+      const pumpFunError = this.errorHandler.handleError(error, 'filterStreamClips', {
+        params,
+        suggestions: [
+          'Check if the filter parameters are valid',
+          'Verify the clips array is properly formatted',
+          'Consider reducing the complexity of filter criteria',
+        ],
+      });
+
+      this.logger.error('Failed to filter stream clips', {
+        error: pumpFunError.toJSON(),
+        params,
+      });
+
+      throw pumpFunError;
+    }
+  }
+
+  /**
+   * Filter and sort stream clips for a specific mint
+   */
+  async filterClipsByMint(
+    mintId: string,
+    params: ClipFilterParams
+  ): Promise<ClipFilterResult> {
+    if (!this.getStreamClipsFn) {
+      throw new ConfigurationError({
+        message: 'getStreamClips function not provided to StreamFilters constructor',
+      });
+    }
+
+    this.logger.info('Filtering clips by mint', {
+      mintId,
+      params: this.summarizeClipParams(params),
+    });
+
+    try {
+      // Fetch clips for the mint - get all types initially for comprehensive filtering
+      const allClips: StreamClip[] = [];
+
+      // Get COMPLETE clips
+      try {
+        const completeClips = await this.getStreamClipsFn(mintId, 'COMPLETE', 100);
+        allClips.push(...completeClips);
+      } catch (error) {
+        this.logger.warn('Failed to fetch COMPLETE clips', {
+          mintId,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+
+      // Get HIGHLIGHT clips
+      try {
+        const highlightClips = await this.getStreamClipsFn(mintId, 'HIGHLIGHT', 100);
+        allClips.push(...highlightClips);
+      } catch (error) {
+        this.logger.warn('Failed to fetch HIGHLIGHT clips', {
+          mintId,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+
+      // Remove duplicates (same ID) while preserving order
+      const uniqueClips = this.removeDuplicateClips(allClips);
+
+      // Apply filtering and sorting
+      return this.filterStreamClips(uniqueClips, params);
+    } catch (error) {
+      const pumpFunError = this.errorHandler.handleError(error, 'filterClipsByMint', {
+        mintId,
+        params,
+        suggestions: [
+          'Check if the mintId is valid',
+          'Verify the API server is accessible',
+          'Consider checking if the mint has any available clips',
+        ],
+      });
+
+      this.logger.error('Failed to filter clips by mint', {
+        error: pumpFunError.toJSON(),
+        mintId,
+        params,
+      });
+
+      throw pumpFunError;
+    }
+  }
+
+  /**
+   * Get complete clips only
+   */
+  async getCompleteClips(
+    mintId: string,
+    params?: Omit<ClipFilterParams, 'clipType'>
+  ): Promise<ClipFilterResult> {
+    return this.filterClipsByMint(mintId, { ...params, clipType: 'COMPLETE' });
+  }
+
+  /**
+   * Get highlight clips only
+   */
+  async getHighlightClips(
+    mintId: string,
+    params?: Omit<ClipFilterParams, 'clipType'>
+  ): Promise<ClipFilterResult> {
+    return this.filterClipsByMint(mintId, { ...params, clipType: 'HIGHLIGHT' });
+  }
+
+  /**
+   * Get clips sorted by duration
+   */
+  async getClipsByDuration(
+    mintId: string,
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+    params?: Omit<ClipFilterParams, 'sortBy' | 'sortOrder'>
+  ): Promise<ClipFilterResult> {
+    return this.filterClipsByMint(mintId, {
+      ...params,
+      sortBy: 'duration',
+      sortOrder
+    });
+  }
+
+  /**
+   * Get clips sorted by view count
+   */
+  async getClipsByViewCount(
+    mintId: string,
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+    params?: Omit<ClipFilterParams, 'sortBy' | 'sortOrder'>
+  ): Promise<ClipFilterResult> {
+    return this.filterClipsByMint(mintId, {
+      ...params,
+      sortBy: 'view_count',
+      sortOrder
+    });
+  }
+
+  /**
+   * Get clips sorted by creation date
+   */
+  async getClipsByCreationDate(
+    mintId: string,
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+    params?: Omit<ClipFilterParams, 'sortBy' | 'sortOrder'>
+  ): Promise<ClipFilterResult> {
+    return this.filterClipsByMint(mintId, {
+      ...params,
+      sortBy: 'created_at',
+      sortOrder
+    });
+  }
+
+  /**
+   * Get clips with duration within specified range
+   */
+  async getClipsByDurationRange(
+    mintId: string,
+    minDuration: number,
+    maxDuration: number,
+    params?: Omit<ClipFilterParams, 'minDuration' | 'maxDuration'>
+  ): Promise<ClipFilterResult> {
+    return this.filterClipsByMint(mintId, {
+      ...params,
+      minDuration,
+      maxDuration
+    });
+  }
+
+  /**
+   * Get clips with view count within specified range
+   */
+  async getClipsByViewCountRange(
+    mintId: string,
+    minViewCount: number,
+    maxViewCount: number,
+    params?: Omit<ClipFilterParams, 'minViewCount' | 'maxViewCount'>
+  ): Promise<ClipFilterResult> {
+    return this.filterClipsByMint(mintId, {
+      ...params,
+      minViewCount,
+      maxViewCount
+    });
+  }
+
+  /**
+   * Get clips created within date range
+   */
+  async getClipsByDateRange(
+    mintId: string,
+    startDate: string,
+    endDate: string,
+    params?: Omit<ClipFilterParams, 'createdDateRange'>
+  ): Promise<ClipFilterResult> {
+    return this.filterClipsByMint(mintId, {
+      ...params,
+      createdDateRange: {
+        after: startDate,
+        before: endDate
+      }
+    });
+  }
+
+  /**
+   * Get clips that have URLs available
+   */
+  async getClipsWithUrls(
+    mintId: string,
+    params?: Omit<ClipFilterParams, 'hasUrl'>
+  ): Promise<ClipFilterResult> {
+    return this.filterClipsByMint(mintId, {
+      ...params,
+      hasUrl: true
+    });
   }
 
   /**
@@ -1448,5 +1796,248 @@ export class StreamFilters {
         }, 0)
       );
     }, 0);
+  }
+
+  // ============================================================================
+  // Stream Clip Private Helper Methods
+  // ============================================================================
+
+  /**
+   * Perform filtering on stream clips
+   */
+  private performClipFiltering(clips: StreamClip[], params: ClipFilterParams): StreamClip[] {
+    return clips.filter(clip => this.matchesClipCriteria(clip, params));
+  }
+
+  /**
+   * Check if a clip matches the filter criteria
+   */
+  private matchesClipCriteria(clip: StreamClip, params: ClipFilterParams): boolean {
+    // Filter by clip type
+    if (params.clipType && clip.clipType !== params.clipType) {
+      return false;
+    }
+
+    // Filter by duration range
+    if (params.minDuration !== undefined) {
+      const duration = clip.duration ?? 0;
+      if (duration < params.minDuration) {
+        return false;
+      }
+    }
+
+    if (params.maxDuration !== undefined) {
+      const duration = clip.duration ?? 0;
+      if (duration > params.maxDuration) {
+        return false;
+      }
+    }
+
+    // Filter by view count range
+    if (params.minViewCount !== undefined) {
+      const viewCount = clip.view_count ?? 0;
+      if (viewCount < params.minViewCount) {
+        return false;
+      }
+    }
+
+    if (params.maxViewCount !== undefined) {
+      const viewCount = clip.view_count ?? 0;
+      if (viewCount > params.maxViewCount) {
+        return false;
+      }
+    }
+
+    // Filter by creation date range
+    if (params.createdDateRange) {
+      if (!clip.created_at) {
+        return false; // If no creation date, can't filter by date range
+      }
+
+      const clipDate = new Date(clip.created_at);
+
+      if (params.createdDateRange.after) {
+        const afterDate = new Date(params.createdDateRange.after);
+        if (clipDate < afterDate) {
+          return false;
+        }
+      }
+
+      if (params.createdDateRange.before) {
+        const beforeDate = new Date(params.createdDateRange.before);
+        if (clipDate > beforeDate) {
+          return false;
+        }
+      }
+    }
+
+    // Filter by URL availability
+    if (params.hasUrl !== undefined) {
+      const hasUrl = !!(clip.clip_url && clip.clip_url.trim() !== '');
+      if (params.hasUrl !== hasUrl) {
+        return false;
+      }
+    }
+
+    // Apply custom filter functions
+    if (params.customFilters && params.customFilters.length > 0) {
+      for (const customFilter of params.customFilters) {
+        if (!customFilter(clip)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Sort clips by specified field and order
+   */
+  private sortClips(
+    clips: StreamClip[],
+    sortBy: 'created_at' | 'duration' | 'view_count' | 'clip_type',
+    sortOrder: 'ASC' | 'DESC'
+  ): StreamClip[] {
+    return clips.sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortBy) {
+        case 'created_at':
+          // Handle null/undefined dates
+          const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+          comparison = aDate - bDate;
+          break;
+
+        case 'duration':
+          const aDuration = a.duration ?? 0;
+          const bDuration = b.duration ?? 0;
+          comparison = aDuration - bDuration;
+          break;
+
+        case 'view_count':
+          const aViewCount = a.view_count ?? 0;
+          const bViewCount = b.view_count ?? 0;
+          comparison = aViewCount - bViewCount;
+          break;
+
+        case 'clip_type':
+          // Sort by clip type (COMPLETE before HIGHLIGHT)
+          const aType = a.clipType === 'COMPLETE' ? 0 : 1;
+          const bType = b.clipType === 'COMPLETE' ? 0 : 1;
+          comparison = aType - bType;
+          break;
+
+        default:
+          comparison = 0;
+      }
+
+      return sortOrder === 'ASC' ? comparison : -comparison;
+    });
+  }
+
+  /**
+   * Remove duplicate clips by ID while preserving order
+   */
+  private removeDuplicateClips(clips: StreamClip[]): StreamClip[] {
+    const seen = new Set<string>();
+    return clips.filter(clip => {
+      if (seen.has(clip.id)) {
+        return false;
+      }
+      seen.add(clip.id);
+      return true;
+    });
+  }
+
+  /**
+   * Summarize clip filter parameters for logging
+   */
+  private summarizeClipParams(params: ClipFilterParams): Record<string, any> {
+    const summary: Record<string, any> = {};
+
+    if (params.clipType) {
+      summary.clipType = params.clipType;
+    }
+
+    if (params.minDuration !== undefined || params.maxDuration !== undefined) {
+      summary.durationRange = {
+        min: params.minDuration,
+        max: params.maxDuration,
+      };
+    }
+
+    if (params.minViewCount !== undefined || params.maxViewCount !== undefined) {
+      summary.viewCountRange = {
+        min: params.minViewCount,
+        max: params.maxViewCount,
+      };
+    }
+
+    if (params.createdDateRange) {
+      summary.createdDateRange = params.createdDateRange;
+    }
+
+    if (params.hasUrl !== undefined) {
+      summary.hasUrl = params.hasUrl;
+    }
+
+    if (params.sortBy) {
+      summary.sorting = {
+        sortBy: params.sortBy,
+        sortOrder: params.sortOrder || 'DESC',
+      };
+    }
+
+    if (params.customFilters && params.customFilters.length > 0) {
+      summary.customFilters = params.customFilters.length;
+    }
+
+    if (params.limit !== undefined) {
+      summary.pagination = {
+        limit: params.limit,
+        offset: params.offset || 0,
+      };
+    }
+
+    return summary;
+  }
+
+  /**
+   * Count active clip filters
+   */
+  private countActiveClipFilters(params: ClipFilterParams): number {
+    let count = 0;
+
+    if (params.clipType) {
+      count++;
+    }
+
+    if (params.minDuration !== undefined || params.maxDuration !== undefined) {
+      count++;
+    }
+
+    if (params.minViewCount !== undefined || params.maxViewCount !== undefined) {
+      count++;
+    }
+
+    if (params.createdDateRange) {
+      count++;
+    }
+
+    if (params.hasUrl !== undefined) {
+      count++;
+    }
+
+    if (params.customFilters && params.customFilters.length > 0) {
+      count++;
+    }
+
+    if (params.sortBy) {
+      count++;
+    }
+
+    return count;
   }
 }
