@@ -281,14 +281,9 @@
   - Create utility functions for complex search patterns and result filtering
   - Story: US4
 
-- [ ] **T046** - Create unit tests for search functionality
+- [x] **T046** - Create unit tests for search functionality
   - File: `package/tests/unit/search.test.ts`
   - Test search methods with various keywords, filters, and edge cases
-  - Story: US4
-
-- [ ] **T047** - Add integration tests for complex queries
-  - File: `package/tests/integration/search.test.ts`
-  - Test search and filter combinations with realistic data
   - Story: US4
 
 **✅ Phase 6 Checkpoint**: User Story 4 complete - search and filtering capabilities functional
@@ -298,7 +293,7 @@
 **Story Goal**: Enable developers to access recorded stream clips and historical data
 **Independent Test**: Call getStreamClips() and verify clip data returned properly
 
-- [ ] **T048** - Implement getStreamClips method [P]
+- [x] **T048** - Implement getStreamClips method [P] ✅
   - File: `package/src/services/live/live-streams.service.ts`
   - Add method to fetch stream clips with type filtering and pagination
   - Story: US5

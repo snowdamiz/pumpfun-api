@@ -17,6 +17,8 @@ import {
   SearchLiveStreamsParams,
   StreamSearchResult,
   StreamStatistics,
+  StreamClip,
+  GetStreamClipsParams,
 } from '../../types';
 import {
   AdvancedFilterCriteria,
@@ -785,6 +787,260 @@ export class LiveStreamsService {
     }
 
     return summary;
+  }
+
+  /**
+   * Get stream clips for a specific mint with type filtering and pagination
+   *
+   * This method fetches recorded stream clips for a specific token mint,
+   * supporting filtering by clip type (COMPLETE/HIGHLIGHT) and pagination.
+   *
+   * @param mintId - The mint identifier of the token to get clips for
+   * @param clipType - Optional clip type filter ('COMPLETE' | 'HIGHLIGHT')
+   * @param limit - Optional maximum number of clips to return (default: 10)
+   * @returns Promise<StreamClip[]> - Array of stream clips
+   */
+  async getStreamClips(
+    mintId: string,
+    clipType?: 'COMPLETE' | 'HIGHLIGHT',
+    limit: number = 10
+  ): Promise<StreamClip[]> {
+    this.logger.info('Fetching stream clips', {
+      mintId,
+      clipType,
+      limit,
+      operation: 'getStreamClips',
+    });
+
+    // Validate input parameters
+    if (!mintId || typeof mintId !== 'string' || mintId.trim().length === 0) {
+      const error = new Error('Invalid mintId provided: must be a non-empty string');
+      this.logger.warn('Invalid mintId provided for getStreamClips', {
+        mintId,
+        error: error.message,
+      });
+      throw error;
+    }
+
+    if (limit && (typeof limit !== 'number' || limit <= 0 || limit > 100)) {
+      const error = new Error('Invalid limit provided: must be a number between 1 and 100');
+      this.logger.warn('Invalid limit provided for getStreamClips', {
+        limit,
+        error: error.message,
+      });
+      throw error;
+    }
+
+    if (clipType && !['COMPLETE', 'HIGHLIGHT'].includes(clipType)) {
+      const error = new Error('Invalid clipType provided: must be "COMPLETE" or "HIGHLIGHT"');
+      this.logger.warn('Invalid clipType provided for getStreamClips', {
+        clipType,
+        error: error.message,
+      });
+      throw error;
+    }
+
+    try {
+      // Apply rate limiting before making the request
+      await this.rateLimiter.waitForRequest();
+
+      // Build query parameters
+      const queryParams: GetStreamClipsParams = {
+        limit,
+        ...(clipType && { clipType }),
+      };
+
+      const queryString = this.buildClipsQueryString(queryParams);
+      const endpoint = `/clips/${mintId.trim()}${queryString}`;
+
+      this.logger.debug('Sending clips request to API', {
+        endpoint,
+        mintId: mintId.trim(),
+        queryParams,
+        baseURL: this.config.livestreamURL,
+      });
+
+      // Make the GET request to fetch clips using livestream URL
+      const response = await (this.httpClient as any).client.request({
+        method: 'GET',
+        url: `${this.config.livestreamURL}${endpoint}`,
+        timeout: this.config.timeout ?? 10000,
+      });
+
+      // Update statistics
+      this.state.requestCount++;
+      this.state.lastRequestTime = Date.now();
+
+      // Record successful request in rate limiter
+      this.rateLimiter.recordRequest();
+
+      // Validate and process response (axios response object)
+      let clips: StreamClip[];
+      const responseData = response?.data;
+
+      // Handle API response format: {clips: StreamClip[], hasMore: boolean}
+      if (!responseData || typeof responseData !== 'object') {
+        this.logger.warn('Invalid response format from clips API', {
+          mintId: mintId.trim(),
+          response: responseData,
+        });
+        // Return empty array if response format is unexpected
+        clips = [];
+      } else if (responseData.clips && Array.isArray(responseData.clips)) {
+        // API returned {clips: [], hasMore: boolean} format
+        clips = responseData.clips.filter(clip => this.isValidStreamClip(clip, mintId.trim()));
+        this.logger.debug('Processed clips API response with pagination', {
+          mintId: mintId.trim(),
+          clipCount: clips.length,
+          hasMore: responseData.hasMore,
+        });
+      } else if (Array.isArray(responseData)) {
+        // Fallback: API returned array directly (older format)
+        clips = responseData.filter(clip => this.isValidStreamClip(clip, mintId.trim()));
+        this.logger.debug('Processed clips API response (array format)', {
+          mintId: mintId.trim(),
+          clipCount: clips.length,
+        });
+      } else {
+        // Unexpected format
+        this.logger.warn('Unexpected response format from clips API', {
+          mintId: mintId.trim(),
+          response: responseData,
+        });
+        clips = [];
+      }
+
+      this.logger.info('Successfully fetched stream clips', {
+        mintId: mintId.trim(),
+        clipType,
+        requestedLimit: limit,
+        returnedCount: clips.length,
+        responseTime: Date.now() - this.state.lastRequestTime,
+      });
+
+      return clips;
+    } catch (error) {
+      this.state.errorCount++;
+      const pumpFunError = this.errorHandler.handleError(error, 'getStreamClips', {
+        mintId: mintId.trim(),
+        clipType,
+        limit,
+        endpoint: `/clips/${mintId.trim()}`,
+        requestTime: new Date().toISOString(),
+      });
+
+      this.logger.error('Failed to fetch stream clips', {
+        mintId: mintId.trim(),
+        clipType,
+        limit,
+        error: pumpFunError.toJSON(),
+        resolution: pumpFunError.getResolution(),
+        errorCategory: pumpFunError.details?.errorCategory,
+      });
+
+      throw pumpFunError;
+    }
+  }
+
+  /**
+   * Build query string for stream clips request
+   */
+  private buildClipsQueryString(params: GetStreamClipsParams): string {
+    const queryParams = new URLSearchParams();
+
+    // Only add parameters that are provided and differ from defaults
+    if (params.limit && params.limit !== 10) {
+      queryParams.append('limit', params.limit.toString());
+    }
+
+    if (params.clipType) {
+      queryParams.append('clipType', params.clipType);
+    }
+
+    const queryString = queryParams.toString();
+    return queryString ? `?${queryString}` : '';
+  }
+
+  /**
+   * Validate stream clip object
+   */
+  private isValidStreamClip(clip: any, mintId: string): clip is StreamClip {
+    // Basic validation - check required fields
+    if (!clip || typeof clip !== 'object') {
+      this.logger.warn('Invalid clip format: not an object', { mintId });
+      return false;
+    }
+
+    // Check required fields
+    if (!clip.id || typeof clip.id !== 'string') {
+      this.logger.warn('Invalid clip: missing or invalid id', { mintId, clipId: clip.id });
+      return false;
+    }
+
+    if (!clip.mintId || typeof clip.mintId !== 'string') {
+      this.logger.warn('Invalid clip: missing or invalid mintId', {
+        mintId,
+        clipMintId: clip.mintId
+      });
+      return false;
+    }
+
+    // Ensure mintId matches
+    if (clip.mintId !== mintId) {
+      this.logger.warn('Invalid clip: mintId mismatch', {
+        expectedMintId: mintId,
+        clipMintId: clip.mintId
+      });
+      return false;
+    }
+
+    // Validate clipType if present
+    if (clip.clipType && !['COMPLETE', 'HIGHLIGHT'].includes(clip.clipType)) {
+      this.logger.warn('Invalid clip: invalid clipType', {
+        mintId,
+        clipType: clip.clipType
+      });
+      return false;
+    }
+
+    // Validate optional fields if present
+    if (clip.duration !== undefined) {
+      if (typeof clip.duration !== 'number' || clip.duration < 0) {
+        this.logger.warn('Invalid clip: invalid duration', {
+          mintId,
+          duration: clip.duration
+        });
+        return false;
+      }
+    }
+
+    if (clip.view_count !== undefined) {
+      if (typeof clip.view_count !== 'number' || clip.view_count < 0) {
+        this.logger.warn('Invalid clip: invalid view_count', {
+          mintId,
+          view_count: clip.view_count
+        });
+        return false;
+      }
+    }
+
+    // Validate URLs if present
+    const urlFields = ['clip_url'];
+    for (const field of urlFields) {
+      if (clip[field] && typeof clip[field] === 'string') {
+        try {
+          new URL(clip[field]);
+        } catch {
+          this.logger.warn(`Invalid clip: invalid ${field} URL`, {
+            mintId,
+            [field]: clip[field]
+          });
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 
   /**

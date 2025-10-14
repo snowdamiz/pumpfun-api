@@ -78,6 +78,7 @@ export const getVideoStreamAnalysisExample = livestreamExamples.getVideoStreamAn
 export const joinLiveStreamExample = livestreamExamples.joinLiveStreamExample;
 export const searchLiveStreamsExample = livestreamExamples.searchLiveStreamsExample;
 export const getStreamStatisticsExample = livestreamExamples.getStreamStatisticsExample;
+export const getStreamClipsExample = livestreamExamples.getStreamClipsExample;
 
 // Advanced Filtering Examples (T043)
 export const demonstratePredefinedFilters = advancedFilteringExamples.demonstratePredefinedFilters;
@@ -407,8 +408,9 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('   6. Video stream analysis demo (test getVideoStreamAnalysis)');
   console.log('   7. Join live stream demo (test joinLiveStream)');
   console.log('   8. Stream statistics demo (test getStreamStatistics)');
-  console.log('   9. Advanced filtering demo (T043 - custom filters, compound queries)');
-  console.log('   10. All examples (comprehensive demo)');
+  console.log('   9. Stream clips demo (test getStreamClips)');
+  console.log('   10. Advanced filtering demo (T043 - custom filters, compound queries)');
+  console.log('   11. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -529,6 +531,19 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'clips':
+    case 'stream-clips':
+    case 'get-stream-clips':
+      getStreamClipsExample()
+        .then(() => {
+          console.log('\n✅ Stream clips demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Stream clips demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'advanced':
     case 'filtering':
     case 'advanced-filtering':
@@ -565,6 +580,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   join          - Join live stream demo (joinLiveStream)');
       console.log('   search        - Search live streams demo (searchLiveStreams)');
       console.log('   statistics    - Stream statistics demo (getStreamStatistics)');
+      console.log('   clips         - Stream clips demo (getStreamClips)');
       console.log(
         '   advanced      - Advanced filtering demo (T043 - custom filters, compound queries)'
       );

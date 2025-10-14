@@ -741,13 +741,6 @@ export class StreamFilters {
     }
   }
 
-  private filterByParticipants(streams: LiveCoin[], minParticipants: number): LiveCoin[] {
-    return streams.filter(stream => {
-      const participants = stream.num_participants ?? 0;
-      return participants >= minParticipants;
-    });
-  }
-
   private filterByParticipantsAndLive(streams: LiveCoin[], minParticipants: number): LiveCoin[] {
     return streams.filter(stream => {
       const participants = stream.num_participants ?? 0;
@@ -761,12 +754,6 @@ export class StreamFilters {
       const bParticipants = b.num_participants ?? 0;
       return bParticipants - aParticipants;
     });
-  }
-
-  private getTopByParticipants(streams: LiveCoin[], limit: number): LiveCoin[] {
-    return streams
-      .sort((a, b) => (b.num_participants ?? 0) - (a.num_participants ?? 0))
-      .slice(0, limit);
   }
 
   private filterByTitle(streams: LiveCoin[]): LiveCoin[] {

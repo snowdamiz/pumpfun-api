@@ -22,6 +22,7 @@ import {
   SearchLiveStreamsParams,
   StreamSearchResult,
   StreamStatistics,
+  StreamClip,
 } from '../types';
 import {
   AdvancedFilterCriteria,
@@ -381,6 +382,26 @@ export class PumpFunAPIClient {
   public async joinLiveStream(mintId: string): Promise<JoinLiveStreamResponse> {
     this.ensureInitialized();
     return this.liveStreamsService.joinLiveStream(mintId);
+  }
+
+  /**
+   * Get stream clips for a specific mint with type filtering and pagination
+   *
+   * This method fetches recorded stream clips for a specific token mint,
+   * supporting filtering by clip type (COMPLETE/HIGHLIGHT) and pagination.
+   *
+   * @param mintId - The mint identifier of the token to get clips for
+   * @param clipType - Optional clip type filter ('COMPLETE' | 'HIGHLIGHT')
+   * @param limit - Optional maximum number of clips to return (default: 10)
+   * @returns Promise<StreamClip[]> - Array of stream clips
+   */
+  public async getStreamClips(
+    mintId: string,
+    clipType?: 'COMPLETE' | 'HIGHLIGHT',
+    limit: number = 10
+  ): Promise<StreamClip[]> {
+    this.ensureInitialized();
+    return this.liveStreamsService.getStreamClips(mintId, clipType, limit);
   }
 
   /**
