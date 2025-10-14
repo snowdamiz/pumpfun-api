@@ -1,5 +1,7 @@
 import typescript from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
+import { nodeResolve } from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
 import { createRequire } from 'module';
 import path from 'path';
 
@@ -63,10 +65,16 @@ export default [
       format: 'es'
     },
     plugins: [
+      nodeResolve({
+        preferBuiltins: false,
+        extensions: ['.js', '.ts']
+      }),
+      commonjs(),
       typescript({
         tsconfig: './tsconfig.build.json',
         declaration: false,
-        declarationMap: false
+        declarationMap: false,
+        moduleResolution: 'node'
       })
     ]
   },
@@ -82,10 +90,16 @@ export default [
       exports: 'named'
     },
     plugins: [
+      nodeResolve({
+        preferBuiltins: false,
+        extensions: ['.js', '.ts']
+      }),
+      commonjs(),
       typescript({
         tsconfig: './tsconfig.build.json',
         declaration: false,
-        declarationMap: false
+        declarationMap: false,
+        moduleResolution: 'node'
       })
     ]
   },
@@ -100,10 +114,16 @@ export default [
       format: 'es'
     },
     plugins: [
+      nodeResolve({
+        preferBuiltins: false,
+        extensions: ['.js', '.ts']
+      }),
+      commonjs(),
       typescript({
         tsconfig: './tsconfig.build.json',
         declaration: false,
-        declarationMap: false
+        declarationMap: false,
+        moduleResolution: 'node'
       })
     ]
   },
@@ -119,10 +139,16 @@ export default [
       exports: 'named'
     },
     plugins: [
+      nodeResolve({
+        preferBuiltins: false,
+        extensions: ['.js', '.ts']
+      }),
+      commonjs(),
       typescript({
         tsconfig: './tsconfig.build.json',
         declaration: false,
-        declarationMap: false
+        declarationMap: false,
+        moduleResolution: 'node'
       })
     ]
   },
@@ -137,10 +163,16 @@ export default [
       format: 'es'
     },
     plugins: [
+      nodeResolve({
+        preferBuiltins: false,
+        extensions: ['.js', '.ts']
+      }),
+      commonjs(),
       typescript({
         tsconfig: './tsconfig.build.json',
         declaration: false,
-        declarationMap: false
+        declarationMap: false,
+        moduleResolution: 'node'
       })
     ]
   },
@@ -156,10 +188,16 @@ export default [
       exports: 'named'
     },
     plugins: [
+      nodeResolve({
+        preferBuiltins: false,
+        extensions: ['.js', '.ts']
+      }),
+      commonjs(),
       typescript({
         tsconfig: './tsconfig.build.json',
         declaration: false,
-        declarationMap: false
+        declarationMap: false,
+        moduleResolution: 'node'
       })
     ]
   },

@@ -306,7 +306,7 @@ export async function getLiveCoinsExample() {
 
     const liveCoins = await client.getLiveCoins({
       limit: 5,
-      includeNsfw: false
+      includeNsfw: false,
     });
 
     console.log(`✅ Found ${liveCoins.length} live streaming coins:\n`);
@@ -566,7 +566,9 @@ export async function getStreamInfoExample() {
           console.log(`      🎯 Stream Mode: ${streamInfo.mode}`);
           console.log(`      📝 Title: "${streamInfo.title || 'No Title'}"`);
           console.log(`      👤 Creator: ${streamInfo.creatorAddress}`);
-          console.log(`      ⏰ Started: ${new Date(streamInfo.streamStartTimestamp).toLocaleString()}`);
+          console.log(
+            `      ⏰ Started: ${new Date(streamInfo.streamStartTimestamp).toLocaleString()}`
+          );
           console.log(`      📊 Downrank Score: ${streamInfo.downrankScore}`);
         } else {
           console.log(`   ⚠️ No active stream info found`);
@@ -578,7 +580,9 @@ export async function getStreamInfoExample() {
           info: streamInfo,
         });
       } catch (error) {
-        console.log(`   ❌ Error getting stream info: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.log(
+          `   ❌ Error getting stream info: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         streamInfos.push({
           mint: coin.mint,
           name: coin.name,
@@ -637,7 +641,9 @@ export async function jurisdictionAndConnectionExample() {
     const state = client.getState();
     console.log('\n🔧 Client State:');
     console.log(`   Initialized: ${state.isInitialized}`);
-    console.log(`   Last Request: ${state.lastRequestTime ? new Date(state.lastRequestTime).toLocaleString() : 'Never'}`);
+    console.log(
+      `   Last Request: ${state.lastRequestTime ? new Date(state.lastRequestTime).toLocaleString() : 'Never'}`
+    );
 
     return {
       client,
@@ -807,7 +813,7 @@ export async function runAllBasicExamples() {
 
     // API Usage Examples - Live Streams
     console.log('🔴 API USAGE EXAMPLES - LIVE STREAMS');
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
 
     results.liveCoins = await getLiveCoinsExample();
     console.log();
@@ -847,7 +853,6 @@ export async function runAllBasicExamples() {
     console.log('   • Error handling and rate limiting');
     console.log('   • Statistics and state management');
     console.log('   • Configuration management and lifecycle');
-
   } catch (error) {
     console.error('💥 Example execution failed:', error);
   }
@@ -897,13 +902,13 @@ export default runAllBasicExamples;
  */
 export async function quickTest() {
   console.log('🧪 Quick Test - Basic Usage Functionality');
-  console.log('=' .repeat(50));
+  console.log('='.repeat(50));
 
   try {
     // Test basic client creation
     console.log('1. Testing basic client creation...');
     const client = new PumpFunAPIClient({
-      loggerConfig: { level: LogLevel.WARN, enableConsole: false }
+      loggerConfig: { level: LogLevel.WARN, enableConsole: false },
     });
     console.log('✅ Client created successfully');
 

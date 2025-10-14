@@ -29,7 +29,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c && node scripts/fix-imports.js",
     "build:watch": "rollup -c -w",
     "dev": "npm run build:watch",
     "test": "jest",
@@ -84,6 +84,8 @@
     "ws": "^8.14.0"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^11.1.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^18.0.0",
