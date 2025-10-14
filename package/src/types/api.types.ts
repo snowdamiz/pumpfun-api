@@ -225,6 +225,28 @@ export interface GetStreamClipsParams {
   clipType?: 'COMPLETE' | 'HIGHLIGHT';
 }
 
+/**
+ * Parameters for searchLiveStreams request
+ */
+export interface SearchLiveStreamsParams {
+  /** Search keyword or phrase */
+  keyword: string;
+  /** Maximum number of results to return */
+  limit?: number;
+  /** Fields to search in (default: all fields) */
+  searchIn?: ('name' | 'symbol' | 'description' | 'title')[];
+  /** Minimum number of participants (optional filter) */
+  minParticipants?: number;
+  /** Whether to require currently live streams only */
+  currentlyLiveOnly?: boolean;
+  /** Sort order for results */
+  sortBy?: 'relevance' | 'participants' | 'market_cap' | 'created_timestamp';
+  /** Sort direction */
+  sortOrder?: 'ASC' | 'DESC';
+  /** Include NSFW content */
+  includeNsfw?: boolean;
+}
+
 // ============================================================================
 // Video Stream Analysis Types
 // ============================================================================
@@ -272,6 +294,28 @@ export interface StreamStatistics {
   };
   /** Statistics calculated at timestamp */
   calculatedAt: string;
+}
+
+/**
+ * Search result with relevance scoring
+ */
+export interface StreamSearchResult extends LiveCoin {
+  /** Relevance score (0-1, higher is more relevant) */
+  relevanceScore: number;
+  /** Matched fields and their scores */
+  matchedFields: {
+    name?: number;
+    symbol?: number;
+    description?: number;
+    title?: number;
+  };
+  /** Highlight snippets for matches */
+  snippets?: {
+    name?: string;
+    symbol?: string;
+    description?: string;
+    title?: string;
+  };
 }
 
 // ============================================================================

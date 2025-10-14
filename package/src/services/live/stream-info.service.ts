@@ -50,33 +50,30 @@ export class LiveStreamInfoService {
 
     try {
       // Use the livestream API endpoint from configuration
-      const response = await axios.get(
-        `${this.config.livestreamURL}/livestream?mintId=${mintId}`,
-        {
-          timeout: this.config.timeout,
-          headers: {
-            'User-Agent': 'PumpFun-API-Client/1.0.0',
-            Accept: 'application/json',
-          },
-        }
-      );
+      const response = await axios.get(`${this.config.livestreamURL}/livestream?mintId=${mintId}`, {
+        timeout: this.config.timeout,
+        headers: {
+          'User-Agent': 'PumpFun-API-Client/1.0.0',
+          Accept: 'application/json',
+        },
+      });
 
       const data = response.data;
 
       // Handle successful response
       if (data && typeof data === 'object') {
         const streamInfo: LiveStreamInfo = {
-          id: data.id || 0,
-          supabaseId: data.supabaseId || 0,
-          mintId: data.mintId || mintId,
-          creatorAddress: data.creatorAddress || '',
-          streamStartTimestamp: data.streamStartTimestamp || 0,
-          numParticipants: data.numParticipants || data.participants || 0,
-          maxParticipants: data.maxParticipants || 0,
-          isLive: data.isLive || false,
-          downrankScore: data.downrankScore || 0,
-          title: data.title || '',
-          mode: data.mode || 'broadcast',
+          id: data.id ?? 0,
+          supabaseId: data.supabaseId ?? 0,
+          mintId: data.mintId ?? mintId,
+          creatorAddress: data.creatorAddress ?? '',
+          streamStartTimestamp: data.streamStartTimestamp ?? 0,
+          numParticipants: data.numParticipants ?? data.participants ?? 0,
+          maxParticipants: data.maxParticipants ?? 0,
+          isLive: data.isLive ?? false,
+          downrankScore: data.downrankScore ?? 0,
+          title: data.title ?? '',
+          mode: data.mode ?? 'broadcast',
         };
 
         this.logger.info('Successfully fetched live stream information', {
@@ -109,7 +106,7 @@ export class LiveStreamInfoService {
 
         if (statusCode === 400) {
           throw new ValidationError({
-            message: `Invalid request for live stream info: ${responseData?.message || error.message}`,
+            message: `Invalid request for live stream info: ${responseData?.message ?? error.message}`,
             details: {
               mintId,
               statusCode,
@@ -122,7 +119,7 @@ export class LiveStreamInfoService {
 
         if (statusCode === 401) {
           throw new AuthenticationError({
-            message: `Unauthorized access to livestream API: ${responseData?.message || error.message}`,
+            message: `Unauthorized access to livestream API: ${responseData?.message ?? error.message}`,
             details: {
               mintId,
               statusCode,
@@ -132,7 +129,7 @@ export class LiveStreamInfoService {
 
         if (statusCode === 403) {
           throw new AuthorizationError({
-            message: `Forbidden access to livestream API: ${responseData?.message || error.message}`,
+            message: `Forbidden access to livestream API: ${responseData?.message ?? error.message}`,
             details: {
               mintId,
               statusCode,
@@ -142,7 +139,7 @@ export class LiveStreamInfoService {
 
         if (statusCode >= 500) {
           throw new ServerError({
-            message: `Server error from livestream API: ${responseData?.message || error.message}`,
+            message: `Server error from livestream API: ${responseData?.message ?? error.message}`,
             statusCode,
             details: {
               mintId,
@@ -152,7 +149,7 @@ export class LiveStreamInfoService {
         }
 
         throw new NetworkError({
-          message: `HTTP ${statusCode} error from livestream API: ${responseData?.message || error.message}`,
+          message: `HTTP ${statusCode} error from livestream API: ${responseData?.message ?? error.message}`,
           code: 'LIVESTREAM_API_HTTP_ERROR',
           statusCode,
           details: {
@@ -247,7 +244,7 @@ export class LiveStreamInfoService {
 
         if (statusCode === 400) {
           throw new ValidationError({
-            message: `Invalid request for creator approval check: ${responseData?.message || error.message}`,
+            message: `Invalid request for creator approval check: ${responseData?.message ?? error.message}`,
             details: {
               mintId,
               statusCode,
@@ -260,7 +257,7 @@ export class LiveStreamInfoService {
 
         if (statusCode === 401) {
           throw new AuthenticationError({
-            message: `Unauthorized access to creator approval API: ${responseData?.message || error.message}`,
+            message: `Unauthorized access to creator approval API: ${responseData?.message ?? error.message}`,
             details: {
               mintId,
               statusCode,
@@ -270,7 +267,7 @@ export class LiveStreamInfoService {
 
         if (statusCode === 403) {
           throw new AuthorizationError({
-            message: `Forbidden access to creator approval API: ${responseData?.message || error.message}`,
+            message: `Forbidden access to creator approval API: ${responseData?.message ?? error.message}`,
             details: {
               mintId,
               statusCode,
@@ -280,7 +277,7 @@ export class LiveStreamInfoService {
 
         if (statusCode >= 500) {
           throw new ServerError({
-            message: `Server error from creator approval API: ${responseData?.message || error.message}`,
+            message: `Server error from creator approval API: ${responseData?.message ?? error.message}`,
             statusCode,
             details: {
               mintId,
@@ -290,7 +287,7 @@ export class LiveStreamInfoService {
         }
 
         throw new NetworkError({
-          message: `HTTP ${statusCode} error from creator approval API: ${responseData?.message || error.message}`,
+          message: `HTTP ${statusCode} error from creator approval API: ${responseData?.message ?? error.message}`,
           code: 'CREATOR_APPROVAL_API_HTTP_ERROR',
           statusCode,
           details: {
@@ -353,7 +350,7 @@ export class LiveStreamInfoService {
         this.logger.info('No active stream found for LiveKit connection', {
           mintId,
           hasStreamInfo: !!streamInfo,
-          isLive: streamInfo?.isLive || false,
+          isLive: streamInfo?.isLive ?? false,
         });
         return null;
       }
@@ -444,8 +441,8 @@ export class LiveStreamInfoService {
 
     // Sort by distance (lower distance = higher priority)
     regions.sort((a, b) => {
-      const distanceA = parseFloat(a.distance) || DEFAULT_DISTANCE;
-      const distanceB = parseFloat(b.distance) || DEFAULT_DISTANCE;
+      const distanceA = parseFloat(a.distance) ?? DEFAULT_DISTANCE;
+      const distanceB = parseFloat(b.distance) ?? DEFAULT_DISTANCE;
       return distanceA - distanceB;
     });
 

@@ -19,6 +19,8 @@ import {
   ValidatedConfig,
   VideoStreamAnalysis,
   JoinLiveStreamResponse,
+  SearchLiveStreamsParams,
+  StreamSearchResult,
 } from '../types';
 
 interface JurisdictionResponse {
@@ -230,6 +232,21 @@ export class PumpFunAPIClient {
   ): Promise<LiveCoin[]> {
     this.ensureInitialized();
     return this.liveStreamsService.getTitledActiveStreams(limit, minParticipants, params);
+  }
+
+  /**
+   * Search live streams by keyword across multiple fields
+   *
+   * This method allows searching for live streams using keywords that match
+   * against stream names, symbols, descriptions, and titles. Results are
+   * ranked by relevance and can be further filtered and sorted.
+   *
+   * @param params - Search parameters including keyword, filters, and sorting options
+   * @returns Promise<StreamSearchResult[]> - Array of search results with relevance scoring
+   */
+  public async searchLiveStreams(params: SearchLiveStreamsParams): Promise<StreamSearchResult[]> {
+    this.ensureInitialized();
+    return this.liveStreamsService.searchLiveStreams(params);
   }
 
   /**

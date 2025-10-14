@@ -296,7 +296,10 @@ export class ConfigurationManager {
     if (config.livestreamURL !== undefined) {
       try {
         new URL(config.livestreamURL);
-        if (!config.livestreamURL.startsWith('http://') && !config.livestreamURL.startsWith('https://')) {
+        if (
+          !config.livestreamURL.startsWith('http://') &&
+          !config.livestreamURL.startsWith('https://')
+        ) {
           errors.push('Invalid livestreamURL protocol: must start with http:// or https://');
         }
       } catch {

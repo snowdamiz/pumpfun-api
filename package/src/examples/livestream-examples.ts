@@ -11,7 +11,13 @@
  */
 
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
-import { LogLevel, LiveStreamInfo, LiveKitConnectionInfo, VideoStreamAnalysis, JoinLiveStreamResponse } from '../types';
+import {
+  LogLevel,
+  LiveStreamInfo,
+  LiveKitConnectionInfo,
+  VideoStreamAnalysis,
+  JoinLiveStreamResponse,
+} from '../types';
 import {
   EXAMPLE_STREAM_LIMIT,
   MIN_PARTICIPANTS,
@@ -329,7 +335,7 @@ export async function getStreamInfoExample() {
           console.log(`      🔴 Is Live: ${streamInfo.isLive ? 'YES' : 'NO'}`);
           console.log(`      👥 Participants: ${streamInfo.numParticipants}`);
           console.log(`      🎯 Stream Mode: ${streamInfo.mode}`);
-          console.log(`      📝 Title: "${streamInfo.title || 'No Title'}"`);
+          console.log(`      📝 Title: "${streamInfo.title ?? 'No Title'}"`);
           console.log(`      👤 Creator: ${streamInfo.creatorAddress}`);
           console.log(
             `      ⏰ Started: ${new Date(streamInfo.streamStartTimestamp).toLocaleString()}`
@@ -752,8 +758,8 @@ export async function getVideoStreamAnalysisExample() {
           .forEach((item, index) => {
             console.log(`   ${index + 1}. ${item.name} (${item.symbol})`);
             console.log(`      • Mint: ${item.mint}`);
-            console.log(`      • Room: ${item.analysis.liveKitConnection?.roomName || 'N/A'}`);
-            console.log(`      • Participants: ${item.analysis.streamInfo?.numParticipants || 0}`);
+            console.log(`      • Room: ${item.analysis.liveKitConnection?.roomName ?? 'N/A'}`);
+            console.log(`      • Participants: ${item.analysis.streamInfo?.numParticipants ?? 0}`);
           });
 
         console.log(`\n💡 Integration Tips:`);
@@ -819,7 +825,9 @@ export async function joinLiveStreamExample() {
         continue;
       }
 
-      console.log(`${i + INDEX_OFFSET}. Attempting to join stream for: ${coin.name} (${coin.symbol})`);
+      console.log(
+        `${i + INDEX_OFFSET}. Attempting to join stream for: ${coin.name} (${coin.symbol})`
+      );
       console.log(`   🔗 Mint: ${coin.mint}`);
       console.log(`   👥 Live Participants: ${coin.num_participants}`);
       console.log(`   📺 Stream Title: "${coin.livestream_title ?? 'No Title'}"`);
@@ -847,7 +855,9 @@ export async function joinLiveStreamExample() {
           }
 
           if (joinResult.requiresAuthentication !== undefined) {
-            console.log(`      🔐 Auth Required: ${joinResult.requiresAuthentication ? 'YES' : 'NO'}`);
+            console.log(
+              `      🔐 Auth Required: ${joinResult.requiresAuthentication ? 'YES' : 'NO'}`
+            );
           }
 
           console.log(`      💡 Next Steps:`);
@@ -868,7 +878,9 @@ export async function joinLiveStreamExample() {
                 console.log(`         💡 Resolution: Stream may not be active or may have ended`);
                 break;
               case 'ACCESS_DENIED':
-                console.log(`         💡 Resolution: Check if you have permission to join this stream`);
+                console.log(
+                  `         💡 Resolution: Check if you have permission to join this stream`
+                );
                 break;
               case 'RATE_LIMITED':
                 console.log(`         💡 Resolution: Wait before making another join attempt`);
@@ -924,8 +936,12 @@ export async function joinLiveStreamExample() {
       const successfulJoins = joinAttempts.filter(a => a.joinResult.success).length;
       const failedJoins = joinAttempts.filter(a => !a.joinResult.success).length;
 
-      console.log(`   Successful: ${successfulJoins} (${((successfulJoins / joinAttempts.length) * 100).toFixed(1)}%)`);
-      console.log(`   Failed: ${failedJoins} (${((failedJoins / joinAttempts.length) * 100).toFixed(1)}%)`);
+      console.log(
+        `   Successful: ${successfulJoins} (${((successfulJoins / joinAttempts.length) * 100).toFixed(1)}%)`
+      );
+      console.log(
+        `   Failed: ${failedJoins} (${((failedJoins / joinAttempts.length) * 100).toFixed(1)}%)`
+      );
 
       // Show successful joins
       if (successfulJoins > 0) {
@@ -936,9 +952,11 @@ export async function joinLiveStreamExample() {
             console.log(`   ${index + 1}. ${item.name} (${item.symbol})`);
             console.log(`      • Mint: ${item.mint}`);
             console.log(`      • Participants: ${item.participants}`);
-            console.log(`      • Room: ${item.joinResult.roomName || 'N/A'}`);
-            console.log(`      • Stream ID: ${item.joinResult.streamId || 'N/A'}`);
-            console.log(`      • WebSocket: ${item.joinResult.websocketUrl ? 'Available' : 'Not provided'}`);
+            console.log(`      • Room: ${item.joinResult.roomName ?? 'N/A'}`);
+            console.log(`      • Stream ID: ${item.joinResult.streamId ?? 'N/A'}`);
+            console.log(
+              `      • WebSocket: ${item.joinResult.websocketUrl ? 'Available' : 'Not provided'}`
+            );
           });
 
         console.log(`\n🚀 Ready for Live Streaming Integration:`);
@@ -967,7 +985,9 @@ export async function joinLiveStreamExample() {
         console.log(`     room.on('trackSubscribed', (track, participant) => {`);
         console.log(`       // Attach media elements`);
         console.log(`       if (track.kind === 'video') {`);
-        console.log(`         document.getElementById('remoteVideo').srcObject = new MediaStream([track]);`);
+        console.log(
+          `         document.getElementById('remoteVideo').srcObject = new MediaStream([track]);`
+        );
         console.log(`       }`);
         console.log(`     });`);
         console.log(`   }`);
@@ -981,8 +1001,8 @@ export async function joinLiveStreamExample() {
         joinAttempts
           .filter(a => !a.joinResult.success)
           .forEach(item => {
-            const errorCode = item.joinResult.error?.code || 'UNKNOWN';
-            errorsByCode.set(errorCode, (errorsByCode.get(errorCode) || 0) + 1);
+            const errorCode = item.joinResult.error?.code ?? 'UNKNOWN';
+            errorsByCode.set(errorCode, (errorsByCode.get(errorCode) ?? 0) + 1);
           });
 
         errorsByCode.forEach((count, code) => {
@@ -1001,6 +1021,187 @@ export async function joinLiveStreamExample() {
     return { client, joinAttempts };
   } catch (error) {
     console.error('❌ Error in join live stream example:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 19: Search live streams by keyword
+ *
+ * This example demonstrates the new searchLiveStreams method that allows searching
+ * for live streams using keywords across multiple fields with relevance scoring.
+ */
+export async function searchLiveStreamsExample() {
+  console.log('=== Search Live Streams Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 15000,
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableColors: true,
+    },
+  });
+
+  try {
+    // Test 1: Basic search with keyword
+    console.log('🔍 Test 1: Basic search with keyword "pepe"...');
+    const basicSearchResults = await client.searchLiveStreams({
+      keyword: 'pepe',
+      limit: 5,
+    });
+
+    console.log(`✅ Found ${basicSearchResults.length} results for "pepe":\n`);
+
+    basicSearchResults.forEach((result, index) => {
+      console.log(`${index + INDEX_OFFSET}. ${result.name} (${result.symbol})`);
+      console.log(`   🎯 Relevance: ${result.relevanceScore.toFixed(3)}`);
+      console.log(`   📺 Stream: ${result.livestream_title ?? 'No Title'}`);
+      console.log(`   👥 Participants: ${result.num_participants}`);
+      console.log(`   💰 Market Cap: $${result.usd_market_cap.toLocaleString()}`);
+      console.log(`   🔍 Matched Fields: ${Object.keys(result.matchedFields).join(', ')}`);
+
+      // Show snippets if available
+      if (result.snippets) {
+        Object.entries(result.snippets).forEach(([field, snippet]) => {
+          console.log(`   📝 ${field} snippet: "${snippet}"`);
+        });
+      }
+      console.log('');
+    });
+
+    // Test 2: Search with specific fields
+    console.log('🔍 Test 2: Searching in specific fields (name, symbol)...');
+    const fieldSpecificResults = await client.searchLiveStreams({
+      keyword: 'doge',
+      searchIn: ['name', 'symbol'],
+      limit: 3,
+      sortBy: 'relevance',
+    });
+
+    console.log(
+      `✅ Found ${fieldSpecificResults.length} results searching name and symbol only:\n`
+    );
+
+    fieldSpecificResults.forEach((result, index) => {
+      console.log(
+        `${index + INDEX_OFFSET}. ${result.name} - ${result.livestream_title ?? 'No Title'}`
+      );
+      console.log(`   🎯 Relevance: ${result.relevanceScore.toFixed(3)}`);
+      console.log(`   🔍 Matched: ${Object.keys(result.matchedFields).join(', ')}`);
+      console.log('');
+    });
+
+    // Test 3: Search with minimum participants filter
+    console.log('🔍 Test 3: Search with minParticipants filter...');
+    const activeResults = await client.searchLiveStreams({
+      keyword: 'live',
+      minParticipants: 1,
+      limit: 3,
+      sortBy: 'participants',
+      sortOrder: 'DESC',
+    });
+
+    console.log(`✅ Found ${activeResults.length} active results with at least 1 participant:\n`);
+
+    activeResults.forEach((result, index) => {
+      console.log(`${index + INDEX_OFFSET}. ${result.name} (${result.symbol})`);
+      console.log(`   👥 Participants: ${result.num_participants}`);
+      console.log(`   🎯 Relevance: ${result.relevanceScore.toFixed(3)}`);
+      console.log(`   📺 Stream: ${result.livestream_title ?? 'No Title'}`);
+      console.log('');
+    });
+
+    // Test 4: Search with sorting by market cap
+    console.log('🔍 Test 4: Search sorted by market cap...');
+    const marketCapResults = await client.searchLiveStreams({
+      keyword: 'crypto',
+      limit: 3,
+      sortBy: 'market_cap',
+      sortOrder: 'DESC',
+    });
+
+    console.log(`✅ Top ${marketCapResults.length} results by market cap:\n`);
+
+    marketCapResults.forEach((result, index) => {
+      console.log(`${index + INDEX_OFFSET}. ${result.name} (${result.symbol})`);
+      console.log(`   💰 Market Cap: $${result.usd_market_cap.toLocaleString()}`);
+      console.log(`   🎯 Relevance: ${result.relevanceScore.toFixed(3)}`);
+      console.log(`   👥 Participants: ${result.num_participants}`);
+      console.log('');
+    });
+
+    // Test 5: Search for currently live streams only
+    console.log('🔍 Test 5: Search for currently live streams only...');
+    const liveOnlyResults = await client.searchLiveStreams({
+      keyword: 'stream',
+      currentlyLiveOnly: true,
+      limit: 3,
+      sortBy: 'relevance',
+    });
+
+    console.log(`✅ Found ${liveOnlyResults.length} currently live streaming results:\n`);
+
+    liveOnlyResults.forEach((result, index) => {
+      console.log(`${index + INDEX_OFFSET}. ${result.name} (${result.symbol})`);
+      console.log(`   🔴 Live Status: ${result.is_currently_live ? 'LIVE' : 'OFFLINE'}`);
+      console.log(`   🎯 Relevance: ${result.relevanceScore.toFixed(3)}`);
+      console.log(`   📺 Title: ${result.livestream_title ?? 'No Title'}`);
+      console.log('');
+    });
+
+    // Summary
+    console.log('📊 Search Summary:');
+    console.log(`   Basic search ("pepe"): ${basicSearchResults.length} results`);
+    console.log(`   Field-specific search ("doge"): ${fieldSpecificResults.length} results`);
+    console.log(`   Active streams search ("live"): ${activeResults.length} results`);
+    console.log(`   Market cap search ("crypto"): ${marketCapResults.length} results`);
+    console.log(`   Live only search ("stream"): ${liveOnlyResults.length} results`);
+
+    console.log('\n💡 Search Features Demonstrated:');
+    console.log('   1. Basic keyword search across all fields');
+    console.log('   2. Field-specific searching (name, symbol, description, title)');
+    console.log('   3. Minimum participant filtering');
+    console.log('   4. Multiple sorting options (relevance, participants, market_cap)');
+    console.log('   5. Currently live stream filtering');
+    console.log('   6. Relevance scoring and matched field highlighting');
+    console.log('   7. Search snippets for context');
+
+    console.log('\n🚀 Search Usage Examples:');
+    console.log('   // Search for specific tokens');
+    console.log('   const results = await client.searchLiveStreams({');
+    console.log('     keyword: "bitcoin",');
+    console.log('     limit: 10');
+    console.log('   });');
+    console.log('');
+    console.log('   // Search with filters');
+    console.log('   const activeStreams = await client.searchLiveStreams({');
+    console.log('     keyword: "defi",');
+    console.log('     minParticipants: 5,');
+    console.log('     currentlyLiveOnly: true,');
+    console.log('     sortBy: "participants",');
+    console.log('     sortOrder: "DESC"');
+    console.log('   });');
+    console.log('');
+    console.log('   // Search specific fields');
+    console.log('   const symbolMatches = await client.searchLiveStreams({');
+    console.log('     keyword: "PEPE",');
+    console.log('     searchIn: ["symbol"],');
+    console.log('     sortBy: "relevance"');
+    console.log('   });');
+
+    return {
+      client,
+      searchResults: {
+        basicSearch: basicSearchResults,
+        fieldSpecific: fieldSpecificResults,
+        activeStreams: activeResults,
+        marketCap: marketCapResults,
+        liveOnly: liveOnlyResults,
+      },
+    };
+  } catch (error) {
+    console.error('❌ Error in search live streams example:', error);
     throw error;
   }
 }

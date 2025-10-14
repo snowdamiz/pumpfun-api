@@ -14,6 +14,8 @@ import {
   ServiceState,
   VideoStreamAnalysis,
   JoinLiveStreamResponse,
+  SearchLiveStreamsParams,
+  StreamSearchResult,
 } from '../../types';
 import { Logger } from '../../infrastructure/logging/logger';
 import { RateLimiter } from '../../infrastructure/rate-limiting/rate-limiter';
@@ -167,6 +169,31 @@ export class LiveStreamsService {
     params?: GetLiveCoinsParams
   ): Promise<LiveCoin[]> {
     return this.streamFilters.getTitledActiveStreams(limit, minParticipants, params);
+  }
+
+  /**
+   * Search live streams by keyword across multiple fields
+   */
+  async searchLiveStreams(params: SearchLiveStreamsParams): Promise<StreamSearchResult[]> {
+    this.logger.info('Searching live streams via LiveStreamsService', {
+      keyword: params.keyword,
+      searchIn: params.searchIn,
+      limit: params.limit,
+      minParticipants: params.minParticipants,
+      currentlyLiveOnly: params.currentlyLiveOnly,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    });
+
+    try {
+      return await this.streamFilters.searchLiveStreams(params);
+    } catch (error) {
+      this.logger.error('Failed to search live streams via LiveStreamsService', {
+        keyword: params.keyword,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
   /**
@@ -359,7 +386,7 @@ export class LiveStreamsService {
         headers: {
           'Content-Type': 'application/json',
         },
-        timeout: this.config.timeout || 10000, // 10 second default timeout
+        timeout: this.config.timeout ?? 10000, // 10 second default timeout
       });
 
       // Update statistics
@@ -413,10 +440,10 @@ export class LiveStreamsService {
       const joinResponse: JoinLiveStreamResponse = {
         success: true,
         message: `Successfully joined live stream for ${mintId}`,
-        streamId: responseData.streamId || responseData.id || undefined,
-        roomName: responseData.roomName || `${mintId}:stream`, // fallback pattern
-        websocketUrl: responseData.websocketUrl || responseData.url || undefined,
-        requiresAuthentication: responseData.requiresAuthentication || false,
+        streamId: responseData.streamId ?? responseData.id ?? undefined,
+        roomName: responseData.roomName ?? `${mintId}:stream`, // fallback pattern
+        websocketUrl: responseData.websocketUrl ?? responseData.url ?? undefined,
+        requiresAuthentication: responseData.requiresAuthentication ?? false,
       };
 
       this.logger.info('Successfully joined live stream', {

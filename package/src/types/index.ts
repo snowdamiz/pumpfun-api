@@ -31,6 +31,8 @@ export type {
   Pagination,
   GetLiveCoinsParams,
   GetStreamClipsParams,
+  SearchLiveStreamsParams,
+  StreamSearchResult,
   VideoStreamAnalysis,
   StreamStatistics,
   JurisdictionResponse,

@@ -510,8 +510,8 @@ export class ErrorFactory {
    * Create error from network-related issues
    */
   static createFromNetworkError(error: { code?: string; message?: string }): NetworkError {
-    const code = error.code || 'NETWORK_ERROR';
-    const message = error.message || 'Network error occurred';
+    const code = error.code ?? 'NETWORK_ERROR';
+    const message = error.message ?? 'Network error occurred';
 
     // Handle specific network error codes
     switch (code) {

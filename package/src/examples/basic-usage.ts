@@ -75,6 +75,7 @@ export const checkCreatorApprovalExample = livestreamExamples.checkCreatorApprov
 export const getLiveKitConnectionInfoExample = livestreamExamples.getLiveKitConnectionInfoExample;
 export const getVideoStreamAnalysisExample = livestreamExamples.getVideoStreamAnalysisExample;
 export const joinLiveStreamExample = livestreamExamples.joinLiveStreamExample;
+export const searchLiveStreamsExample = livestreamExamples.searchLiveStreamsExample;
 
 // Best Practices Examples
 export const productionBestPractices = bestPracticesExamples.productionBestPractices;
@@ -123,6 +124,7 @@ export async function runAllBasicExamples() {
     liveKitConnection: null as any,
     videoStreamAnalysis: null as any,
     joinStream: null as any,
+    searchStreams: null as any,
   };
 
   try {
@@ -201,6 +203,9 @@ export async function runAllBasicExamples() {
     results.joinStream = await joinLiveStreamExample();
     console.log();
 
+    results.searchStreams = await searchLiveStreamsExample();
+    console.log();
+
     results.jurisdictionTest = await jurisdictionAndConnectionExample();
     console.log();
 
@@ -224,6 +229,7 @@ export async function runAllBasicExamples() {
     console.log('   • LiveKit video streaming connections');
     console.log('   • Comprehensive video stream analysis');
     console.log('   • Live stream joining functionality');
+    console.log('   • Keyword search across streams');
     console.log('   • Error handling and rate limiting');
     console.log('   • Statistics and state management');
     console.log('   • Configuration management and lifecycle');
@@ -259,6 +265,7 @@ export const examples = {
   getLiveKitConnectionInfoExample,
   getVideoStreamAnalysisExample,
   joinLiveStreamExample,
+  searchLiveStreamsExample,
   jurisdictionAndConnectionExample,
 
   // Main runner
@@ -439,6 +446,19 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'search':
+    case 'search-streams':
+    case 'stream-search':
+      searchLiveStreamsExample()
+        .then(() => {
+          console.log('\n✅ Search live streams demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Search live streams demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'all':
     case 'full':
       runAllBasicExamples()
@@ -460,7 +480,8 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   livekit       - LiveKit video streaming demo (getLiveKitConnectionInfo)');
       console.log('   analysis      - Video stream analysis demo (getVideoStreamAnalysis)');
       console.log('   join          - Join live stream demo (joinLiveStream)');
-    console.log('   all           - Run all examples');
+      console.log('   search        - Search live streams demo (searchLiveStreams)');
+      console.log('   all           - Run all examples');
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');
       console.log('Example: node basic-usage.ts quick');
