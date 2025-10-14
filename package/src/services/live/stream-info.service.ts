@@ -6,17 +6,16 @@
  */
 
 import axios from 'axios';
-import {
-  LiveStreamInfo,
-  LiveStreamsServiceConfig
-} from './types';
+import { LiveStreamInfo, LiveStreamsServiceConfig } from '../../types';
 import {
   NetworkError,
   ServerError,
   TimeoutError,
-  PumpFunAPIError,
-} from '../utils/errors';
-import { Logger } from '../utils/logger';
+  ValidationError,
+  AuthenticationError,
+  AuthorizationError,
+} from '../../infrastructure/error-handling/errors';
+import { Logger } from '../../infrastructure/logging/logger';
 
 /**
  * Service for handling live stream information operations
@@ -96,11 +95,8 @@ export class LiveStreamInfoService {
         }
 
         if (statusCode === 400) {
-          throw new PumpFunAPIError({
+          throw new ValidationError({
             message: `Invalid request for live stream info: ${responseData?.message || error.message}`,
-            code: 'INVALID_LIVESTREAM_REQUEST',
-            statusCode,
-            isRetryable: false,
             details: {
               mintId,
               statusCode,
@@ -112,11 +108,8 @@ export class LiveStreamInfoService {
         }
 
         if (statusCode === 401) {
-          throw new PumpFunAPIError({
+          throw new AuthenticationError({
             message: `Unauthorized access to livestream API: ${responseData?.message || error.message}`,
-            code: 'LIVESTREAM_UNAUTHORIZED',
-            statusCode,
-            isRetryable: false,
             details: {
               mintId,
               statusCode,
@@ -125,11 +118,8 @@ export class LiveStreamInfoService {
         }
 
         if (statusCode === 403) {
-          throw new PumpFunAPIError({
+          throw new AuthorizationError({
             message: `Forbidden access to livestream API: ${responseData?.message || error.message}`,
-            code: 'LIVESTREAM_FORBIDDEN',
-            statusCode,
-            isRetryable: false,
             details: {
               mintId,
               statusCode,
@@ -148,11 +138,10 @@ export class LiveStreamInfoService {
           });
         }
 
-        throw new PumpFunAPIError({
+        throw new NetworkError({
           message: `HTTP ${statusCode} error from livestream API: ${responseData?.message || error.message}`,
           code: 'LIVESTREAM_API_HTTP_ERROR',
           statusCode,
-          isRetryable: statusCode >= 500,
           details: {
             mintId,
             endpoint: `/livestream?mintId=${mintId}`,

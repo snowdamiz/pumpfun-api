@@ -14,9 +14,9 @@ import {
   DEFAULT_RETRY_CONFIG,
   LogLevel,
   NUMERIC_CONSTANTS,
-} from './types';
-import { ConfigurationError } from '../utils/errors';
-import { Logger } from '../utils/logger';
+} from '../../types';
+import { ConfigurationError } from '../error-handling/errors';
+import { Logger } from '../logging/logger';
 
 /**
  * Configuration manager for PumpFun API client
@@ -140,7 +140,7 @@ export class ConfigurationManager {
     }
 
     // Logger configuration
-    const loggerConfig: Partial<import('./types').LoggerConfig> = {};
+    const loggerConfig: Partial<import('../../types').LoggerConfig> = {};
     if (process.env.PUMPFUN_LOG_LEVEL) {
       const level = process.env.PUMPFUN_LOG_LEVEL.trim().toUpperCase() as LogLevel;
       if (Object.values(LogLevel).includes(level)) {
@@ -177,7 +177,7 @@ export class ConfigurationManager {
     }
 
     // Rate limit configuration
-    const rateLimitConfig: Partial<import('./types').RateLimitConfig> = {};
+    const rateLimitConfig: Partial<import('../../types').RateLimitConfig> = {};
     if (process.env.PUMPFUN_RATE_LIMIT_REQUESTS) {
       const requests = parseInt(process.env.PUMPFUN_RATE_LIMIT_REQUESTS, 10);
       if (!isNaN(requests) && requests > 0) {

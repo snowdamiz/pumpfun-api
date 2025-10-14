@@ -14,7 +14,7 @@ import {
   APIError as APIErrorInterface,
   DEFAULT_RETRY_CONFIG,
   DEFAULT_RATE_LIMIT_CONFIG,
-} from '../client/types';
+} from '../../types';
 
 // Extend AxiosRequestConfig to include metadata
 declare module 'axios' {
@@ -557,14 +557,14 @@ export class APIError extends Error implements APIErrorInterface {
   /**
    * Create a retryable API error
    */
-  static retryable(data: Omit<APIErrorData, 'isRetryable'>): APIError {
+  static retryable(data: Omit<APIErrorData, 'isRetryable'> & { message: string }): APIError {
     return new APIError({ ...data, isRetryable: true });
   }
 
   /**
    * Create a non-retryable API error
    */
-  static nonRetryable(data: Omit<APIErrorData, 'isRetryable'>): APIError {
+  static nonRetryable(data: Omit<APIErrorData, 'isRetryable'> & { message: string }): APIError {
     return new APIError({ ...data, isRetryable: false });
   }
 }

@@ -5,15 +5,9 @@
  * including parameter validation and response validation.
  */
 
-import {
-  LiveCoin,
-  GetLiveCoinsParams
-} from './types';
-import {
-  ServerError,
-  ConfigurationError,
-} from '../utils/errors';
-import { Logger } from '../utils/logger';
+import { LiveCoin, GetLiveCoinsParams } from '../types';
+import { ServerError, ConfigurationError } from '../infrastructure/error-handling/errors';
+import { Logger } from '../infrastructure/logging/logger';
 
 /**
  * Handles validation for live streams operations

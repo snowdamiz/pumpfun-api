@@ -12,9 +12,9 @@
  */
 
 import { PumpFunAPIClient } from '../../src/client/PumpFunAPIClient';
-import { Logger } from '../../src/utils/logger';
-import { LogLevel } from '../../src/client/types';
-import { RateLimiter } from '../../src/utils/rate-limiter';
+import { Logger } from '../../src/infrastructure/logging/logger';
+import { LogLevel } from '../../src/types';
+import { RateLimiter } from '../../src/infrastructure/rate-limiting/rate-limiter';
 
 describe('PumpFun API Integration Tests', () => {
   let client: PumpFunAPIClient;

@@ -13,7 +13,7 @@ import {
   DEFAULT_RATE_LIMIT_CONFIG,
   LIVE_STREAMING_RATE_LIMIT_CONFIG,
   NUMERIC_CONSTANTS,
-} from '../client/types';
+} from '../../types';
 import {
   ONE_SECOND_MS,
   BURST_WINDOW_MS,
@@ -28,7 +28,7 @@ import {
   REQUEST_SAFETY_BUFFER_MS,
   ERROR_RATE_WARNING_THRESHOLD,
   ERROR_RATE_CRITICAL_THRESHOLD,
-} from './constants';
+} from '../../constants/api.constants';
 
 // Re-export types for backward compatibility
 export type { RateLimitConfig, RateLimitInfo };

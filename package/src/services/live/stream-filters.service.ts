@@ -5,15 +5,10 @@
  * including active streams, top streams, and titled streams.
  */
 
-import {
-  LiveCoin,
-  GetLiveCoinsParams
-} from './types';
-import {
-  ConfigurationError,
-} from '../utils/errors';
-import { Logger } from '../utils/logger';
-import { ErrorHandler } from './ErrorHandler';
+import { LiveCoin, GetLiveCoinsParams } from '../../types';
+import { ConfigurationError } from '../../infrastructure/error-handling/errors';
+import { Logger } from '../../infrastructure/logging/logger';
+import { ErrorHandler } from '../../infrastructure/error-handling/error-handler';
 
 /**
  * Handles stream filtering and ranking operations

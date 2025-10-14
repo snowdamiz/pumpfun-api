@@ -15,8 +15,8 @@ import {
   ValidationError,
   PumpFunAPIError,
   ErrorUtils,
-} from '../utils/errors';
-import { Logger } from '../utils/logger';
+} from './errors';
+import { Logger } from '../logging/logger';
 
 /**
  * Centralized error handler for PumpFun API client

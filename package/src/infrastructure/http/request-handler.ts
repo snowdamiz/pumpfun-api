@@ -5,11 +5,9 @@
  * including request execution, retry logic, and query string building.
  */
 
-import {
-  GetLiveCoinsParams
-} from './types';
-import { HTTPClient } from '../utils/http-client';
-import { Logger } from '../utils/logger';
+import { GetLiveCoinsParams } from '../../types';
+import { HTTPClient } from './http-client';
+import { Logger } from '../logging/logger';
 import { LiveStreamsServiceConfig } from './types';
 
 /**

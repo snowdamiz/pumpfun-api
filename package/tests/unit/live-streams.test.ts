@@ -12,16 +12,16 @@
  */
 
 import { PumpFunAPIClient } from '../../src/client/PumpFunAPIClient';
-import { GetLiveCoinsParams, LiveCoin } from '../../src/client/types';
-import { HTTPClient } from '../../src/utils/http-client';
-import { RateLimiter } from '../../src/utils/rate-limiter';
+import { GetLiveCoinsParams, LiveCoin } from '../../src/types';
+import { HTTPClient } from '../../src/infrastructure/http/http-client';
+import { RateLimiter } from '../../src/infrastructure/rate-limiting/rate-limiter';
 
 // Mock the HTTP client
-jest.mock('../../src/utils/http-client');
+jest.mock('../../src/infrastructure/http/http-client');
 const MockedHTTPClient = HTTPClient as jest.MockedClass<typeof HTTPClient>;
 
 // Mock the Rate Limiter
-jest.mock('../../src/utils/rate-limiter');
+jest.mock('../../src/infrastructure/rate-limiting/rate-limiter');
 const MockedRateLimiter = RateLimiter as jest.MockedClass<typeof RateLimiter>;
 
 describe('Live Streaming Functionality', () => {

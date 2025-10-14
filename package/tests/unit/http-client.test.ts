@@ -2,7 +2,7 @@
  * Tests for Enhanced HTTP Client Utility
  */
 
-import { HTTPClient, APIError, createHTTPClient } from '../../src/utils/http-client';
+import { HTTPClient, APIError, createHTTPClient } from '../../src/infrastructure/http/http-client';
 
 describe('APIError', () => {
   it('should create APIError with required properties', () => {

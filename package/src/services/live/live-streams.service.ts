@@ -10,16 +10,16 @@ import {
   GetLiveCoinsParams,
   LiveStreamInfo,
   LiveStreamsServiceConfig,
-  ServiceState
-} from './types';
-import { Logger } from '../utils/logger';
-import { RateLimiter } from '../utils/rate-limiter';
-import { HTTPClient } from '../utils/http-client';
-import { ErrorHandler } from './ErrorHandler';
-import { StreamFilters } from './StreamFilters';
-import { LiveStreamsValidator } from './LiveStreamsValidator';
-import { LiveStreamsRequestHandler } from './LiveStreamsRequestHandler';
-import { LiveStreamInfoService } from './LiveStreamInfoService';
+  ServiceState,
+} from '../../types';
+import { Logger } from '../../infrastructure/logging/logger';
+import { RateLimiter } from '../../infrastructure/rate-limiting/rate-limiter';
+import { HTTPClient } from '../../infrastructure/http/http-client';
+import { ErrorHandler } from '../../infrastructure/error-handling/error-handler';
+import { StreamFilters } from './stream-filters.service';
+import { LiveStreamsValidator } from '../../validation/streams.validator';
+import { LiveStreamsRequestHandler } from '../../infrastructure/http/request-handler';
+import { LiveStreamInfoService } from './stream-info.service';
 
 /**
  * Service for handling live streams operations
@@ -42,10 +42,8 @@ export class LiveStreamsService {
     this.validator = new LiveStreamsValidator(logger);
     this.requestHandler = new LiveStreamsRequestHandler(config, httpClient, logger);
     this.streamInfoService = new LiveStreamInfoService(config, logger);
-    this.streamFilters = new StreamFilters(
-      logger,
-      errorHandler,
-      (params?: GetLiveCoinsParams) => this.getLiveCoins(params)
+    this.streamFilters = new StreamFilters(logger, errorHandler, (params?: GetLiveCoinsParams) =>
+      this.getLiveCoins(params)
     );
   }
 
@@ -93,7 +91,10 @@ export class LiveStreamsService {
       this.rateLimiter.recordRequest();
 
       // Validate response data with enhanced error handling
-      const liveCoins = this.validator.validateLiveCoinsResponseWithFallback(response, mergedParams);
+      const liveCoins = this.validator.validateLiveCoinsResponseWithFallback(
+        response,
+        mergedParams
+      );
 
       this.logger.info('Successfully fetched live streaming coins', {
         count: liveCoins.length,

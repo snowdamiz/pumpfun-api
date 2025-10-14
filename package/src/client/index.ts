@@ -3,4 +3,3 @@
  */
 
 export * from './PumpFunAPIClient';
-export * from './types';

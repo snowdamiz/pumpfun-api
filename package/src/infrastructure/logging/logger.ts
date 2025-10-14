@@ -6,13 +6,7 @@
  * Optimized for npm package usage with minimal dependencies.
  */
 
-import {
-  LogLevel,
-  LogContext,
-  LogEntry,
-  LoggerConfig,
-  DEFAULT_LOGGER_CONFIG,
-} from '../client/types';
+import { LogLevel, LogContext, LogEntry, LoggerConfig, DEFAULT_LOGGER_CONFIG } from '../../types';
 
 import * as fs from 'fs';
 import * as path from 'path';

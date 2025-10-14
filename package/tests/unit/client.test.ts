@@ -12,7 +12,7 @@
  */
 
 import { PumpFunAPIClient } from '../../src/client/PumpFunAPIClient';
-import { ClientConfig, DEFAULT_CLIENT_CONFIG, LogLevel } from '../../src/client/types';
+import { ClientConfig, DEFAULT_CLIENT_CONFIG, LogLevel } from '../../src/types';
 
 // Mock environment variables
 const originalEnv = process.env;

@@ -9,7 +9,7 @@
  */
 
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
-import { LogLevel } from '../client/types';
+import { LogLevel } from '../types';
 
 // ============================================================================
 // Installation and Setup Examples

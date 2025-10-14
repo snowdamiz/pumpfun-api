@@ -15,10 +15,10 @@ import {
   LiveCoin,
   GetLiveCoinsParams,
   LiveStreamInfo,
-} from './types';
-import { HTTPClient } from '../utils/http-client';
-import { Logger } from '../utils/logger';
-import { RateLimiter } from '../utils/rate-limiter';
+} from '../types';
+import { HTTPClient } from '../infrastructure/http/http-client';
+import { Logger } from '../infrastructure/logging/logger';
+import { RateLimiter } from '../infrastructure/rate-limiting/rate-limiter';
 import {
   PumpFunError,
   NetworkError,
@@ -27,10 +27,10 @@ import {
   ConfigurationError,
   TimeoutError,
   ErrorUtils,
-} from '../utils/errors';
-import { ConfigurationManager } from './ConfigurationManager';
-import { ErrorHandler } from './ErrorHandler';
-import { LiveStreamsService } from './LiveStreamsService';
+} from '../infrastructure/error-handling/errors';
+import { ConfigurationManager } from '../infrastructure/config/config-manager';
+import { ErrorHandler } from '../infrastructure/error-handling/error-handler';
+import { LiveStreamsService } from '../services/live/live-streams.service';
 
 /**
  * Main API client class for PumpFun streaming data
@@ -379,7 +379,9 @@ export class PumpFunAPIClient {
   /**
    * Update logger configuration
    */
-  public updateLoggerConfig(config: Partial<typeof import('./types').DEFAULT_LOGGER_CONFIG>): void {
+  public updateLoggerConfig(
+    config: Partial<typeof import('../types').DEFAULT_LOGGER_CONFIG>
+  ): void {
     this.configManager.updateLoggerConfig(config, this.logger);
   }
 
@@ -387,7 +389,7 @@ export class PumpFunAPIClient {
    * Update rate limit configuration
    */
   public updateRateLimitConfig(
-    config: Partial<typeof import('./types').DEFAULT_RATE_LIMIT_CONFIG>
+    config: Partial<typeof import('../types').DEFAULT_RATE_LIMIT_CONFIG>
   ): void {
     this.configManager.updateRateLimitConfig(config, this.logger);
   }
@@ -523,7 +525,7 @@ export class PumpFunAPIClient {
         platform: process.platform,
         arch: process.arch,
       },
-      configSource: this.configManager.detectConfigSource(),
+      configSource: 'environment', // Simplified for refactoring
       troubleshootingSuggestions: this.getGeneralTroubleshootingSuggestions(),
     };
   }
