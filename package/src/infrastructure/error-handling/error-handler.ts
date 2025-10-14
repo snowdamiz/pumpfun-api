@@ -135,10 +135,10 @@ export class ErrorHandler {
     const hasNetworkErrorMessage =
       (errorObj.message &&
         typeof errorObj.message === 'string' &&
-        (errorObj.message as string).includes('Network Error')) ||
+        errorObj.message.includes('Network Error')) ||
       (errorObj.message &&
         typeof errorObj.message === 'string' &&
-        (errorObj.message as string).includes('fetch'));
+        errorObj.message.includes('fetch'));
 
     return Boolean(hasNetworkErrorCode || hasNetworkErrorMessage);
   }
@@ -149,17 +149,15 @@ export class ErrorHandler {
     }
 
     const errorObj = error as Record<string, unknown>;
-    const hasTimeoutCode =
-      errorObj.code === 'ECONNABORTED' ||
-      errorObj.code === 'TIMEOUT';
+    const hasTimeoutCode = errorObj.code === 'ECONNABORTED' || errorObj.code === 'TIMEOUT';
 
     const hasTimeoutMessage =
       (errorObj.message &&
         typeof errorObj.message === 'string' &&
-        (errorObj.message as string).includes('timeout')) ||
+        errorObj.message.includes('timeout')) ||
       (errorObj.message &&
         typeof errorObj.message === 'string' &&
-        (errorObj.message as string).includes('timed out'));
+        errorObj.message.includes('timed out'));
 
     return Boolean(hasTimeoutCode || hasTimeoutMessage);
   }
@@ -174,7 +172,7 @@ export class ErrorHandler {
       return false;
     }
 
-    const message = errorObj.message as string;
+    const message = errorObj.message;
     return (
       message.includes('Configuration') ||
       message.includes('Invalid baseURL') ||
@@ -193,7 +191,7 @@ export class ErrorHandler {
       return false;
     }
 
-    const message = errorObj.message as string;
+    const message = errorObj.message;
     return (
       message.includes('Invalid response') ||
       message.includes('validation') ||
@@ -211,21 +209,15 @@ export class ErrorHandler {
     const message = errorObj.message as string;
 
     const hasRateLimitMessage =
-      (message &&
-        typeof message === 'string' &&
-        message.includes('rate limit')) ||
-      (message &&
-        typeof message === 'string' &&
-        message.includes('too many requests')) ||
-      (message &&
-        typeof message === 'string' &&
-        message.includes('429'));
+      (message && typeof message === 'string' && message.includes('rate limit')) ||
+      (message && typeof message === 'string' && message.includes('too many requests')) ||
+      (message && typeof message === 'string' && message.includes('429'));
 
     const hasRateLimitStatus =
       errorObj.status === 429 ||
       (errorObj.response &&
         typeof errorObj.response === 'object' &&
-        ((errorObj.response as Record<string, unknown>).status === 429));
+        (errorObj.response as Record<string, unknown>).status === 429);
 
     return Boolean(hasRateLimitMessage || hasRateLimitStatus);
   }
@@ -236,9 +228,7 @@ export class ErrorHandler {
     }
 
     const errorObj = error as Record<string, unknown>;
-    const hasResponse =
-      errorObj.response &&
-      typeof errorObj.response === 'object';
+    const hasResponse = errorObj.response && typeof errorObj.response === 'object';
 
     if (!hasResponse) {
       return false;
