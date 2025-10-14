@@ -616,10 +616,7 @@ export class LiveStreamsService {
 
       // Calculate basic statistics
       const totalLiveStreams = liveCoins.length;
-      const totalParticipants = liveCoins.reduce(
-        (sum, coin) => sum + coin.num_participants,
-        0
-      );
+      const totalParticipants = liveCoins.reduce((sum, coin) => sum + coin.num_participants, 0);
       const averageParticipants =
         totalLiveStreams > 0 ? Math.round(totalParticipants / totalLiveStreams) : 0;
 
@@ -645,7 +642,7 @@ export class LiveStreamsService {
           const sampleSize = Math.min(totalLiveStreams, 20); // Sample up to 20 streams
           const sampleCoins = liveCoins.slice(0, sampleSize);
 
-          const streamInfoPromises = sampleCoins.map(async (coin) => {
+          const streamInfoPromises = sampleCoins.map(async coin => {
             try {
               const streamInfo = await this.streamInfoService.getLiveStreamInfo(coin.mint);
               return streamInfo?.mode;
@@ -661,8 +658,9 @@ export class LiveStreamsService {
           const streamModes = await Promise.all(streamInfoPromises);
 
           // Count modes from successfully retrieved stream info
-          const validModes = streamModes.filter((mode): mode is 'interactive' | 'broadcast' =>
-            mode === 'interactive' || mode === 'broadcast'
+          const validModes = streamModes.filter(
+            (mode): mode is 'interactive' | 'broadcast' =>
+              mode === 'interactive' || mode === 'broadcast'
           );
 
           // If we have some valid mode data, use it; otherwise estimate based on available data

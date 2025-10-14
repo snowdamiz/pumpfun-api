@@ -1258,11 +1258,20 @@ export async function getStreamStatisticsExample() {
     console.log(`   📹 Interactive Streams: ${statistics.modeDistribution.interactive}`);
     console.log(`   📺 Broadcast Streams: ${statistics.modeDistribution.broadcast}`);
 
-    const totalStreams = statistics.modeDistribution.interactive + statistics.modeDistribution.broadcast;
+    const totalStreams =
+      statistics.modeDistribution.interactive + statistics.modeDistribution.broadcast;
     if (totalStreams > 0) {
-      const interactivePercentage = ((statistics.modeDistribution.interactive / totalStreams) * 100).toFixed(1);
-      const broadcastPercentage = ((statistics.modeDistribution.broadcast / totalStreams) * 100).toFixed(1);
-      console.log(`   📊 Interactive: ${interactivePercentage}% | Broadcast: ${broadcastPercentage}%`);
+      const interactivePercentage = (
+        (statistics.modeDistribution.interactive / totalStreams) *
+        100
+      ).toFixed(1);
+      const broadcastPercentage = (
+        (statistics.modeDistribution.broadcast / totalStreams) *
+        100
+      ).toFixed(1);
+      console.log(
+        `   📊 Interactive: ${interactivePercentage}% | Broadcast: ${broadcastPercentage}%`
+      );
     }
 
     // Calculate additional insights
@@ -1297,8 +1306,13 @@ export async function getStreamStatisticsExample() {
       if (statistics.topStreams.length > 0) {
         const topStream = statistics.topStreams[0];
         if (topStream) {
-          const topStreamPercentage = ((topStream.participants / statistics.totalParticipants) * 100).toFixed(1);
-          console.log(`   👑 Top stream (${topStream.name}) has ${topStreamPercentage}% of all participants`);
+          const topStreamPercentage = (
+            (topStream.participants / statistics.totalParticipants) *
+            100
+          ).toFixed(1);
+          console.log(
+            `   👑 Top stream (${topStream.name}) has ${topStreamPercentage}% of all participants`
+          );
         }
       }
     }

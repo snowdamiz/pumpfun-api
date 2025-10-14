@@ -90,7 +90,7 @@ export async function demonstrateCustomFilters() {
 
   try {
     // Create custom filter for streams with specific characteristics
-    const customFilter: StreamFilterFunction = (stream) => {
+    const customFilter: StreamFilterFunction = stream => {
       const hasTitle = !!(stream.livestream_title && stream.livestream_title.length > 15);
       const hasSocial = !!(stream.twitter && stream.telegram);
       const isEngaging = (stream.num_participants ?? 0) >= 3 && (stream.reply_count ?? 0) >= 5;
@@ -321,7 +321,9 @@ export async function demonstratePerformanceComparison() {
 
     console.log(`   ⏱️  Time: ${time1}ms`);
     console.log(`   📊 Results: ${simpleResult.streams.length} streams`);
-    console.log(`   📈 Efficiency: ${(simpleResult.streams.length / time1 * 1000).toFixed(1)} streams/sec`);
+    console.log(
+      `   📈 Efficiency: ${((simpleResult.streams.length / time1) * 1000).toFixed(1)} streams/sec`
+    );
 
     // Test 2: Complex multi-criteria filter
     console.log('\n📊 Test 2: Complex multi-criteria filter...');
@@ -346,7 +348,9 @@ export async function demonstratePerformanceComparison() {
 
     console.log(`   ⏱️  Time: ${time2}ms`);
     console.log(`   📊 Results: ${complexResult.streams.length} streams`);
-    console.log(`   📈 Efficiency: ${(complexResult.streams.length / time2 * 1000).toFixed(1)} streams/sec`);
+    console.log(
+      `   📈 Efficiency: ${((complexResult.streams.length / time2) * 1000).toFixed(1)} streams/sec`
+    );
 
     // Test 3: Compound query with logical operators
     console.log('\n📊 Test 3: Compound query with logical operators...');
@@ -356,17 +360,11 @@ export async function demonstratePerformanceComparison() {
       groups: [
         {
           operator: 'AND',
-          criteria: [
-            { participantRange: { min: 10 } },
-            { hasSocialMedia: { twitter: true } },
-          ],
+          criteria: [{ participantRange: { min: 10 } }, { hasSocialMedia: { twitter: true } }],
         },
         {
           operator: 'AND',
-          criteria: [
-            { marketCapRange: { min: 10000 } },
-            { contentQuality: { hasTitle: true } },
-          ],
+          criteria: [{ marketCapRange: { min: 10000 } }, { contentQuality: { hasTitle: true } }],
         },
       ],
     });
@@ -374,7 +372,9 @@ export async function demonstratePerformanceComparison() {
 
     console.log(`   ⏱️  Time: ${time3}ms`);
     console.log(`   📊 Results: ${compoundResult.streams.length} streams`);
-    console.log(`   📈 Efficiency: ${(compoundResult.streams.length / time3 * 1000).toFixed(1)} streams/sec`);
+    console.log(
+      `   📈 Efficiency: ${((compoundResult.streams.length / time3) * 1000).toFixed(1)} streams/sec`
+    );
 
     // Performance analysis
     console.log('\n📈 Performance Analysis:');
@@ -412,16 +412,16 @@ export async function runAdvancedFilteringExamples() {
   try {
     // Run all examples
     await demonstratePredefinedFilters();
-    console.log('\n' + '='.repeat(50) + '\n');
+    console.log(`\n${'='.repeat(50)}\n`);
 
     await demonstrateCustomFilters();
-    console.log('\n' + '='.repeat(50) + '\n');
+    console.log(`\n${'='.repeat(50)}\n`);
 
     await demonstrateComplexCriteria();
-    console.log('\n' + '='.repeat(50) + '\n');
+    console.log(`\n${'='.repeat(50)}\n`);
 
     await demonstrateCompoundQueries();
-    console.log('\n' + '='.repeat(50) + '\n');
+    console.log(`\n${'='.repeat(50)}\n`);
 
     const performanceResults = await demonstratePerformanceComparison();
 

@@ -617,8 +617,13 @@ export class StreamFilters {
         const hasSocialPresence = !!(stream.twitter && stream.telegram);
         const hasSignificantCap = stream.usd_market_cap >= 5000;
 
-        return Boolean(hasLongTitle && hasDetailedDescription && hasBranding &&
-               hasSocialPresence && hasSignificantCap);
+        return Boolean(
+          hasLongTitle &&
+            hasDetailedDescription &&
+            hasBranding &&
+            hasSocialPresence &&
+            hasSignificantCap
+        );
       };
     },
 
@@ -1108,10 +1113,7 @@ export class StreamFilters {
   /**
    * Perform compound filtering with logical operators
    */
-  private performCompoundFiltering(
-    streams: LiveCoin[],
-    query: CompoundFilterQuery
-  ): LiveCoin[] {
+  private performCompoundFiltering(streams: LiveCoin[], query: CompoundFilterQuery): LiveCoin[] {
     const groupOperator = query.groupOperator || 'AND';
 
     return streams.filter(stream => {
@@ -1129,10 +1131,7 @@ export class StreamFilters {
   /**
    * Check if stream matches advanced criteria
    */
-  private matchesAdvancedCriteria(
-    stream: LiveCoin,
-    criteria: AdvancedFilterCriteria
-  ): boolean {
+  private matchesAdvancedCriteria(stream: LiveCoin, criteria: AdvancedFilterCriteria): boolean {
     // Custom filter functions
     if (criteria.customFilters && criteria.customFilters.length > 0) {
       for (const customFilter of criteria.customFilters) {
@@ -1200,7 +1199,8 @@ export class StreamFilters {
 
     // Content quality filters
     if (criteria.contentQuality) {
-      const { hasTitle, hasDescription, hasImage, minTitleLength, minDescriptionLength } = criteria.contentQuality;
+      const { hasTitle, hasDescription, hasImage, minTitleLength, minDescriptionLength } =
+        criteria.contentQuality;
 
       if (hasTitle && (!stream.livestream_title || stream.livestream_title.trim() === '')) {
         return false;
@@ -1211,10 +1211,16 @@ export class StreamFilters {
       if (hasImage && (!stream.image_uri || stream.image_uri.trim() === '')) {
         return false;
       }
-      if (minTitleLength && (!stream.livestream_title || stream.livestream_title.length < minTitleLength)) {
+      if (
+        minTitleLength &&
+        (!stream.livestream_title || stream.livestream_title.length < minTitleLength)
+      ) {
         return false;
       }
-      if (minDescriptionLength && (!stream.description || stream.description.length < minDescriptionLength)) {
+      if (
+        minDescriptionLength &&
+        (!stream.description || stream.description.length < minDescriptionLength)
+      ) {
         return false;
       }
     }
@@ -1230,7 +1236,7 @@ export class StreamFilters {
       if (hasRecentActivity) {
         const now = Date.now();
         const lastActivityMs = stream.last_reply * 1000;
-        const oneHourAgo = now - (60 * 60 * 1000);
+        const oneHourAgo = now - 60 * 60 * 1000;
         if (lastActivityMs < oneHourAgo) {
           return false;
         }
@@ -1248,45 +1254,59 @@ export class StreamFilters {
 
     // Text pattern matching filters
     if (criteria.textPatterns) {
-      const { nameContains, symbolContains, descriptionContains, titleContains, excludePatterns } = criteria.textPatterns;
+      const { nameContains, symbolContains, descriptionContains, titleContains, excludePatterns } =
+        criteria.textPatterns;
 
       // Check positive patterns
       if (nameContains && nameContains.length > 0) {
         const matches = nameContains.some(pattern =>
           stream.name.toLowerCase().includes(pattern.toLowerCase())
         );
-        if (!matches) return false;
+        if (!matches) {
+          return false;
+        }
       }
 
       if (symbolContains && symbolContains.length > 0) {
         const matches = symbolContains.some(pattern =>
           stream.symbol.toLowerCase().includes(pattern.toLowerCase())
         );
-        if (!matches) return false;
+        if (!matches) {
+          return false;
+        }
       }
 
       if (descriptionContains && descriptionContains.length > 0) {
         const matches = descriptionContains.some(pattern =>
           stream.description.toLowerCase().includes(pattern.toLowerCase())
         );
-        if (!matches) return false;
+        if (!matches) {
+          return false;
+        }
       }
 
       if (titleContains && titleContains.length > 0) {
-        if (!stream.livestream_title) return false;
+        if (!stream.livestream_title) {
+          return false;
+        }
         const matches = titleContains.some(pattern =>
           stream.livestream_title!.toLowerCase().includes(pattern.toLowerCase())
         );
-        if (!matches) return false;
+        if (!matches) {
+          return false;
+        }
       }
 
       // Check exclusion patterns
       if (excludePatterns && excludePatterns.length > 0) {
-        const allText = `${stream.name} ${stream.symbol} ${stream.description} ${stream.livestream_title || ''}`.toLowerCase();
+        const allText =
+          `${stream.name} ${stream.symbol} ${stream.description} ${stream.livestream_title || ''}`.toLowerCase();
         const hasExcludedPattern = excludePatterns.some(pattern =>
           allText.includes(pattern.toLowerCase())
         );
-        if (hasExcludedPattern) return false;
+        if (hasExcludedPattern) {
+          return false;
+        }
       }
     }
 
@@ -1320,9 +1340,7 @@ export class StreamFilters {
   ): boolean {
     const results = criteria.map(criterion => this.matchesAdvancedCriteria(stream, criterion));
 
-    return operator === 'AND'
-      ? results.every(result => result)
-      : results.some(result => result);
+    return operator === 'AND' ? results.every(result => result) : results.some(result => result);
   }
 
   /**
@@ -1392,16 +1410,36 @@ export class StreamFilters {
   private countActiveFilters(criteria: AdvancedFilterCriteria): number {
     let count = 0;
 
-    if (criteria.customFilters && criteria.customFilters.length > 0) count++;
-    if (criteria.marketCapRange) count++;
-    if (criteria.participantRange) count++;
-    if (criteria.createdTimeRange) count++;
-    if (criteria.lastActivityRange) count++;
-    if (criteria.hasSocialMedia) count++;
-    if (criteria.contentQuality) count++;
-    if (criteria.activityLevel) count++;
-    if (criteria.textPatterns) count++;
-    if (criteria.creatorFilters) count++;
+    if (criteria.customFilters && criteria.customFilters.length > 0) {
+      count++;
+    }
+    if (criteria.marketCapRange) {
+      count++;
+    }
+    if (criteria.participantRange) {
+      count++;
+    }
+    if (criteria.createdTimeRange) {
+      count++;
+    }
+    if (criteria.lastActivityRange) {
+      count++;
+    }
+    if (criteria.hasSocialMedia) {
+      count++;
+    }
+    if (criteria.contentQuality) {
+      count++;
+    }
+    if (criteria.activityLevel) {
+      count++;
+    }
+    if (criteria.textPatterns) {
+      count++;
+    }
+    if (criteria.creatorFilters) {
+      count++;
+    }
 
     return count;
   }
@@ -1411,9 +1449,12 @@ export class StreamFilters {
    */
   private countCompoundFilters(query: CompoundFilterQuery): number {
     return query.groups.reduce((total, group) => {
-      return total + group.criteria.reduce((groupTotal, criteria) => {
-        return groupTotal + this.countActiveFilters(criteria);
-      }, 0);
+      return (
+        total +
+        group.criteria.reduce((groupTotal, criteria) => {
+          return groupTotal + this.countActiveFilters(criteria);
+        }, 0)
+      );
     }, 0);
   }
 }

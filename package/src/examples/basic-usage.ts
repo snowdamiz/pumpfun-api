@@ -84,7 +84,8 @@ export const demonstratePredefinedFilters = advancedFilteringExamples.demonstrat
 export const demonstrateCustomFilters = advancedFilteringExamples.demonstrateCustomFilters;
 export const demonstrateComplexCriteria = advancedFilteringExamples.demonstrateComplexCriteria;
 export const demonstrateCompoundQueries = advancedFilteringExamples.demonstrateCompoundQueries;
-export const demonstratePerformanceComparison = advancedFilteringExamples.demonstratePerformanceComparison;
+export const demonstratePerformanceComparison =
+  advancedFilteringExamples.demonstratePerformanceComparison;
 export const runAdvancedFilteringExamples = advancedFilteringExamples.runAdvancedFilteringExamples;
 
 // Best Practices Examples
@@ -564,7 +565,9 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   join          - Join live stream demo (joinLiveStream)');
       console.log('   search        - Search live streams demo (searchLiveStreams)');
       console.log('   statistics    - Stream statistics demo (getStreamStatistics)');
-      console.log('   advanced      - Advanced filtering demo (T043 - custom filters, compound queries)');
+      console.log(
+        '   advanced      - Advanced filtering demo (T043 - custom filters, compound queries)'
+      );
       console.log('   all           - Run all examples');
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');
