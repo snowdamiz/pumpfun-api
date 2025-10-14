@@ -2,14 +2,16 @@
  * Basic Usage Examples for PumpFun API Client
  *
  * This file contains comprehensive examples showing how to install,
- * initialize, and use the PumpFun API client for common operations.
+ * initialize, and use the PumpFun API client for all available operations.
+ * Tests all currently implemented package functionality including live streams,
+ * configuration management, error handling, rate limiting, and logging.
  *
  * @version 1.0.0
  * @author PumpFun Team
  */
 
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
-import { LogLevel } from '../types';
+import { LogLevel, LiveCoin, LiveStreamInfo } from '../types';
 
 // ============================================================================
 // Installation and Setup Examples
@@ -282,67 +284,372 @@ export function runtimeConfiguration() {
 }
 
 // ============================================================================
-// Future API Usage Examples (When API Methods Are Implemented)
+// Live Stream API Usage Examples
 // ============================================================================
 
 /**
- * Example 9: Future API usage - Live streams (placeholder)
+ * Example 9: Get currently live streaming coins
  */
-export function futureLiveStreamsExample() {
-  console.log('=== Future: Live Streams Example ===');
-  console.log('📝 This example will work once API methods are implemented');
+export async function getLiveCoinsExample() {
+  console.log('=== Get Live Coins Example ===');
 
-  const client = new PumpFunAPIClient();
+  const client = new PumpFunAPIClient({
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableColors: true,
+    },
+  });
 
-  // These methods will be implemented in future tasks:
-  // const liveCoins = await client.getLiveCoins({ limit: 10 });
-  // const solPrice = await client.getSolPrice();
-  // const isValid = await client.validateJurisdiction();
+  try {
+    console.log('🔍 Fetching currently live streaming coins...');
 
-  console.log('🔄 When implemented, this will:');
-  console.log('   • Fetch currently live streaming coins');
-  console.log('   • Get current SOL price');
-  console.log('   • Validate user jurisdiction');
-  console.log('   • Handle rate limiting automatically');
+    const liveCoins = await client.getLiveCoins({
+      limit: 5,
+      includeNsfw: false
+    });
 
-  return client;
+    console.log(`✅ Found ${liveCoins.length} live streaming coins:\n`);
+
+    liveCoins.forEach((coin, index) => {
+      console.log(`${index + 1}. ${coin.name} (${coin.symbol})`);
+      console.log(`   📺 Stream: ${coin.livestream_title || 'No Title'}`);
+      console.log(`   👥 Participants: ${coin.num_participants}`);
+      console.log(`   💬 Chat Messages: ${coin.reply_count}`);
+      console.log(`   💰 Market Cap: $${coin.usd_market_cap?.toFixed(2) || 'N/A'}`);
+      console.log(`   🖼️  Thumbnail: ${coin.thumbnail || 'No thumbnail'}`);
+      console.log(`   🔗 Mint: ${coin.mint}`);
+      console.log('');
+    });
+
+    return { client, liveCoins };
+  } catch (error) {
+    console.error('❌ Error fetching live coins:', error);
+    throw error;
+  }
 }
 
 /**
- * Example 10: Future API usage - Advanced configuration (placeholder)
+ * Example 10: Get active streams with minimum participants
  */
-export function futureAdvancedExample() {
-  console.log('=== Future: Advanced Usage Example ===');
-  console.log('📝 This example will work once API methods are implemented');
+export async function getActiveStreamsExample() {
+  console.log('=== Get Active Streams Example ===');
 
   const client = new PumpFunAPIClient({
-    timeout: 30000,
-    retryConfig: {
-      maxRetries: 5,
-      baseDelay: 2000,
-      maxDelay: 15000,
+    loggerConfig: {
+      level: LogLevel.DEBUG,
+      enableConsole: true,
+      enableColors: true,
     },
-    rateLimitConfig: {
-      maxRequestsPerWindow: 60,
-      enableBurstProtection: true,
-      enableBackoff: true,
+  });
+
+  try {
+    console.log('🔍 Fetching active streams with at least 1 participant...');
+
+    const activeStreams = await client.getActiveStreams(
+      1, // minimum participants
+      { limit: 10 }
+    );
+
+    console.log(`✅ Found ${activeStreams.length} active streams:\n`);
+
+    activeStreams.forEach((stream, index) => {
+      console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
+      console.log(`   👥 Active Participants: ${stream.num_participants}`);
+      console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
+      console.log(`   📺 Stream Title: "${stream.livestream_title || 'No Title'}"`);
+      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) || 'N/A'}`);
+      console.log('');
+    });
+
+    return { client, activeStreams };
+  } catch (error) {
+    console.error('❌ Error fetching active streams:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 11: Get top live streams by participant count
+ */
+export async function getTopLiveStreamsExample() {
+  console.log('=== Get Top Live Streams Example ===');
+
+  const client = new PumpFunAPIClient();
+
+  try {
+    console.log('🏆 Fetching top 5 live streams by participant count...');
+
+    const topStreams = await client.getTopLiveStreams(5);
+
+    console.log('✅ Top 5 Live Streams:\n');
+
+    topStreams.forEach((stream, index) => {
+      console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
+      console.log(`   👥 Participants: ${stream.num_participants}`);
+      console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
+      console.log(`   📺 Title: "${stream.livestream_title || 'No Title'}"`);
+      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) || 'N/A'}`);
+      console.log(`   🕒 Created: ${new Date(stream.created_timestamp * 1000).toLocaleString()}`);
+      console.log('');
+    });
+
+    return { client, topStreams };
+  } catch (error) {
+    console.error('❌ Error fetching top live streams:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 12: Get titled streams (streams with meaningful titles)
+ */
+export async function getTitledStreamsExample() {
+  console.log('=== Get Titled Streams Example ===');
+
+  const client = new PumpFunAPIClient({
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableTimestamps: true,
+    },
+  });
+
+  try {
+    console.log('📝 Fetching streams with meaningful titles...');
+
+    const titledStreams = await client.getTitledStreams(5);
+
+    console.log(`✅ Found ${titledStreams.length} titled streams:\n`);
+
+    titledStreams.forEach((stream, index) => {
+      console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
+      console.log(`   📺 Title: "${stream.livestream_title}"`);
+      console.log(`   👥 Participants: ${stream.num_participants}`);
+      console.log(`   💬 Messages: ${stream.reply_count}`);
+      console.log(`   📝 Description: ${stream.description.substring(0, 100)}...`);
+      console.log('');
+    });
+
+    return { client, titledStreams };
+  } catch (error) {
+    console.error('❌ Error fetching titled streams:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 13: Get comprehensive live stream data
+ */
+export async function getComprehensiveLiveDataExample() {
+  console.log('=== Comprehensive Live Data Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 15000,
+    retryConfig: {
+      maxRetries: 3,
+      baseDelay: 1000,
     },
     loggerConfig: {
       level: LogLevel.DEBUG,
       enableConsole: true,
       enableColors: true,
-      enableTimestamps: true,
     },
   });
 
-  console.log('🔄 When implemented, this will:');
-  console.log('   • Process live streaming data');
-  console.log('   • Handle video stream analysis');
-  console.log('   • Manage rate limiting intelligently');
-  console.log('   • Provide comprehensive error handling');
-  console.log('   • Support advanced filtering and search');
+  try {
+    console.log('📊 Gathering comprehensive live stream data...');
 
-  return client;
+    // Get basic live coins
+    const liveCoins = await client.getLiveCoins({ limit: 20 });
+    console.log(`📡 Found ${liveCoins.length} live coins`);
+
+    // Get active streams
+    const activeStreams = await client.getActiveStreams(1, { limit: 10 });
+    console.log(`🔥 Found ${activeStreams.length} active streams`);
+
+    // Get top streams
+    const topStreams = await client.getTopLiveStreams(5);
+    console.log(`🏆 Top ${topStreams.length} streams by participants`);
+
+    // Get titled streams
+    const titledStreams = await client.getTitledStreams(5);
+    console.log(`📝 Found ${titledStreams.length} titled streams`);
+
+    // Get top active streams
+    const topActiveStreams = await client.getTopActiveStreams(3, 2);
+    console.log(`⭐ Top ${topActiveStreams.length} active streams`);
+
+    // Get titled active streams
+    const titledActiveStreams = await client.getTitledActiveStreams(3, 1);
+    console.log(`🎯 Found ${titledActiveStreams.length} titled active streams`);
+
+    console.log('\n📈 Summary Statistics:');
+    console.log(`   Total Live Coins: ${liveCoins.length}`);
+    console.log(`   Active Streams: ${activeStreams.length}`);
+    console.log(`   Titled Streams: ${titledStreams.length}`);
+    console.log(`   Top Active Streams: ${topActiveStreams.length}`);
+
+    if (liveCoins.length > 0) {
+      const totalParticipants = liveCoins.reduce((sum, coin) => sum + coin.num_participants, 0);
+      const avgParticipants = Math.round(totalParticipants / liveCoins.length);
+      const totalMessages = liveCoins.reduce((sum, coin) => sum + coin.reply_count, 0);
+
+      console.log(`   Total Participants: ${totalParticipants}`);
+      console.log(`   Average Participants: ${avgParticipants}`);
+      console.log(`   Total Chat Messages: ${totalMessages}`);
+    }
+
+    return {
+      client,
+      data: {
+        liveCoins,
+        activeStreams,
+        topStreams,
+        titledStreams,
+        topActiveStreams,
+        titledActiveStreams,
+      },
+    };
+  } catch (error) {
+    console.error('❌ Error gathering comprehensive data:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 14: Get detailed stream information for specific coins
+ */
+export async function getStreamInfoExample() {
+  console.log('=== Get Stream Info Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 10000,
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+    },
+  });
+
+  try {
+    // First get some live coins to test with
+    console.log('🔍 Getting live coins to test stream info...');
+    const liveCoins = await client.getLiveCoins({ limit: 3 });
+
+    if (liveCoins.length === 0) {
+      console.log('⚠️ No live coins found to test stream info');
+      return { client, streamInfos: [] };
+    }
+
+    console.log(`📡 Testing stream info for ${Math.min(liveCoins.length, 2)} coins...\n`);
+
+    const streamInfos: Array<{ mint: string; name: string; info: LiveStreamInfo | null }> = [];
+
+    for (let i = 0; i < Math.min(liveCoins.length, 2); i++) {
+      const coin = liveCoins[i];
+      if (!coin) {
+        console.log(`${i + 1}. ⚠️ Skipping undefined coin data`);
+        continue;
+      }
+
+      console.log(`${i + 1}. Getting stream info for: ${coin.name} (${coin.symbol})`);
+      console.log(`   🔗 Mint: ${coin.mint}`);
+
+      try {
+        const streamInfo = await client.getLiveStreamInfo(coin.mint);
+
+        if (streamInfo) {
+          console.log(`   ✅ Stream Info Found:`);
+          console.log(`      📺 Stream ID: ${streamInfo.id}`);
+          console.log(`      🔴 Is Live: ${streamInfo.isLive ? 'YES' : 'NO'}`);
+          console.log(`      👥 Participants: ${streamInfo.numParticipants}`);
+          console.log(`      🎯 Stream Mode: ${streamInfo.mode}`);
+          console.log(`      📝 Title: "${streamInfo.title || 'No Title'}"`);
+          console.log(`      👤 Creator: ${streamInfo.creatorAddress}`);
+          console.log(`      ⏰ Started: ${new Date(streamInfo.streamStartTimestamp).toLocaleString()}`);
+          console.log(`      📊 Downrank Score: ${streamInfo.downrankScore}`);
+        } else {
+          console.log(`   ⚠️ No active stream info found`);
+        }
+
+        streamInfos.push({
+          mint: coin.mint,
+          name: coin.name,
+          info: streamInfo,
+        });
+      } catch (error) {
+        console.log(`   ❌ Error getting stream info: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        streamInfos.push({
+          mint: coin.mint,
+          name: coin.name,
+          info: null,
+        });
+      }
+
+      console.log('');
+    }
+
+    return { client, streamInfos };
+  } catch (error) {
+    console.error('❌ Error in stream info example:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 15: Validate jurisdiction and test connection
+ */
+export async function jurisdictionAndConnectionExample() {
+  console.log('=== Jurisdiction & Connection Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 10000,
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableColors: true,
+    },
+  });
+
+  try {
+    console.log('🌍 Testing API connection and jurisdiction validation...');
+
+    // Test connection
+    console.log('🔌 Testing API connection...');
+    const isConnected = await client.testConnection();
+    console.log(`   Connection Status: ${isConnected ? '✅ Connected' : '❌ Disconnected'}`);
+
+    // Validate jurisdiction
+    console.log('🌍 Validating jurisdiction...');
+    const isValidJurisdiction = await client.validateJurisdiction();
+    console.log(`   Jurisdiction Valid: ${isValidJurisdiction ? '✅ Yes' : '❌ No'}`);
+
+    // Get client statistics
+    const stats = client.getStatistics();
+    console.log('\n📊 Client Statistics:');
+    console.log(`   Requests Made: ${stats.requestCount}`);
+    console.log(`   Errors: ${stats.errorCount}`);
+    console.log(`   Success Rate: ${stats.successRate.toFixed(1)}%`);
+    console.log(`   Rate Limited: ${client.isRateLimited() ? 'Yes' : 'No'}`);
+    console.log(`   Backoff Remaining: ${client.getRateLimitBackoffRemaining()}ms`);
+
+    // Get client state
+    const state = client.getState();
+    console.log('\n🔧 Client State:');
+    console.log(`   Initialized: ${state.isInitialized}`);
+    console.log(`   Last Request: ${state.lastRequestTime ? new Date(state.lastRequestTime).toLocaleString() : 'Never'}`);
+
+    return {
+      client,
+      connectionTest: isConnected,
+      jurisdictionValid: isValidJurisdiction,
+      statistics: stats,
+      state,
+    };
+  } catch (error) {
+    console.error('❌ Error in jurisdiction and connection test:', error);
+    throw error;
+  }
 }
 
 // ============================================================================
@@ -439,6 +746,13 @@ export async function runAllBasicExamples() {
     runtimeConfig: PumpFunAPIClient | null;
     production: PumpFunAPIClient | null;
     lifecycle: void | null;
+    liveCoins: { client: PumpFunAPIClient; liveCoins: LiveCoin[] } | null;
+    activeStreams: { client: PumpFunAPIClient; activeStreams: LiveCoin[] } | null;
+    topStreams: { client: PumpFunAPIClient; topStreams: LiveCoin[] } | null;
+    titledStreams: { client: PumpFunAPIClient; titledStreams: LiveCoin[] } | null;
+    comprehensiveData: any | null;
+    streamInfo: { client: PumpFunAPIClient; streamInfos: any[] } | null;
+    jurisdictionTest: any | null;
   } = {
     basicInit: null,
     customConfig: null,
@@ -450,6 +764,13 @@ export async function runAllBasicExamples() {
     runtimeConfig: null,
     production: null,
     lifecycle: null,
+    liveCoins: null,
+    activeStreams: null,
+    topStreams: null,
+    titledStreams: null,
+    comprehensiveData: null,
+    streamInfo: null,
+    jurisdictionTest: null,
   };
 
   try {
@@ -484,11 +805,49 @@ export async function runAllBasicExamples() {
     results.production = productionBestPractices();
     console.log();
 
+    // API Usage Examples - Live Streams
+    console.log('🔴 API USAGE EXAMPLES - LIVE STREAMS');
+    console.log('=' .repeat(60));
+
+    results.liveCoins = await getLiveCoinsExample();
+    console.log();
+
+    results.activeStreams = await getActiveStreamsExample();
+    console.log();
+
+    results.topStreams = await getTopLiveStreamsExample();
+    console.log();
+
+    results.titledStreams = await getTitledStreamsExample();
+    console.log();
+
+    results.comprehensiveData = await getComprehensiveLiveDataExample();
+    console.log();
+
+    results.streamInfo = await getStreamInfoExample();
+    console.log();
+
+    results.jurisdictionTest = await jurisdictionAndConnectionExample();
+    console.log();
+
     // Lifecycle example
     results.lifecycle = await clientLifecycleManagement();
     console.log();
 
     console.log('✅ All basic examples completed successfully!');
+    console.log('\n🎉 Summary of API functionality tested:');
+    console.log('   • Client initialization and configuration');
+    console.log('   • Connection testing and jurisdiction validation');
+    console.log('   • Live streaming coins retrieval');
+    console.log('   • Active streams filtering');
+    console.log('   • Top streams by participants');
+    console.log('   • Titled streams discovery');
+    console.log('   • Comprehensive data gathering');
+    console.log('   • Detailed stream information');
+    console.log('   • Error handling and rate limiting');
+    console.log('   • Statistics and state management');
+    console.log('   • Configuration management and lifecycle');
+
   } catch (error) {
     console.error('💥 Example execution failed:', error);
   }
@@ -498,6 +857,7 @@ export async function runAllBasicExamples() {
 
 // Export individual examples for selective execution
 export const examples = {
+  // Basic and configuration examples
   basicInitialization,
   customConfiguration,
   environmentConfiguration,
@@ -506,12 +866,77 @@ export const examples = {
   basicErrorHandling,
   configurationValidation,
   runtimeConfiguration,
-  futureLiveStreamsExample,
-  futureAdvancedExample,
   productionBestPractices,
   clientLifecycleManagement,
+
+  // Live stream API examples
+  getLiveCoinsExample,
+  getActiveStreamsExample,
+  getTopLiveStreamsExample,
+  getTitledStreamsExample,
+  getComprehensiveLiveDataExample,
+  getStreamInfoExample,
+  jurisdictionAndConnectionExample,
+
+  // Main runner
   runAllBasicExamples,
+
+  // Quick test
+  quickTest,
 };
 
 // Export default example runner
 export default runAllBasicExamples;
+
+// ============================================================================
+// Quick Test Functionality
+// ============================================================================
+
+/**
+ * Quick test to verify the updated basic usage file works correctly
+ */
+export async function quickTest() {
+  console.log('🧪 Quick Test - Basic Usage Functionality');
+  console.log('=' .repeat(50));
+
+  try {
+    // Test basic client creation
+    console.log('1. Testing basic client creation...');
+    const client = new PumpFunAPIClient({
+      loggerConfig: { level: LogLevel.WARN, enableConsole: false }
+    });
+    console.log('✅ Client created successfully');
+
+    // Test configuration
+    console.log('2. Testing configuration access...');
+    const config = client.getConfiguration();
+    console.log(`✅ Configuration accessible - URL: ${config.baseURL}`);
+
+    // Test state
+    console.log('3. Testing state access...');
+    const state = client.getState();
+    console.log(`✅ State accessible - Initialized: ${state.isInitialized}`);
+
+    // Test statistics
+    console.log('4. Testing statistics...');
+    const stats = client.getStatistics();
+    console.log(`✅ Statistics accessible - Requests: ${stats.requestCount}`);
+
+    // Test rate limiting
+    console.log('5. Testing rate limiting...');
+    const isRateLimited = client.isRateLimited();
+    console.log(`✅ Rate limiting check - Limited: ${isRateLimited}`);
+
+    console.log('\n✅ All quick tests passed!');
+    console.log('\n🚀 Ready to run full examples with:');
+    console.log('   examples.runAllBasicExamples()');
+    console.log('   examples.getLiveCoinsExample()');
+    console.log('   examples.getActiveStreamsExample()');
+    console.log('   ...and many more!');
+
+    return true;
+  } catch (error) {
+    console.error('❌ Quick test failed:', error);
+    return false;
+  }
+}
