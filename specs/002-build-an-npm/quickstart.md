@@ -366,9 +366,10 @@ async function setupVideoStream(mintId: string, videoElement: HTMLVideoElement) 
 
 ## Next Steps
 
-- Check out the [API Reference](./docs/api.md) for detailed method documentation
-- Browse [examples](./examples/) for complete implementation samples
-- Read the [troubleshooting guide](./docs/troubleshooting.md) for common issues
+- Check out the [API Reference](../contracts/openapi.yaml) for detailed API contract documentation
+- Browse [examples](../../../package/src/examples/) for complete implementation samples
+- Read the [troubleshooting guide](../tasks.md) for common implementation issues
+- Review the [data model](../data-model.md) for detailed type information
 
 ## Support
 

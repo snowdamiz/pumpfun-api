@@ -15,7 +15,12 @@ import {
   LiveCoin,
   GetLiveCoinsParams,
   LiveStreamInfo,
+  ValidatedConfig,
 } from '../types';
+
+interface JurisdictionResponse {
+  valid: boolean;
+}
 import { HTTPClient } from '../infrastructure/http/http-client';
 import { Logger } from '../infrastructure/logging/logger';
 import { RateLimiter } from '../infrastructure/rate-limiting/rate-limiter';
@@ -245,7 +250,7 @@ export class PumpFunAPIClient {
       // Apply rate limiting before making the request
       await this.rateLimiter.waitForRequest();
 
-      const response = await this.httpClient.get('/auth/is-valid-jurisdiction');
+      const response = await this.httpClient.get<JurisdictionResponse>('/auth/is-valid-jurisdiction');
 
       // Update statistics
       this.state.requestCount++;
@@ -450,7 +455,7 @@ export class PumpFunAPIClient {
   /**
    * Attempt automatic error recovery
    */
-  public async attemptErrorRecovery(error: PumpFunError): Promise<boolean> {
+  public attemptErrorRecovery(error: PumpFunError): boolean {
     this.ensureInitialized();
 
     try {
@@ -481,8 +486,8 @@ export class PumpFunAPIClient {
 
       // For server errors, suggest retry after delay
       if (error instanceof ServerError) {
-        const retryAfter = 5000;
-        this.logger.info(`Server error detected,建议 retry after ${retryAfter}ms`);
+        const SERVER_RETRY_DELAY = 5000; // 5 seconds
+        this.logger.info(`Server error detected,建议 retry after ${SERVER_RETRY_DELAY}ms`);
         return true;
       }
 
@@ -508,7 +513,7 @@ export class PumpFunAPIClient {
    */
   public getErrorDiagnostics(): {
     clientState: ClientState;
-    configuration: any;
+    configuration: ValidatedConfig;
     environment: {
       nodeVersion: string;
       platform: string;
@@ -534,6 +539,9 @@ export class PumpFunAPIClient {
    * Get general troubleshooting suggestions
    */
   private getGeneralTroubleshootingSuggestions(): string[] {
+    const HIGH_ERROR_RATE_THRESHOLD = 50;
+    const FIVE_MINUTES_MS = 5 * 60 * 1000; // 300000ms
+
     const suggestions = [
       'Check network connectivity to the API server',
       'Verify API credentials are valid and active',
@@ -543,7 +551,7 @@ export class PumpFunAPIClient {
 
     if (this.state.errorCount > 0) {
       const errorRate = (this.state.errorCount / Math.max(this.state.requestCount, 1)) * 100;
-      if (errorRate > 50) {
+      if (errorRate > HIGH_ERROR_RATE_THRESHOLD) {
         suggestions.push('High error rate detected - review configuration and API access');
       }
     }
@@ -552,7 +560,7 @@ export class PumpFunAPIClient {
       suggestions.push('Currently rate limited - wait before making more requests');
     }
 
-    if (Date.now() - this.state.lastRequestTime > 300000) {
+    if (Date.now() - this.state.lastRequestTime > FIVE_MINUTES_MS) {
       // 5 minutes
       suggestions.push('No recent requests - check if client is being used correctly');
     }
@@ -581,7 +589,7 @@ export class PumpFunAPIClient {
   /**
    * Graceful shutdown
    */
-  public async shutdown(): Promise<void> {
+  public shutdown(): void {
     this.logger.info('Shutting down PumpFunAPIClient', {
       finalStats: this.getStatistics(),
     });

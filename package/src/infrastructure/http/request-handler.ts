@@ -14,11 +14,14 @@ import { LiveStreamsServiceConfig } from './types';
  * Handles HTTP requests for live streams operations
  */
 export class LiveStreamsRequestHandler {
+  // eslint-disable-next-line no-useless-constructor
   constructor(
     private config: LiveStreamsServiceConfig,
     private httpClient: HTTPClient,
     private logger: Logger
-  ) {}
+  ) {
+    // Required for parameter properties
+  }
 
   /**
    * Execute live coins request with retry logic

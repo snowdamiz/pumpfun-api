@@ -171,11 +171,24 @@
 
 ### From Current Codebase
 
-1. **Extract Core Logic**: Move PumpFunAPIClient and utilities to package structure
-2. **Enhance Types**: Improve TypeScript definitions and add runtime validation
-3. **Add Tests**: Comprehensive test suite with mocking and integration tests
-4. **Package Configuration**: Set up build pipeline and publishing workflow
-5. **Documentation**: Generate comprehensive API docs and usage examples
+1. **Extract Core Logic**: Move PumpFunAPIClient from `src/client/` to `package/src/client/`
+2. **Restructure Services**: Move service classes to `package/src/services/` structure:
+   - `LiveStreamsService.ts` → `services/live/live-streams.service.ts`
+   - `StreamFilters.ts` → `services/live/stream-filters.service.ts`
+   - `LiveStreamInfoService.ts` → `services/live/stream-info.service.ts`
+3. **Reorganize Infrastructure**: Move utilities to new infrastructure structure:
+   - `http-client.ts` → `infrastructure/http/http-client.ts`
+   - `logger.ts` → `infrastructure/logging/logger.ts`
+   - `rate-limiter.ts` → `infrastructure/rate-limiting/rate-limiter.ts`
+   - `errors.ts` → `infrastructure/error-handling/errors.ts`
+4. **Split Types**: Separate types into logical files:
+   - `types.ts` → `types/api.types.ts`, `types/common.types.ts`, `types/config.types.ts`, `types/domain.types.ts`
+5. **Move Constants**: Extract constants to dedicated `constants/api.constants.ts`
+6. **Add Validation**: Move validation logic to `validation/streams.validator.ts`
+7. **Enhance Types**: Improve TypeScript definitions and add runtime validation
+8. **Add Tests**: Comprehensive test suite with mocking and integration tests
+9. **Package Configuration**: Set up build pipeline and publishing workflow
+10. **Documentation**: Generate comprehensive API docs and usage examples
 
 ### Backward Compatibility
 

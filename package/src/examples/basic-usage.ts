@@ -27,6 +27,20 @@
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
 import { LogLevel, LiveCoin, LiveStreamInfo } from '../types';
 
+// Constants to avoid magic numbers
+const EXAMPLE_STREAM_LIMIT = 5;
+const MIN_PARTICIPANTS = 1;
+const EXAMPLE_TIMEOUT = 15000;
+const BASE_DELAY = 1000;
+const MAX_DELAY = 10000;
+const RETRY_DELAY_2 = 2000;
+const BACKOFF_FACTOR = 2;
+const RATE_LIMIT_REQUESTS = 50;
+const RATE_LIMIT_WINDOW = 60000;
+const ACTIVE_STREAMS_LIMIT = 10;
+const TEST_CONNECTION_TIMEOUT = 5000;
+const TIMESTAMP_MULTIPLIER = 1000;
+
 // ============================================================================
 // Installation and Setup Examples
 // ============================================================================
@@ -57,16 +71,16 @@ export function customConfiguration() {
   // Create a client with custom settings
   const client = new PumpFunAPIClient({
     baseURL: 'https://frontend-api-v3.pump.fun',
-    timeout: 15000,
+    timeout: EXAMPLE_TIMEOUT,
     retryConfig: {
       maxRetries: 5,
-      baseDelay: 2000,
-      maxDelay: 10000,
-      backoffFactor: 2,
+      baseDelay: RETRY_DELAY_2,
+      maxDelay: MAX_DELAY,
+      backoffFactor: BACKOFF_FACTOR,
     },
     rateLimitConfig: {
-      maxRequestsPerWindow: 50,
-      windowMs: 60000,
+      maxRequestsPerWindow: RATE_LIMIT_REQUESTS,
+      windowMs: RATE_LIMIT_WINDOW,
       enableBackoff: true,
     },
     loggerConfig: {
@@ -192,10 +206,10 @@ export async function basicErrorHandling() {
   console.log('=== Basic Error Handling ===');
 
   const client = new PumpFunAPIClient({
-    timeout: 5000, // Short timeout for demonstration
+    timeout: TEST_CONNECTION_TIMEOUT, // Short timeout for demonstration
     retryConfig: {
       maxRetries: 2,
-      baseDelay: 1000,
+      baseDelay: BASE_DELAY,
     },
   });
 
@@ -244,7 +258,7 @@ export function configurationValidation() {
   try {
     // This will work fine
     const validClient = new PumpFunAPIClient({
-      timeout: 15000, // Valid timeout
+      timeout: EXAMPLE_TIMEOUT, // Valid timeout
       baseURL: 'https://frontend-api-v3.pump.fun', // Valid URL
     });
 
@@ -319,7 +333,7 @@ export async function getLiveCoinsExample() {
     console.log('🔍 Fetching currently live streaming coins...');
 
     const liveCoins = await client.getLiveCoins({
-      limit: 5,
+      limit: EXAMPLE_STREAM_LIMIT,
       includeNsfw: false,
     });
 
@@ -327,11 +341,11 @@ export async function getLiveCoinsExample() {
 
     liveCoins.forEach((coin, index) => {
       console.log(`${index + 1}. ${coin.name} (${coin.symbol})`);
-      console.log(`   📺 Stream: ${coin.livestream_title || 'No Title'}`);
+      console.log(`   📺 Stream: ${coin.livestream_title ?? 'No Title'}`);
       console.log(`   👥 Participants: ${coin.num_participants}`);
       console.log(`   💬 Chat Messages: ${coin.reply_count}`);
-      console.log(`   💰 Market Cap: $${coin.usd_market_cap?.toFixed(2) || 'N/A'}`);
-      console.log(`   🖼️  Thumbnail: ${coin.thumbnail || 'No thumbnail'}`);
+      console.log(`   💰 Market Cap: $${coin.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
+      console.log(`   🖼️  Thumbnail: ${coin.thumbnail ?? 'No thumbnail'}`);
       console.log(`   🔗 Mint: ${coin.mint}`);
       console.log('');
     });
@@ -361,8 +375,8 @@ export async function getActiveStreamsExample() {
     console.log('🔍 Fetching active streams with at least 1 participant...');
 
     const activeStreams = await client.getActiveStreams(
-      1, // minimum participants
-      { limit: 10 }
+      MIN_PARTICIPANTS, // minimum participants
+      { limit: ACTIVE_STREAMS_LIMIT }
     );
 
     console.log(`✅ Found ${activeStreams.length} active streams:\n`);
@@ -371,8 +385,8 @@ export async function getActiveStreamsExample() {
       console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
       console.log(`   👥 Active Participants: ${stream.num_participants}`);
       console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
-      console.log(`   📺 Stream Title: "${stream.livestream_title || 'No Title'}"`);
-      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) || 'N/A'}`);
+      console.log(`   📺 Stream Title: "${stream.livestream_title ?? 'No Title'}"`);
+      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
       console.log('');
     });
 
@@ -392,19 +406,19 @@ export async function getTopLiveStreamsExample() {
   const client = new PumpFunAPIClient();
 
   try {
-    console.log('🏆 Fetching top 5 live streams by participant count...');
+    console.log(`🏆 Fetching top ${EXAMPLE_STREAM_LIMIT} live streams by participant count...`);
 
-    const topStreams = await client.getTopLiveStreams(5);
+    const topStreams = await client.getTopLiveStreams(EXAMPLE_STREAM_LIMIT);
 
-    console.log('✅ Top 5 Live Streams:\n');
+    console.log(`✅ Top ${EXAMPLE_STREAM_LIMIT} Live Streams:\n`);
 
     topStreams.forEach((stream, index) => {
       console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
       console.log(`   👥 Participants: ${stream.num_participants}`);
       console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
-      console.log(`   📺 Title: "${stream.livestream_title || 'No Title'}"`);
-      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) || 'N/A'}`);
-      console.log(`   🕒 Created: ${new Date(stream.created_timestamp * 1000).toLocaleString()}`);
+      console.log(`   📺 Title: "${stream.livestream_title ?? 'No Title'}"`);
+      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
+      console.log(`   🕒 Created: ${new Date(stream.created_timestamp * TIMESTAMP_MULTIPLIER).toLocaleString()}`);
       console.log('');
     });
 
@@ -432,7 +446,7 @@ export async function getTitledStreamsExample() {
   try {
     console.log('📝 Fetching streams with meaningful titles...');
 
-    const titledStreams = await client.getTitledStreams(5);
+    const titledStreams = await client.getTitledStreams(EXAMPLE_STREAM_LIMIT);
 
     console.log(`✅ Found ${titledStreams.length} titled streams:\n`);
 
@@ -487,7 +501,7 @@ export async function getComprehensiveLiveDataExample() {
     console.log(`🏆 Top ${topStreams.length} streams by participants`);
 
     // Get titled streams
-    const titledStreams = await client.getTitledStreams(5);
+    const titledStreams = await client.getTitledStreams(EXAMPLE_STREAM_LIMIT);
     console.log(`📝 Found ${titledStreams.length} titled streams`);
 
     // Get top active streams
@@ -735,7 +749,7 @@ export async function clientLifecycleManagement() {
   } finally {
     // Always clean up
     console.log('🔄 Shutting down client...');
-    await client.shutdown();
+    client.shutdown();
     console.log('✅ Client shut down successfully');
   }
 }

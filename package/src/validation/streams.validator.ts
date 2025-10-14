@@ -13,7 +13,10 @@ import { Logger } from '../infrastructure/logging/logger';
  * Handles validation for live streams operations
  */
 export class LiveStreamsValidator {
-  constructor(private logger: Logger) {}
+  // eslint-disable-next-line no-useless-constructor
+  constructor(private logger: Logger) {
+    // Required for parameter properties
+  }
 
   /**
    * Validate getLiveCoins parameters

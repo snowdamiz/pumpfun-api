@@ -20,10 +20,18 @@
 - Uses RateLimiter for request throttling
 - Creates LiveCoin, LiveStreamInfo, and other response objects
 
+**Relationships**:
+- Uses HTTPClient from `infrastructure/http/http-client.ts` for all API requests
+- Uses Logger from `infrastructure/logging/logger.ts` for debugging and error reporting
+- Uses RateLimiter from `infrastructure/rate-limiting/rate-limiter.ts` for request throttling
+- Creates LiveCoin, LiveStreamInfo, and other response objects from types in `types/`
+
 **Validation Rules**:
-- `config` must be valid ClientConfig object
-- `httpClient` must be properly initialized with base URLs
+- `config` must be valid ClientConfig object from `types/config.types.ts`
+- `httpClient` must be properly initialized with base URLs from `constants/api.constants.ts`
 - `rateLimiter` must respect 60 requests/minute limit
+
+**File Location**: `package/src/client/PumpFunAPIClient.ts`
 
 ### LiveCoin
 
@@ -308,5 +316,29 @@
 - Timestamps must be chronologically consistent
 - Boolean flags must match actual data state
 - Optional fields must be null or valid values
+
+## File Organization
+
+### Type Definitions
+- **API Types**: `package/src/types/api.types.ts` - LiveCoin, LiveStreamInfo, StreamClip, APIError
+- **Common Types**: `package/src/types/common.types.ts` - Response wrappers, pagination
+- **Config Types**: `package/src/types/config.types.ts` - ClientConfig, RetryConfig, RateLimitConfig
+- **Domain Types**: `package/src/types/domain.types.ts` - Business logic entities
+
+### Service Classes
+- **Live Streams Service**: `package/src/services/live/live-streams.service.ts`
+- **Stream Filters Service**: `package/src/services/live/stream-filters.service.ts`
+- **Stream Info Service**: `package/src/services/live/stream-info.service.ts`
+
+### Infrastructure Components
+- **HTTP Client**: `package/src/infrastructure/http/http-client.ts`
+- **Error Handler**: `package/src/infrastructure/error-handling/error-handler.ts`
+- **Logger**: `package/src/infrastructure/logging/logger.ts`
+- **Rate Limiter**: `package/src/infrastructure/rate-limiting/rate-limiter.ts`
+- **Configuration Manager**: `package/src/infrastructure/config/config-manager.ts`
+
+### Constants and Validation
+- **API Constants**: `package/src/constants/api.constants.ts`
+- **Stream Validation**: `package/src/validation/streams.validator.ts`
 
 This data model provides comprehensive type safety and validation for the PumpFun API npm package while maintaining flexibility for future API changes.

@@ -78,30 +78,66 @@ package/
 ├── src/
 │   ├── index.ts                 # Main entry point and exports
 │   ├── client/
-│   │   ├── PumpFunAPIClient.ts  # Main API client class
-│   │   └── types.ts             # Public TypeScript interfaces
+│   │   └── PumpFunAPIClient.ts  # Main API client class
+│   ├── services/
+│   │   ├── live/
+│   │   │   ├── live-streams.service.ts    # Live streams service
+│   │   │   ├── stream-filters.service.ts  # Stream filtering service
+│   │   │   └── stream-info.service.ts     # Stream information service
+│   │   └── base/
+│   │       └── base.service.ts            # Base service class
+│   ├── infrastructure/
+│   │   ├── config/
+│   │   │   ├── config-manager.ts          # Configuration management
+│   │   │   └── index.ts
+│   │   ├── error-handling/
+│   │   │   ├── error-handler.ts           # Error handling logic
+│   │   │   ├── errors.ts                  # Error classes
+│   │   │   ├── types.ts                   # Error type definitions
+│   │   │   └── index.ts
+│   │   ├── http/
+│   │   │   ├── http-client.ts             # HTTP client with retry logic
+│   │   │   ├── request-handler.ts          # HTTP request handling
+│   │   │   ├── types.ts                   # HTTP type definitions
+│   │   │   └── index.ts
+│   │   ├── logging/
+│   │   │   ├── logger.ts                  # Logging utilities
+│   │   │   └── index.ts
+│   │   ├── rate-limiting/
+│   │   │   ├── rate-limiter.ts            # Rate limiting implementation
+│   │   │   └── index.ts
+│   │   └── index.ts
+│   ├── constants/
+│   │   ├── api.constants.ts               # API constants
+│   │   └── index.ts
+│   ├── types/
+│   │   ├── api.types.ts                   # API response types
+│   │   ├── common.types.ts                # Common type definitions
+│   │   ├── config.types.ts                # Configuration types
+│   │   ├── domain.types.ts                # Domain object types
+│   │   └── index.ts
+│   ├── validation/
+│   │   ├── streams.validator.ts            # Stream validation logic
+│   │   └── index.ts
 │   ├── utils/
-│   │   ├── http-client.ts       # HTTP client with retry logic
-│   │   ├── logger.ts            # Logging utilities
-│   │   ├── rate-limiter.ts      # Rate limiting implementation
-│   │   └── errors.ts            # Error handling classes
+│   │   └── index.ts                       # Utility exports
 │   └── examples/
-│       ├── basic-usage.ts       # Usage examples from discovery
-│       └── advanced-usage.ts    # Advanced integration examples
-├── dist/                        # Compiled JavaScript output
+│       ├── basic-usage.ts                 # Usage examples from discovery
+│       └── advanced-usage.ts              # Advanced integration examples
+├── dist/                                  # Compiled JavaScript output
 ├── tests/
-│   ├── unit/                    # Unit tests for individual modules
-│   ├── integration/             # Integration tests with mocked APIs
-│   └── fixtures/                # Test data and mock responses
-├── docs/                        # Documentation files
-│   ├── api.md                   # API documentation
-│   ├── examples.md              # Usage examples
-│   └── troubleshooting.md       # Common issues and solutions
-├── package.json                 # Package configuration and dependencies
-├── tsconfig.json               # TypeScript configuration
-├── jest.config.js             # Testing configuration
-├── README.md                   # Package documentation
-└── LICENSE                     # License information
+│   ├── unit/                              # Unit tests for individual modules
+│   ├── integration/                       # Integration tests with mocked APIs
+│   └── fixtures/                          # Test data and mock responses
+├── docs/                                  # Documentation files
+│   ├── api.md                             # API documentation
+│   ├── examples.md                        # Usage examples
+│   └── troubleshooting.md                 # Common issues and solutions
+├── package.json                           # Package configuration and dependencies
+├── tsconfig.json                         # TypeScript configuration
+├── jest.config.js                       # Testing configuration
+├── README.md                             # Package documentation
+└── LICENSE                               # License information
 ```
 
 **Structure Decision**: Single npm package structure with clear separation between client logic, utilities, and examples. This structure supports both CommonJS and ES module exports, includes comprehensive testing, and provides clear documentation for consumers.
