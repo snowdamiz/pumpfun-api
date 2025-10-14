@@ -6,6 +6,20 @@
  * Tests all currently implemented package functionality including live streams,
  * configuration management, error handling, rate limiting, and logging.
  *
+ * USAGE:
+ *   npx tsx src/examples/basic-usage.ts [demo-type]
+ *
+ * Available demo types:
+ *   quick    - Quick functionality test (default)
+ *   basic    - Basic initialization demo
+ *   live     - Live coins API demo (with real API calls)
+ *   all      - Run all examples (comprehensive demo)
+ *
+ * Examples:
+ *   npx tsx src/examples/basic-usage.ts quick
+ *   npx tsx src/examples/basic-usage.ts live
+ *   npx tsx src/examples/basic-usage.ts all
+ *
  * @version 1.0.0
  * @author PumpFun Team
  */
@@ -943,5 +957,82 @@ export async function quickTest() {
   } catch (error) {
     console.error('❌ Quick test failed:', error);
     return false;
+  }
+}
+
+// ============================================================================
+// Direct execution block - runs when file is executed directly
+// ============================================================================
+
+/**
+ * Check if this file is being run directly and execute appropriate demo
+ */
+if (import.meta.url.endsWith('basic-usage.ts')) {
+  console.log('🚀 PumpFun API Client - Basic Usage Examples');
+  console.log('='.repeat(60));
+  console.log('');
+
+  console.log('📋 Available examples:');
+  console.log('   1. Quick test (verifies basic functionality)');
+  console.log('   2. Basic initialization demo');
+  console.log('   3. Live coins demo (with API calls)');
+  console.log('   4. All examples (comprehensive demo)');
+  console.log('');
+
+  // Get command line arguments
+  const args = process.argv.slice(2);
+  const demoType = args[0] || 'quick';
+
+  console.log(`🎯 Running demo: ${demoType}`);
+  console.log('');
+
+  switch (demoType.toLowerCase()) {
+    case 'quick':
+    case 'test':
+      quickTest().then(success => {
+        console.log(`\n🏁 Quick test ${success ? 'PASSED' : 'FAILED'}`);
+        process.exit(success ? 0 : 1);
+      }).catch(err => {
+        console.error('\n💥 Quick test crashed:', err);
+        process.exit(1);
+      });
+      break;
+
+    case 'basic':
+    case 'init':
+      basicInitialization();
+      console.log('\n✅ Basic initialization demo completed');
+      break;
+
+    case 'live':
+    case 'api':
+      getLiveCoinsExample().then(() => {
+        console.log('\n✅ Live coins demo completed');
+      }).catch(err => {
+        console.error('\n💥 Live coins demo failed:', err);
+        process.exit(1);
+      });
+      break;
+
+    case 'all':
+    case 'full':
+      runAllBasicExamples().then(() => {
+        console.log('\n🎉 All examples completed!');
+      }).catch(err => {
+        console.error('\n💥 Examples execution failed:', err);
+        process.exit(1);
+      });
+      break;
+
+    default:
+      console.log('❌ Unknown demo type. Available options:');
+      console.log('   quick    - Quick functionality test');
+      console.log('   basic    - Basic initialization demo');
+      console.log('   live     - Live coins API demo');
+      console.log('   all      - Run all examples');
+      console.log('');
+      console.log('Usage: node basic-usage.ts [demo-type]');
+      console.log('Example: node basic-usage.ts quick');
+      process.exit(1);
   }
 }
