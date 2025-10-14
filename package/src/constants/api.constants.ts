@@ -205,3 +205,43 @@ export const HTTP_GATEWAY_TIMEOUT = 504;
 
 /** HTTP Request Timeout status code */
 export const HTTP_REQUEST_TIMEOUT = 408;
+
+// ============================================================================
+// LiveKit Constants
+// ============================================================================
+
+/** Default LiveKit server regions with optimal selection */
+export const LIVEKIT_REGIONS = [
+  {
+    region: 'us-east-1',
+    url: 'wss://livekit-us-east-1.pump.fun',
+    description: 'US East (N. Virginia)',
+  },
+  {
+    region: 'us-west-2',
+    url: 'wss://livekit-us-west-2.pump.fun',
+    description: 'US West (Oregon)',
+  },
+  {
+    region: 'eu-west-1',
+    url: 'wss://livekit-eu-west-1.pump.fun',
+    description: 'EU West (Ireland)',
+  },
+  {
+    region: 'ap-southeast-1',
+    url: 'wss://livekit-ap-southeast-1.pump.fun',
+    description: 'Asia Pacific (Singapore)',
+  },
+] as const;
+
+/** Default LiveKit region */
+export const DEFAULT_LIVEKIT_REGION = 'us-east-1';
+
+/** LiveKit room name pattern */
+export const LIVEKIT_ROOM_PATTERN = '{mintId}:{streamId}';
+
+/** LiveKit connection timeout in milliseconds */
+export const LIVEKIT_CONNECTION_TIMEOUT_MS = 15 * ONE_SECOND_MS;
+
+/** Maximum LiveKit regions to return */
+export const MAX_LIVEKIT_REGIONS = 4;

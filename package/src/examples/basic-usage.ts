@@ -72,6 +72,7 @@ export const getTitledStreamsExample = livestreamExamples.getTitledStreamsExampl
 export const getComprehensiveLiveDataExample = livestreamExamples.getComprehensiveLiveDataExample;
 export const getStreamInfoExample = livestreamExamples.getStreamInfoExample;
 export const checkCreatorApprovalExample = livestreamExamples.checkCreatorApprovalExample;
+export const getLiveKitConnectionInfoExample = livestreamExamples.getLiveKitConnectionInfoExample;
 
 // Best Practices Examples
 export const productionBestPractices = bestPracticesExamples.productionBestPractices;
@@ -117,6 +118,7 @@ export async function runAllBasicExamples() {
     comprehensiveData: null as any,
     streamInfo: null as any,
     creatorApproval: null as any,
+    liveKitConnection: null as any,
   };
 
   try {
@@ -186,6 +188,9 @@ export async function runAllBasicExamples() {
     results.creatorApproval = await checkCreatorApprovalExample();
     console.log();
 
+    results.liveKitConnection = await getLiveKitConnectionInfoExample();
+    console.log();
+
     results.jurisdictionTest = await jurisdictionAndConnectionExample();
     console.log();
 
@@ -206,6 +211,7 @@ export async function runAllBasicExamples() {
     console.log('   • Comprehensive data gathering');
     console.log('   • Detailed stream information');
     console.log('   • Creator approval status checking');
+    console.log('   • LiveKit video streaming connections');
     console.log('   • Error handling and rate limiting');
     console.log('   • Statistics and state management');
     console.log('   • Configuration management and lifecycle');
@@ -238,6 +244,7 @@ export const examples = {
   getComprehensiveLiveDataExample,
   getStreamInfoExample,
   checkCreatorApprovalExample,
+  getLiveKitConnectionInfoExample,
   jurisdictionAndConnectionExample,
 
   // Main runner
@@ -320,7 +327,8 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('   2. Basic initialization demo');
   console.log('   3. Live coins demo (with API calls)');
   console.log('   4. Creator approval demo (test isApprovedCreator)');
-  console.log('   5. All examples (comprehensive demo)');
+  console.log('   5. LiveKit video streaming demo (test getLiveKitConnectionInfo)');
+  console.log('   6. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -374,6 +382,19 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'livekit':
+    case 'video':
+    case 'connection':
+      getLiveKitConnectionInfoExample()
+        .then(() => {
+          console.log('\n✅ LiveKit connection demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 LiveKit connection demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'all':
     case 'full':
       runAllBasicExamples()
@@ -388,11 +409,12 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
 
     default:
       console.log('❌ Unknown demo type. Available options:');
-      console.log('   quick    - Quick functionality test');
-      console.log('   basic    - Basic initialization demo');
-      console.log('   live     - Live coins API demo');
-      console.log('   approval - Creator approval demo (isApprovedCreator)');
-      console.log('   all      - Run all examples');
+      console.log('   quick     - Quick functionality test');
+      console.log('   basic     - Basic initialization demo');
+      console.log('   live      - Live coins API demo');
+      console.log('   approval  - Creator approval demo (isApprovedCreator)');
+      console.log('   livekit   - LiveKit video streaming demo (getLiveKitConnectionInfo)');
+      console.log('   all       - Run all examples');
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');
       console.log('Example: node basic-usage.ts quick');

@@ -15,6 +15,7 @@ import {
   LiveCoin,
   GetLiveCoinsParams,
   LiveStreamInfo,
+  LiveKitConnectionInfo,
   ValidatedConfig,
 } from '../types';
 
@@ -242,6 +243,14 @@ export class PumpFunAPIClient {
   public async isApprovedCreator(mintId: string): Promise<boolean> {
     this.ensureInitialized();
     return this.liveStreamsService.isApprovedCreator(mintId);
+  }
+
+  /**
+   * Get LiveKit connection details for video streaming
+   */
+  public async getLiveKitConnectionInfo(mintId: string): Promise<LiveKitConnectionInfo | null> {
+    this.ensureInitialized();
+    return this.liveStreamsService.getLiveKitConnectionInfo(mintId);
   }
 
   /**

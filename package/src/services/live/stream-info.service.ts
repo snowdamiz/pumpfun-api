@@ -6,7 +6,12 @@
  */
 
 import axios from 'axios';
-import { LiveStreamInfo, LiveStreamsServiceConfig } from '../../types';
+import {
+  LiveStreamInfo,
+  LiveKitConnectionInfo,
+  LiveKitRegion,
+  LiveStreamsServiceConfig,
+} from '../../types';
 import {
   NetworkError,
   ServerError,
@@ -16,6 +21,11 @@ import {
   AuthorizationError,
 } from '../../infrastructure/error-handling/errors';
 import { Logger } from '../../infrastructure/logging/logger';
+import {
+  LIVEKIT_REGIONS,
+  LIVEKIT_ROOM_PATTERN,
+  MAX_LIVEKIT_REGIONS,
+} from '../../constants/api.constants';
 
 /**
  * Service for handling live stream information operations
@@ -324,5 +334,169 @@ export class LiveStreamInfoService {
       // Re-throw unknown errors
       throw error;
     }
+  }
+
+  /**
+   * Get LiveKit connection details for video streaming
+   */
+  async getLiveKitConnectionInfo(mintId: string): Promise<LiveKitConnectionInfo | null> {
+    this.logger.info('Fetching LiveKit connection information', {
+      mintId,
+      operation: 'getLiveKitConnectionInfo',
+    });
+
+    try {
+      // First, get the stream info to check if there's an active stream
+      const streamInfo = await this.getLiveStreamInfo(mintId);
+
+      if (!streamInfo || !streamInfo.isLive) {
+        this.logger.info('No active stream found for LiveKit connection', {
+          mintId,
+          hasStreamInfo: !!streamInfo,
+          isLive: streamInfo?.isLive || false,
+        });
+        return null;
+      }
+
+      // Generate LiveKit connection details
+      const roomName = LIVEKIT_ROOM_PATTERN.replace('{mintId}', mintId).replace(
+        '{streamId}',
+        streamInfo.id.toString()
+      );
+
+      // Select optimal regions based on stream info and geography
+      const availableRegions = this.selectOptimalRegions(streamInfo);
+
+      // Choose primary server (first in the list as optimal)
+      const primaryServer = availableRegions[0]?.url ?? LIVEKIT_REGIONS[0].url;
+
+      const connectionInfo: LiveKitConnectionInfo = {
+        regions: availableRegions,
+        primaryServer,
+        roomName,
+        mintId,
+        streamId: streamInfo.id,
+        websocketUrl: primaryServer,
+        requiresAuthentication: true, // LiveKit typically requires authentication
+      };
+
+      this.logger.info('Successfully generated LiveKit connection information', {
+        mintId,
+        streamId: streamInfo.id,
+        roomName,
+        primaryServer,
+        regionCount: availableRegions.length,
+        requiresAuthentication: connectionInfo.requiresAuthentication,
+      });
+
+      return connectionInfo;
+    } catch (error: any) {
+      // Handle errors from getLiveStreamInfo or other issues
+      if (
+        error instanceof ValidationError ||
+        error instanceof NetworkError ||
+        error instanceof TimeoutError ||
+        error instanceof ServerError ||
+        error instanceof AuthenticationError ||
+        error instanceof AuthorizationError
+      ) {
+        this.logger.error('Failed to get LiveKit connection info due to stream info error', {
+          mintId,
+          error: error.message,
+          errorCode: error.code,
+        });
+        throw error;
+      }
+
+      // Handle any other unexpected errors
+      this.logger.error('Unexpected error generating LiveKit connection info', {
+        mintId,
+        error: error.message,
+        errorType: error.constructor.name,
+      });
+
+      throw new NetworkError({
+        message: `Failed to generate LiveKit connection information: ${error.message}`,
+        code: 'LIVEKIT_CONNECTION_ERROR',
+        details: {
+          mintId,
+          originalError: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * Select optimal LiveKit regions based on stream information
+   */
+  private selectOptimalRegions(streamInfo: LiveStreamInfo): LiveKitRegion[] {
+    const regions: LiveKitRegion[] = [];
+    const DEFAULT_DISTANCE = 999;
+
+    // Convert LIVEKIT_REGIONS to LiveKitRegion format
+    for (const regionConfig of LIVEKIT_REGIONS.slice(0, MAX_LIVEKIT_REGIONS)) {
+      regions.push({
+        region: regionConfig.region,
+        url: regionConfig.url,
+        distance: this.calculateRegionDistance(regionConfig.region, streamInfo),
+      });
+    }
+
+    // Sort by distance (lower distance = higher priority)
+    regions.sort((a, b) => {
+      const distanceA = parseFloat(a.distance) || DEFAULT_DISTANCE;
+      const distanceB = parseFloat(b.distance) || DEFAULT_DISTANCE;
+      return distanceA - distanceB;
+    });
+
+    this.logger.debug('Selected optimal LiveKit regions', {
+      mintId: streamInfo.mintId,
+      streamId: streamInfo.id,
+      regions: regions.map(r => ({ region: r.region, distance: r.distance })),
+    });
+
+    return regions;
+  }
+
+  /**
+   * Calculate distance metric for region selection
+   * This is a simplified implementation - in production, you might use
+   * actual geographic data or latency measurements
+   */
+  private calculateRegionDistance(region: string, streamInfo: LiveStreamInfo): string {
+    // Constants for distance calculation
+    const MAX_PARTICIPANTS_FOR_FACTOR = 100;
+    const PARTICIPANT_FACTOR_MULTIPLIER = 0.5;
+
+    // Simple distance calculation based on region and participant count
+    // Higher participant count might indicate better region connectivity
+    const baseDistance = this.getRegionBaseDistance(region);
+    const participantFactor =
+      Math.max(0, MAX_PARTICIPANTS_FOR_FACTOR - streamInfo.numParticipants) /
+      MAX_PARTICIPANTS_FOR_FACTOR;
+    const adjustedDistance = baseDistance * (1 + participantFactor * PARTICIPANT_FACTOR_MULTIPLIER);
+
+    return adjustedDistance.toFixed(2);
+  }
+
+  /**
+   * Get base distance for different regions
+   */
+  private getRegionBaseDistance(region: string): number {
+    // Constants for region distances
+    const PRIMARY_REGION_DISTANCE = 10;
+    const SECONDARY_US_REGION_DISTANCE = 25;
+    const EUROPE_REGION_DISTANCE = 50;
+    const ASIA_PACIFIC_REGION_DISTANCE = 80;
+    const DEFAULT_REGION_DISTANCE = 100;
+
+    const regionDistances: Record<string, number> = {
+      'us-east-1': PRIMARY_REGION_DISTANCE, // Primary region - lowest distance
+      'us-west-2': SECONDARY_US_REGION_DISTANCE, // Secondary US region
+      'eu-west-1': EUROPE_REGION_DISTANCE, // European region
+      'ap-southeast-1': ASIA_PACIFIC_REGION_DISTANCE, // Asia Pacific region
+    };
+
+    return regionDistances[region] ?? DEFAULT_REGION_DISTANCE; // Default distance for unknown regions
   }
 }

@@ -9,6 +9,7 @@ import {
   LiveCoin,
   GetLiveCoinsParams,
   LiveStreamInfo,
+  LiveKitConnectionInfo,
   LiveStreamsServiceConfig,
   ServiceState,
 } from '../../types';
@@ -178,5 +179,25 @@ export class LiveStreamsService {
    */
   async isApprovedCreator(mintId: string): Promise<boolean> {
     return this.streamInfoService.isApprovedCreator(mintId);
+  }
+
+  /**
+   * Get LiveKit connection details for video streaming
+   */
+  async getLiveKitConnectionInfo(mintId: string): Promise<LiveKitConnectionInfo | null> {
+    this.logger.info('Getting LiveKit connection information via LiveStreamsService', {
+      mintId,
+      operation: 'getLiveKitConnectionInfo',
+    });
+
+    try {
+      return await this.streamInfoService.getLiveKitConnectionInfo(mintId);
+    } catch (error) {
+      this.logger.error('Failed to get LiveKit connection info via LiveStreamsService', {
+        mintId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 }

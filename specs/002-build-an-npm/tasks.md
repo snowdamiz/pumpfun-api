@@ -224,7 +224,7 @@
   - Add method to check if a creator is approved for streaming
   - Story: US3
 
-- [ ] **T035** - Implement getLiveKitConnectionInfo method [P]
+- [x] **T035** - Implement getLiveKitConnectionInfo method [P] ✅
   - File: `package/src/services/live/stream-info.service.ts`
   - Add method to generate LiveKit connection details with regions and room info
   - Story: US3
@@ -359,17 +359,12 @@
   - Common issues, debugging guides, and problem resolution
   - Story: Cross-cutting
 
-- [ ] **T058** - Add browser compatibility testing
-  - File: `package/tests/browser/`
-  - Test package functionality in browser environments
-  - Story: Cross-cutting
-
-- [ ] **T059** - Create API reference documentation
+- [ ] **T058** - Create API reference documentation
   - File: `package/docs/api.md`
   - Comprehensive API documentation for all public methods and types
   - Story: Cross-cutting
 
-- [ ] **T060** - Final integration testing and validation
+- [ ] **T059** - Final integration testing and validation
   - File: `package/tests/integration/full-suite.test.ts`
   - End-to-end testing covering all user stories and edge cases
   - Story: Cross-cutting

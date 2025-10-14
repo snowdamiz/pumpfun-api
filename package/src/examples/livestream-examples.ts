@@ -7,10 +7,11 @@
  * - Finding top streams by participants
  * - Getting detailed stream information
  * - Checking creator approval status
+ * - Getting LiveKit video streaming connections
  */
 
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
-import { LogLevel, LiveStreamInfo } from '../types';
+import { LogLevel, LiveStreamInfo, LiveKitConnectionInfo } from '../types';
 import {
   EXAMPLE_STREAM_LIMIT,
   MIN_PARTICIPANTS,
@@ -453,6 +454,148 @@ export async function checkCreatorApprovalExample() {
     return { client, approvals };
   } catch (error) {
     console.error('❌ Error in creator approval example:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 16: Get LiveKit connection information for video streaming
+ */
+export async function getLiveKitConnectionInfoExample() {
+  console.log('=== Get LiveKit Connection Info Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 15000,
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableColors: true,
+    },
+  });
+
+  try {
+    // First get some live coins to test with
+    console.log('🔍 Getting live coins to test LiveKit connections...');
+    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
+
+    if (liveCoins.length === 0) {
+      console.log('⚠️ No live coins found to test LiveKit connections');
+      return { client, connections: [] };
+    }
+
+    console.log(
+      `🎥 Testing LiveKit connection info for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
+    );
+
+    const connections: Array<{
+      mint: string;
+      name: string;
+      symbol: string;
+      connectionInfo: LiveKitConnectionInfo | null;
+    }> = [];
+
+    for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
+      const coin = liveCoins[i];
+      if (!coin) {
+        console.log(`${i + INDEX_OFFSET}. ⚠️ Skipping undefined coin data`);
+        continue;
+      }
+
+      console.log(
+        `${i + INDEX_OFFSET}. Getting LiveKit connection for: ${coin.name} (${coin.symbol})`
+      );
+      console.log(`   🔗 Mint: ${coin.mint}`);
+      console.log(`   👥 Live Participants: ${coin.num_participants}`);
+
+      try {
+        const connectionInfo = await client.getLiveKitConnectionInfo(coin.mint);
+
+        if (connectionInfo) {
+          console.log(`   ✅ LiveKit Connection Found:`);
+          console.log(`      🏠 Room Name: ${connectionInfo.roomName}`);
+          console.log(`      🔗 WebSocket URL: ${connectionInfo.websocketUrl}`);
+          console.log(`      🌐 Primary Server: ${connectionInfo.primaryServer}`);
+          console.log(`      📡 Stream ID: ${connectionInfo.streamId}`);
+          console.log(
+            `      🔐 Requires Auth: ${connectionInfo.requiresAuthentication ? 'YES' : 'NO'}`
+          );
+          console.log(`      🌍 Available Regions: ${connectionInfo.regions.length}`);
+
+          // Display available regions
+          console.log(`      📍 Region Options:`);
+          connectionInfo.regions.forEach((region, index) => {
+            console.log(`         ${index + 1}. ${region.region} (Distance: ${region.distance})`);
+            console.log(`            URL: ${region.url}`);
+          });
+
+          console.log(`      🎬 Ready for LiveKit video streaming integration`);
+        } else {
+          console.log(`   ⚠️ No active LiveKit connection available`);
+          console.log(`      💡 This might mean:`);
+          console.log(`         • Stream is not currently active`);
+          console.log(`         • Creator is not approved for streaming`);
+          console.log(`         • Video streaming not enabled for this token`);
+        }
+
+        connections.push({
+          mint: coin.mint,
+          name: coin.name,
+          symbol: coin.symbol,
+          connectionInfo,
+        });
+      } catch (error) {
+        console.log(
+          `   ❌ Error getting LiveKit connection: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        connections.push({
+          mint: coin.mint,
+          name: coin.name,
+          symbol: coin.symbol,
+          connectionInfo: null,
+        });
+      }
+
+      console.log('');
+    }
+
+    // Summary
+    const successfulConnections = connections.filter(c => c.connectionInfo !== null).length;
+    console.log(`📊 LiveKit Connection Summary:`);
+    console.log(`   Total Tested: ${connections.length}`);
+    console.log(`   Successful: ${successfulConnections}`);
+    console.log(`   Failed: ${connections.length - successfulConnections}`);
+    console.log(
+      `   Success Rate: ${((successfulConnections / connections.length) * 100).toFixed(1)}%`
+    );
+
+    if (successfulConnections > 0) {
+      console.log(`\n🎥 Video Streaming Integration Guide:`);
+      console.log(`   1. Use the WebSocket URL to connect to LiveKit server`);
+      console.log(`   2. Join the room using the provided room name`);
+      console.log(`   3. Handle authentication if required`);
+      console.log(`   4. Select optimal region based on user location`);
+      console.log(`   5. Implement WebRTC for video/audio streaming`);
+
+      // Show example integration code
+      console.log(`\n💻 Integration Example:`);
+      console.log(`   import LiveKit from 'livekit-client';`);
+      console.log(`   `);
+      console.log(`   // Connect to LiveKit room`);
+      console.log(`   const room = new LiveKit.Room();`);
+      console.log(`   await room.connect(connectionInfo.websocketUrl, connectionInfo.roomName);`);
+      console.log(`   `);
+      console.log(`   // Handle video tracks`);
+      console.log(`   room.on('trackSubscribed', (track, participant) => {`);
+      console.log(`     if (track.kind === 'video') {`);
+      console.log(`       // Attach video element`);
+      console.log(`       document.getElementById('video').srcObject = new MediaStream([track]);`);
+      console.log(`     }`);
+      console.log(`   });`);
+    }
+
+    return { client, connections };
+  } catch (error) {
+    console.error('❌ Error in LiveKit connection example:', error);
     throw error;
   }
 }
