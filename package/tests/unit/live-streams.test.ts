@@ -460,7 +460,7 @@ describe('Live Streaming Functionality', () => {
 
       expect(mockRateLimiter.waitForRequest).toHaveBeenCalled();
       expect(mockHttpClient.get).toHaveBeenCalledWith(
-        '/coins/currently-live?limit=100&sort=participants'
+        '/coins/currently-live?limit=100'
       );
       expect(mockRateLimiter.recordRequest).toHaveBeenCalled();
       expect(result).toEqual(
@@ -472,14 +472,14 @@ describe('Live Streaming Functionality', () => {
       const customLiveCoins = [
         { ...mockLiveCoins[0], num_participants: 200, is_currently_live: true },
         { ...mockLiveCoins[1], num_participants: 25, is_currently_live: true },
-        { ...mockLiveCoins[0], mint: 'newmint', num_participants: 100, is_currently_live: false },
+        { ...mockLiveCoins[0], mint: '44444444444444444444444444444444', num_participants: 100, is_currently_live: false },
       ];
       mockHttpClient.get.mockResolvedValue(customLiveCoins);
 
       const result = await client.getActiveStreams(100, { limit: 20, offset: 10 });
 
       expect(mockHttpClient.get).toHaveBeenCalledWith(
-        '/coins/currently-live?offset=10&limit=20&sort=participants'
+        '/coins/currently-live?offset=10&limit=20'
       );
       expect(result).toEqual(
         customLiveCoins.filter(coin => coin.is_currently_live && coin.num_participants >= 100)
@@ -523,7 +523,7 @@ describe('Live Streaming Functionality', () => {
       await client.getActiveStreams(10, { limit: 100 }); // Use max allowed limit
 
       expect(mockHttpClient.get).toHaveBeenCalledWith(
-        '/coins/currently-live?limit=100&sort=participants'
+        '/coins/currently-live?limit=100'
       );
     });
   });
@@ -536,7 +536,7 @@ describe('Live Streaming Functionality', () => {
 
       expect(mockRateLimiter.waitForRequest).toHaveBeenCalled();
       expect(mockHttpClient.get).toHaveBeenCalledWith(
-        '/coins/currently-live?limit=20&sort=participants'
+        '/coins/currently-live?limit=20'
       );
       expect(mockRateLimiter.recordRequest).toHaveBeenCalled();
       // Should return only live streams, filtered from API response and sliced to limit
@@ -550,19 +550,19 @@ describe('Live Streaming Functionality', () => {
           ...mockLiveCoins[0],
           num_participants: 200,
           is_currently_live: true,
-          mint: 'mint1',
+          mint: '11111111111111111111111111111111',
           name: 'High Participants',
         },
         {
           ...mockLiveCoins[1],
           num_participants: 25,
           is_currently_live: false,
-          mint: 'mint2',
+          mint: '22222222222222222222222222222222',
           name: 'Low Participants',
         },
         {
           ...mockLiveCoins[0],
-          mint: 'mint3',
+          mint: '33333333333333333333333333333333',
           num_participants: 150,
           is_currently_live: true,
           name: 'Medium Participants',
@@ -573,7 +573,7 @@ describe('Live Streaming Functionality', () => {
       const result = await client.getTopLiveStreams(20);
 
       expect(mockHttpClient.get).toHaveBeenCalledWith(
-        '/coins/currently-live?limit=20&sort=participants'
+        '/coins/currently-live?limit=20'
       );
       // Should return only live streams, filtered from the original API response order
       const expectedLiveStreams = mixedLiveCoins
@@ -616,7 +616,7 @@ describe('Live Streaming Functionality', () => {
       await client.getTopLiveStreams(100); // Use max allowed limit
 
       expect(mockHttpClient.get).toHaveBeenCalledWith(
-        '/coins/currently-live?limit=100&sort=participants'
+        '/coins/currently-live?limit=100'
       );
     });
 
@@ -651,7 +651,7 @@ describe('Live Streaming Functionality', () => {
         { ...mockLiveCoins[1], livestream_title: null, is_currently_live: true }, // No title
         {
           ...mockLiveCoins[0],
-          mint: 'mint3',
+          mint: '55555555555555555555555555555555',
           livestream_title: undefined,
           is_currently_live: false,
         }, // No title
@@ -667,8 +667,8 @@ describe('Live Streaming Functionality', () => {
       const mixedTitles = [
         { ...mockLiveCoins[0], livestream_title: 'Valid Title', is_currently_live: true },
         { ...mockLiveCoins[1], livestream_title: '', is_currently_live: true }, // Empty string
-        { ...mockLiveCoins[0], mint: 'mint3', livestream_title: '   ', is_currently_live: true }, // Whitespace only
-        { ...mockLiveCoins[1], mint: 'mint4', livestream_title: '\n\t', is_currently_live: true }, // Special whitespace
+        { ...mockLiveCoins[0], mint: '66666666666666666666666666666666', livestream_title: '   ', is_currently_live: true }, // Whitespace only
+        { ...mockLiveCoins[1], mint: '77777777777777777777777777777777', livestream_title: '\n\t', is_currently_live: true }, // Special whitespace
       ];
       mockHttpClient.get.mockResolvedValue(mixedTitles);
 
@@ -769,14 +769,14 @@ describe('Live Streaming Functionality', () => {
           ...mockLiveCoins[0],
           livestream_title: 'Has Title',
           is_currently_live: true,
-          mint: 'mint1',
+          mint: '88888888888888888888888888888888888',
           name: 'Titled Stream',
         },
         {
           ...mockLiveCoins[1],
           livestream_title: null,
           is_currently_live: true,
-          mint: 'mint2',
+          mint: '99999999999999999999999999999999999',
           name: 'Untitled Stream',
         },
       ];
@@ -785,9 +785,15 @@ describe('Live Streaming Functionality', () => {
       const allCoins = await client.getLiveCoins();
       const titledCoins = await client.getTitledStreams(10);
 
-      expect(allCoins).toEqual(mixedCoins);
+      // The validator removes null optional fields, so we need to match that structure
+      const expectedAllCoins = mixedCoins.map(coin => {
+        const { livestream_title, ...rest } = coin;
+        return livestream_title ? { ...rest, livestream_title } : rest;
+      });
+      expect(allCoins).toEqual(expectedAllCoins);
+
       // Should return only live streams with titles
-      const expectedTitledCoins = mixedCoins.filter(
+      const expectedTitledCoins = expectedAllCoins.filter(
         coin =>
           coin.is_currently_live && coin.livestream_title && coin.livestream_title.trim().length > 0
       );
@@ -819,11 +825,20 @@ describe('Live Streaming Functionality', () => {
     });
 
     test('should handle partial failures in concurrent requests', async () => {
-      mockHttpClient.get
-        .mockResolvedValueOnce(mockLiveCoins) // getLiveCoins succeeds
-        .mockRejectedValueOnce(new Error('Network error')) // getActiveStreams fails
-        .mockResolvedValueOnce(mockLiveCoins) // getTopLiveStreams succeeds
-        .mockRejectedValueOnce(new Error('API error')); // getTitledStreams fails
+      // Use more specific mock setup for concurrent requests
+      let callCount = 0;
+      mockHttpClient.get.mockImplementation((url) => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.resolve(mockLiveCoins); // getLiveCoins succeeds
+        } else if (callCount === 2) {
+          return Promise.reject(new Error('Network error')); // getActiveStreams fails
+        } else if (callCount === 3) {
+          return Promise.resolve(mockLiveCoins); // getTopLiveStreams succeeds
+        } else {
+          return Promise.reject(new Error('API error')); // getTitledStreams fails
+        }
+      });
 
       const results = await Promise.allSettled([
         client.getLiveCoins(),

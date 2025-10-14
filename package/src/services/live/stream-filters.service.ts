@@ -157,11 +157,11 @@ export class StreamFilters {
     try {
       const allLiveStreams = await this.getLiveCoinsFn({
         limit: 100, // Fetch more items to account for filtering
-        ...params,
+        ...params, // User params should be used as-is
       });
 
-      // Filter streams with minimum participants
-      const activeStreams = this.filterByParticipants(allLiveStreams, minParticipants);
+      // Filter streams with minimum participants and currently live
+      const activeStreams = this.filterByParticipantsAndLive(allLiveStreams, minParticipants);
 
       // Sort by participant count (highest first)
       this.sortByParticipants(activeStreams);
@@ -208,13 +208,13 @@ export class StreamFilters {
     try {
       const liveStreams = await this.getLiveCoinsFn({
         limit: Math.max(limit, 20), // Fetch extra to account for filtering
-        sort: 'participants', // Sort by participants
-        order: 'DESC',
-        ...params,
+        ...params, // User params should be used as-is
       });
 
-      // Sort by participant count (highest first) and limit
-      const topStreams = this.getTopByParticipants(liveStreams, limit);
+      // Filter by currently live while preserving original API response order
+      const topStreams = liveStreams
+        .filter(stream => stream.is_currently_live)
+        .slice(0, limit);
 
       this.logger.info('Successfully fetched top live streams', {
         requested: limit,
@@ -300,14 +300,14 @@ export class StreamFilters {
     try {
       const liveStreams = await this.getLiveCoinsFn({
         limit: Math.max(limit, 50), // Fetch extra to account for filtering
-        ...params,
+        ...params, // User params should be used as-is
       });
 
       // Filter streams with meaningful titles
       const titledStreams = this.filterByTitle(liveStreams);
 
-      // Sort by participant count (highest first) and limit
-      const topTitledStreams = this.getTopByParticipants(titledStreams, limit);
+      // Apply limit while preserving original API order
+      const topTitledStreams = titledStreams.slice(0, limit);
 
       this.logger.info('Successfully fetched titled streams', {
         requested: limit,
@@ -745,6 +745,13 @@ export class StreamFilters {
     return streams.filter(stream => {
       const participants = stream.num_participants ?? 0;
       return participants >= minParticipants;
+    });
+  }
+
+  private filterByParticipantsAndLive(streams: LiveCoin[], minParticipants: number): LiveCoin[] {
+    return streams.filter(stream => {
+      const participants = stream.num_participants ?? 0;
+      return stream.is_currently_live && participants >= minParticipants;
     });
   }
 
