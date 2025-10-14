@@ -81,27 +81,27 @@
 **Goal**: Implement core utilities and infrastructure required by all user stories
 
 - [x] **T009** - Extract and enhance HTTP client utility
-  - File: `package/src/utils/http-client.ts`
+  - File: `package/src/infrastructure/http/http-client.ts`
   - Extract HTTP client from existing codebase with enhanced retry logic, rate limiting, and error handling
   - Story: Shared across all user stories
 
 - [x] **T010** - Extract and enhance Logger utility ✅
-  - File: `package/src/utils/logger.ts`
+  - File: `package/src/infrastructure/logging/logger.ts`
   - Extract logging system with configurable levels, output destinations, and performance tracking
   - Story: Shared across all user stories
 
 - [x] **T011** - Extract and enhance Rate Limiter utility ✅
-  - File: `package/src/utils/rate-limiter.ts`
+  - File: `package/src/infrastructure/rate-limiting/rate-limiter.ts`
   - Extract rate limiting implementation with adaptive backoff and burst protection
   - Story: Shared across all user stories
 
 - [x] **T012** - Create comprehensive error handling system ✅
-  - File: `package/src/utils/errors.ts`
+  - File: `package/src/infrastructure/error-handling/errors.ts`
   - Create error hierarchy with retryable/non-retryable categorization and user-friendly messages
   - Story: Shared across all user stories
 
 - [x] **T013** - Define TypeScript interfaces and types ✅
-  - File: `package/src/client/types.ts`
+  - File: `package/src/types/` (multiple type files)
   - Define all TypeScript interfaces for API responses, configuration, and error types
   - Story: Shared across all user stories
 
@@ -173,7 +173,7 @@
   - Story: US2
 
 - [x] **T026** - Implement rate limiting for live data requests ✅
-  - File: `package/src/utils/rate-limiter.ts`
+  - File: `package/src/infrastructure/rate-limiting/rate-limiter.ts`
   - Enhance rate limiter to handle 60 requests/minute limit for live streaming endpoints
   - Story: US2
 
@@ -215,37 +215,37 @@
 **Independent Test**: Call getVideoStreamAnalysis() with streaming coin and verify comprehensive video data
 
 - [x] **T033** - Implement getLiveStreamInfo method [P] ✅
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/stream-info.service.ts`
   - Add method to fetch detailed live stream information from livestream-api
   - Story: US3
 
 - [ ] **T034** - Implement isApprovedCreator method [P]
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/stream-info.service.ts`
   - Add method to check if a creator is approved for streaming
   - Story: US3
 
 - [ ] **T035** - Implement getLiveKitConnectionInfo method [P]
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/stream-info.service.ts`
   - Add method to generate LiveKit connection details with regions and room info
   - Story: US3
 
 - [ ] **T036** - Create LiveKit region configuration
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/constants/api.constants.ts`
   - Define and configure available LiveKit server regions with optimal selection
   - Story: US3
 
 - [ ] **T037** - Implement getVideoStreamAnalysis method [P]
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/live-streams.service.ts`
   - Combine all video stream methods into comprehensive analysis
   - Story: US3
 
 - [ ] **T038** - Add joinLiveStream method [P]
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/live-streams.service.ts`
   - Add method to attempt joining active live streams
   - Story: US3
 
 - [ ] **T039** - Create video stream types and interfaces [P]
-  - File: `package/src/client/types.ts`
+  - File: `package/src/types/api.types.ts`
   - Define TypeScript interfaces for LiveStreamInfo, LiveKitConnectionInfo, and related types
   - Story: US3
 
@@ -262,27 +262,27 @@
 **Independent Test**: Use search methods and verify appropriate filtered results
 
 - [ ] **T041** - Implement searchLiveStreams method [P]
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/stream-filters.service.ts`
   - Add keyword search across stream names, symbols, descriptions, and titles
   - Story: US4
 
 - [ ] **T042** - Implement getStreamStatistics method [P]
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/live-streams.service.ts`
   - Calculate and return aggregate statistics for live streaming data
   - Story: US4
 
 - [ ] **T043** - Add advanced filtering options
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/stream-filters.service.ts`
   - Extend filtering capabilities with custom filter functions and complex queries
   - Story: US4
 
 - [ ] **T044** - Create search and filter utility functions [P]
-  - File: `package/src/utils/search-utils.ts`
+  - File: `package/src/validation/streams.validator.ts`
   - Create utility functions for complex search patterns and result filtering
   - Story: US4
 
 - [ ] **T045** - Implement caching for search results [P]
-  - File: `package/src/utils/cache.ts`
+  - File: `package/src/infrastructure/http/http-client.ts`
   - Add optional caching layer for search and filter operations
   - Story: US4
 
@@ -304,22 +304,22 @@
 **Independent Test**: Call getStreamClips() and verify clip data returned properly
 
 - [ ] **T048** - Implement getStreamClips method [P]
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/live-streams.service.ts`
   - Add method to fetch stream clips with type filtering and pagination
   - Story: US5
 
 - [ ] **T049** - Create clip data validation [P]
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/validation/streams.validator.ts`
   - Validate clip data against StreamClip TypeScript interfaces
   - Story: US5
 
 - [ ] **T050** - Add clip type filtering and sorting [P]
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/services/live/stream-filters.service.ts`
   - Support filtering by COMPLETE/HIGHLIGHT types and various sorting options
   - Story: US5
 
 - [ ] **T051** - Create clip utility functions [P]
-  - File: `package/src/utils/clip-utils.ts`
+  - File: `package/src/utils/index.ts`
   - Utility functions for clip processing, duration calculation, and metadata extraction
   - Story: US5
 
@@ -335,7 +335,7 @@
 **Goal**: Finalize package with advanced features, performance optimization, and production readiness
 
 - [ ] **T053** - Implement performance monitoring and metrics
-  - File: `package/src/utils/metrics.ts`
+  - File: `package/src/infrastructure/logging/logger.ts`
   - Add performance tracking for API calls, response times, and error rates
   - Story: Cross-cutting
 
@@ -345,7 +345,7 @@
   - Story: Cross-cutting
 
 - [ ] **T055** - Add comprehensive error recovery mechanisms
-  - File: `package/src/client/PumpFunAPIClient.ts`
+  - File: `package/src/infrastructure/error-handling/error-handler.ts`
   - Advanced error recovery with circuit breakers and fallback strategies
   - Story: Cross-cutting
 
