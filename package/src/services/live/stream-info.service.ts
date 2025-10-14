@@ -49,9 +49,9 @@ export class LiveStreamInfoService {
     });
 
     try {
-      // Use the livestream API endpoint directly
+      // Use the livestream API endpoint from configuration
       const response = await axios.get(
-        `https://livestream-api.pump.fun/livestream?mintId=${mintId}`,
+        `${this.config.livestreamURL}/livestream?mintId=${mintId}`,
         {
           timeout: this.config.timeout,
           headers: {
@@ -176,7 +176,7 @@ export class LiveStreamInfoService {
           details: {
             mintId,
             errorCode: error.code,
-            baseURL: 'https://livestream-api.pump.fun',
+            baseURL: this.config.livestreamURL,
           },
         });
       }
@@ -208,9 +208,9 @@ export class LiveStreamInfoService {
     });
 
     try {
-      // Use the livestream API endpoint for creator approval check
+      // Use the livestream API endpoint from configuration for creator approval check
       const response = await axios.get(
-        `https://livestream-api.pump.fun/livestream/is-approved-creator?mintId=${mintId}`,
+        `${this.config.livestreamURL}/livestream/is-approved-creator?mintId=${mintId}`,
         {
           timeout: this.config.timeout,
           headers: {
@@ -314,7 +314,7 @@ export class LiveStreamInfoService {
           details: {
             mintId,
             errorCode: error.code,
-            baseURL: 'https://livestream-api.pump.fun',
+            baseURL: this.config.livestreamURL,
           },
         });
       }

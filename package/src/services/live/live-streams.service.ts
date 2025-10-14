@@ -13,6 +13,7 @@ import {
   LiveStreamsServiceConfig,
   ServiceState,
   VideoStreamAnalysis,
+  JoinLiveStreamResponse,
 } from '../../types';
 import { Logger } from '../../infrastructure/logging/logger';
 import { RateLimiter } from '../../infrastructure/rate-limiting/rate-limiter';
@@ -34,7 +35,7 @@ export class LiveStreamsService {
 
   constructor(
     private config: LiveStreamsServiceConfig,
-    httpClient: HTTPClient,
+    private httpClient: HTTPClient,
     private logger: Logger,
     private rateLimiter: RateLimiter,
     private errorHandler: ErrorHandler,
@@ -298,6 +299,220 @@ export class LiveStreamsService {
 
       // Wrap unknown errors
       throw new Error(`Video stream analysis failed for mintId ${mintId}: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Attempt to join an active live stream
+   *
+   * This method sends a join request to the livestream API for a specific mint.
+   * If successful, it returns connection details for the LiveKit video stream.
+   *
+   * @param mintId - The mint identifier of the token to join the stream for
+   * @returns Promise<JoinLiveStreamResponse> - Join attempt result with connection details if successful
+   */
+  async joinLiveStream(mintId: string): Promise<JoinLiveStreamResponse> {
+    this.logger.info('Attempting to join live stream', {
+      mintId,
+      operation: 'joinLiveStream',
+    });
+
+    // Validate input
+    if (!mintId || typeof mintId !== 'string' || mintId.trim().length === 0) {
+      const errorResponse: JoinLiveStreamResponse = {
+        success: false,
+        message: 'Invalid mintId provided',
+        error: {
+          code: 'INVALID_PARAMETER',
+          details: 'mintId must be a non-empty string',
+        },
+      };
+
+      this.logger.warn('Invalid mintId provided for joinLiveStream', {
+        mintId,
+        error: errorResponse.error,
+      });
+
+      return errorResponse;
+    }
+
+    try {
+      // Apply rate limiting before making the request
+      await this.rateLimiter.waitForRequest();
+
+      // Build the join request - use livestream URL for video operations
+      const endpoint = '/livestream/join';
+      const requestBody = { mintId: mintId.trim() };
+
+      this.logger.debug('Sending join request to livestream API', {
+        endpoint,
+        mintId: requestBody.mintId,
+        baseURL: this.config.livestreamURL,
+      });
+
+      // Make the POST request to join the stream using the livestream API URL
+      // We need to make a direct request to get the full response with status code
+      const response = await (this.httpClient as any).client.request({
+        method: 'POST',
+        url: `${this.config.livestreamURL}${endpoint}`,
+        data: requestBody,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: this.config.timeout || 10000, // 10 second default timeout
+      });
+
+      // Update statistics
+      this.state.requestCount++;
+      this.state.lastRequestTime = Date.now();
+
+      // Record successful request in rate limiter
+      this.rateLimiter.recordRequest();
+
+      // Debug: Log the actual response structure (avoiding circular references)
+      this.logger.debug('Join stream API response received', {
+        responseType: typeof response,
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        dataKeys: response.data ? Object.keys(response.data) : null,
+        hasResponseStatus: !!response.status,
+        responseStatus: response.status,
+        responseStatusCode: response.status,
+        isAxiosResponse: response.constructor.name === 'AxiosResponse',
+      });
+
+      // The API returns 201 status for successful join, even if response.data is undefined
+      if (response.status === 201) {
+        // For successful join (status 201), create a success response even without response data
+        const joinResponse: JoinLiveStreamResponse = {
+          success: true,
+          message: `Successfully joined live stream for ${mintId}`,
+          streamId: undefined, // API doesn't return these fields in current implementation
+          roomName: `${mintId}:stream`, // Use fallback pattern
+          websocketUrl: undefined,
+          requiresAuthentication: true, // Default to true for video streams
+        };
+
+        this.logger.info('Successfully joined live stream (201 status)', {
+          mintId,
+          success: true,
+          message: joinResponse.message,
+        });
+
+        return joinResponse;
+      }
+
+      // Validate response structure for other status codes
+      if (!response.data) {
+        throw new Error('No response data received from join stream API');
+      }
+
+      const responseData = response.data;
+
+      // Create successful join response - API may return different formats
+      const joinResponse: JoinLiveStreamResponse = {
+        success: true,
+        message: `Successfully joined live stream for ${mintId}`,
+        streamId: responseData.streamId || responseData.id || undefined,
+        roomName: responseData.roomName || `${mintId}:stream`, // fallback pattern
+        websocketUrl: responseData.websocketUrl || responseData.url || undefined,
+        requiresAuthentication: responseData.requiresAuthentication || false,
+      };
+
+      this.logger.info('Successfully joined live stream', {
+        mintId,
+        streamId: joinResponse.streamId,
+        roomName: joinResponse.roomName,
+        hasWebsocketUrl: !!joinResponse.websocketUrl,
+        requiresAuthentication: joinResponse.requiresAuthentication,
+        responseTime: Date.now() - this.state.lastRequestTime,
+      });
+
+      return joinResponse;
+    } catch (error) {
+      this.state.errorCount++;
+
+      // Handle different types of errors appropriately
+      let errorResponse: JoinLiveStreamResponse;
+
+      if (error instanceof Error) {
+        // Check for specific error types
+        if (error.message.includes('404')) {
+          errorResponse = {
+            success: false,
+            message: `No active stream found for mint: ${mintId}`,
+            error: {
+              code: 'STREAM_NOT_FOUND',
+              details: 'There is no active live stream for this token',
+            },
+          };
+        } else if (error.message.includes('403') || error.message.includes('401')) {
+          errorResponse = {
+            success: false,
+            message: `Access denied for stream: ${mintId}`,
+            error: {
+              code: 'ACCESS_DENIED',
+              details: 'You do not have permission to join this stream',
+            },
+          };
+        } else if (error.message.includes('429')) {
+          errorResponse = {
+            success: false,
+            message: `Rate limit exceeded while joining stream: ${mintId}`,
+            error: {
+              code: 'RATE_LIMITED',
+              details: 'Too many join requests, please try again later',
+            },
+          };
+        } else {
+          // Generic error
+          errorResponse = {
+            success: false,
+            message: `Failed to join stream for ${mintId}: ${error.message}`,
+            error: {
+              code: 'JOIN_FAILED',
+              details: error.message,
+            },
+          };
+        }
+      } else {
+        // Unknown error type
+        errorResponse = {
+          success: false,
+          message: `Unknown error occurred while joining stream for ${mintId}`,
+          error: {
+            code: 'UNKNOWN_ERROR',
+            details: String(error),
+          },
+        };
+      }
+
+      this.logger.error('Failed to join live stream', {
+        mintId,
+        error: errorResponse.error,
+        success: errorResponse.success,
+        resolution: this.getJoinErrorResolution(errorResponse.error?.code),
+      });
+
+      return errorResponse;
+    }
+  }
+
+  /**
+   * Get resolution guidance for join stream errors
+   */
+  private getJoinErrorResolution(errorCode?: string): string {
+    switch (errorCode) {
+      case 'STREAM_NOT_FOUND':
+        return 'Verify the mintId is correct and the stream is currently active';
+      case 'ACCESS_DENIED':
+        return 'Check if you have the required permissions or if the stream is private';
+      case 'RATE_LIMITED':
+        return 'Wait before making another join request or check your rate limit status';
+      case 'INVALID_PARAMETER':
+        return 'Ensure the mintId is a valid Solana address format';
+      default:
+        return 'Check network connectivity and try again later';
     }
   }
 }

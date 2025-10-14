@@ -16,8 +16,10 @@ import { LogLevel } from './common.types';
  * Configuration options for PumpFunAPIClient
  */
 export interface ClientConfig {
-  /** Custom API base URL */
+  /** Custom API base URL for token operations */
   baseURL?: string;
+  /** Custom live streaming API base URL for video operations */
+  livestreamURL?: string;
   /** Request timeout in milliseconds (default: 10000) */
   timeout?: number;
   /** Retry configuration */
@@ -116,8 +118,10 @@ export interface LoggerConfig {
  * Validated configuration object for ConfigurationManager
  */
 export interface ValidatedConfig {
-  /** API base URL */
+  /** API base URL for token operations */
   baseURL: string;
+  /** Live streaming API base URL for video operations */
+  livestreamURL: string;
   /** Request timeout in milliseconds */
   timeout: number;
   /** WebSocket URL */
@@ -154,8 +158,10 @@ export interface ErrorHandlerConfig {
  * Configuration for LiveStreamsService
  */
 export interface LiveStreamsServiceConfig {
-  /** API base URL */
+  /** API base URL for token operations */
   baseURL: string;
+  /** Live streaming API base URL for video operations */
+  livestreamURL: string;
   /** Request timeout in milliseconds */
   timeout: number;
   /** Retry configuration (optional) */
@@ -273,6 +279,7 @@ export const DEFAULT_CLIENT_CONFIG: Required<
   Omit<ClientConfig, 'retryConfig' | 'loggerConfig' | 'rateLimitConfig'>
 > = {
   baseURL: 'https://frontend-api-v3.pump.fun',
+  livestreamURL: 'https://livestream-api.pump.fun',
   timeout: 10000,
   wsURL: 'wss://stream.pump.fun',
   apiKey: '',

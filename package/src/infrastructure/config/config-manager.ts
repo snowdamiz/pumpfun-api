@@ -57,6 +57,7 @@ export class ConfigurationManager {
 
     this.config = {
       baseURL: mergedConfig.baseURL,
+      livestreamURL: mergedConfig.livestreamURL,
       timeout: mergedConfig.timeout,
       wsURL: mergedConfig.wsURL,
       apiKey: mergedConfig.apiKey,
@@ -109,6 +110,13 @@ export class ConfigurationManager {
       const baseURL = process.env.PUMPFUN_API_BASE_URL.trim();
       if (baseURL) {
         envConfig.baseURL = baseURL;
+      }
+    }
+
+    if (process.env.PUMPFUN_LIVESTREAM_API_URL) {
+      const livestreamURL = process.env.PUMPFUN_LIVESTREAM_API_URL.trim();
+      if (livestreamURL) {
+        envConfig.livestreamURL = livestreamURL;
       }
     }
 
@@ -282,6 +290,17 @@ export class ConfigurationManager {
         }
       } catch {
         errors.push(`Invalid baseURL format: ${config.baseURL}`);
+      }
+    }
+
+    if (config.livestreamURL !== undefined) {
+      try {
+        new URL(config.livestreamURL);
+        if (!config.livestreamURL.startsWith('http://') && !config.livestreamURL.startsWith('https://')) {
+          errors.push('Invalid livestreamURL protocol: must start with http:// or https://');
+        }
+      } catch {
+        errors.push(`Invalid livestreamURL format: ${config.livestreamURL}`);
       }
     }
 

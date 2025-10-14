@@ -18,6 +18,7 @@ import {
   LiveKitConnectionInfo,
   ValidatedConfig,
   VideoStreamAnalysis,
+  JoinLiveStreamResponse,
 } from '../types';
 
 interface JurisdictionResponse {
@@ -128,6 +129,7 @@ export class PumpFunAPIClient {
     this.liveStreamsService = new LiveStreamsService(
       {
         baseURL: validatedConfig.baseURL,
+        livestreamURL: validatedConfig.livestreamURL,
         timeout: validatedConfig.timeout,
         retryConfig: validatedConfig.retryConfig,
       },
@@ -264,6 +266,20 @@ export class PumpFunAPIClient {
   public async getVideoStreamAnalysis(mintId: string): Promise<VideoStreamAnalysis> {
     this.ensureInitialized();
     return this.liveStreamsService.getVideoStreamAnalysis(mintId);
+  }
+
+  /**
+   * Attempt to join an active live stream
+   *
+   * This method sends a join request to the livestream API for a specific mint.
+   * If successful, it returns connection details for the LiveKit video stream.
+   *
+   * @param mintId - The mint identifier of the token to join the stream for
+   * @returns Promise<JoinLiveStreamResponse> - Join attempt result with connection details if successful
+   */
+  public async joinLiveStream(mintId: string): Promise<JoinLiveStreamResponse> {
+    this.ensureInitialized();
+    return this.liveStreamsService.joinLiveStream(mintId);
   }
 
   /**

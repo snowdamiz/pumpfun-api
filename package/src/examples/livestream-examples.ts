@@ -11,7 +11,7 @@
  */
 
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
-import { LogLevel, LiveStreamInfo, LiveKitConnectionInfo, VideoStreamAnalysis } from '../types';
+import { LogLevel, LiveStreamInfo, LiveKitConnectionInfo, VideoStreamAnalysis, JoinLiveStreamResponse } from '../types';
 import {
   EXAMPLE_STREAM_LIMIT,
   MIN_PARTICIPANTS,
@@ -768,6 +768,239 @@ export async function getVideoStreamAnalysisExample() {
     return { client, analyses };
   } catch (error) {
     console.error('❌ Error in video stream analysis example:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 18: Join a live stream
+ *
+ * This example demonstrates the new joinLiveStream method that attempts to join
+ * an active live stream and returns connection details for successful joins.
+ */
+export async function joinLiveStreamExample() {
+  console.log('=== Join Live Stream Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 15000,
+    loggerConfig: {
+      level: LogLevel.DEBUG,
+      enableConsole: true,
+      enableColors: true,
+    },
+  });
+
+  try {
+    // First get some live coins to test with
+    console.log('🔍 Getting live coins to test joining streams...');
+    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
+
+    if (liveCoins.length === 0) {
+      console.log('⚠️ No live coins found to test joining streams');
+      return { client, joinAttempts: [] };
+    }
+
+    console.log(
+      `🎬 Testing stream joining for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
+    );
+
+    const joinAttempts: Array<{
+      mint: string;
+      name: string;
+      symbol: string;
+      participants: number;
+      joinResult: JoinLiveStreamResponse;
+    }> = [];
+
+    for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
+      const coin = liveCoins[i];
+      if (!coin) {
+        console.log(`${i + INDEX_OFFSET}. ⚠️ Skipping undefined coin data`);
+        continue;
+      }
+
+      console.log(`${i + INDEX_OFFSET}. Attempting to join stream for: ${coin.name} (${coin.symbol})`);
+      console.log(`   🔗 Mint: ${coin.mint}`);
+      console.log(`   👥 Live Participants: ${coin.num_participants}`);
+      console.log(`   📺 Stream Title: "${coin.livestream_title ?? 'No Title'}"`);
+
+      try {
+        const joinResult = await client.joinLiveStream(coin.mint);
+
+        console.log(`   ✅ Join Attempt Result:`);
+        console.log(`      🎯 Success: ${joinResult.success ? 'YES' : 'NO'}`);
+        console.log(`      📝 Message: "${joinResult.message}"`);
+
+        if (joinResult.success) {
+          console.log(`      🎉 Stream Joined Successfully!`);
+
+          if (joinResult.streamId) {
+            console.log(`      📺 Stream ID: ${joinResult.streamId}`);
+          }
+
+          if (joinResult.roomName) {
+            console.log(`      🏠 Room Name: ${joinResult.roomName}`);
+          }
+
+          if (joinResult.websocketUrl) {
+            console.log(`      🔗 WebSocket URL: ${joinResult.websocketUrl}`);
+          }
+
+          if (joinResult.requiresAuthentication !== undefined) {
+            console.log(`      🔐 Auth Required: ${joinResult.requiresAuthentication ? 'YES' : 'NO'}`);
+          }
+
+          console.log(`      💡 Next Steps:`);
+          console.log(`         • Use WebSocket URL to connect to the stream`);
+          console.log(`         • Join room using the provided room name`);
+          console.log(`         • Handle authentication if required`);
+          console.log(`         • Implement WebRTC for video/audio streaming`);
+        } else {
+          console.log(`      ❌ Join Failed:`);
+
+          if (joinResult.error) {
+            console.log(`         • Error Code: ${joinResult.error.code}`);
+            console.log(`         • Details: ${joinResult.error.details}`);
+
+            // Provide specific guidance based on error code
+            switch (joinResult.error.code) {
+              case 'STREAM_NOT_FOUND':
+                console.log(`         💡 Resolution: Stream may not be active or may have ended`);
+                break;
+              case 'ACCESS_DENIED':
+                console.log(`         💡 Resolution: Check if you have permission to join this stream`);
+                break;
+              case 'RATE_LIMITED':
+                console.log(`         💡 Resolution: Wait before making another join attempt`);
+                break;
+              case 'INVALID_PARAMETER':
+                console.log(`         💡 Resolution: Verify the mintId is correct`);
+                break;
+              default:
+                console.log(`         💡 Resolution: Check network connection and try again`);
+            }
+          }
+        }
+
+        joinAttempts.push({
+          mint: coin.mint,
+          name: coin.name,
+          symbol: coin.symbol,
+          participants: coin.num_participants,
+          joinResult,
+        });
+      } catch (error) {
+        console.log(
+          `   ❌ Unexpected error joining stream: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+
+        // Create a failed join result for unexpected errors
+        const failedResult: JoinLiveStreamResponse = {
+          success: false,
+          message: `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error: {
+            code: 'UNEXPECTED_ERROR',
+            details: error instanceof Error ? error.message : 'Unknown error occurred',
+          },
+        };
+
+        joinAttempts.push({
+          mint: coin.mint,
+          name: coin.name,
+          symbol: coin.symbol,
+          participants: coin.num_participants,
+          joinResult: failedResult,
+        });
+      }
+
+      console.log('');
+    }
+
+    // Summary Statistics
+    console.log(`📊 Join Stream Summary:`);
+    console.log(`   Total Attempts: ${joinAttempts.length}`);
+
+    if (joinAttempts.length > 0) {
+      const successfulJoins = joinAttempts.filter(a => a.joinResult.success).length;
+      const failedJoins = joinAttempts.filter(a => !a.joinResult.success).length;
+
+      console.log(`   Successful: ${successfulJoins} (${((successfulJoins / joinAttempts.length) * 100).toFixed(1)}%)`);
+      console.log(`   Failed: ${failedJoins} (${((failedJoins / joinAttempts.length) * 100).toFixed(1)}%)`);
+
+      // Show successful joins
+      if (successfulJoins > 0) {
+        console.log(`\n🎉 Successfully Joined Streams:`);
+        joinAttempts
+          .filter(a => a.joinResult.success)
+          .forEach((item, index) => {
+            console.log(`   ${index + 1}. ${item.name} (${item.symbol})`);
+            console.log(`      • Mint: ${item.mint}`);
+            console.log(`      • Participants: ${item.participants}`);
+            console.log(`      • Room: ${item.joinResult.roomName || 'N/A'}`);
+            console.log(`      • Stream ID: ${item.joinResult.streamId || 'N/A'}`);
+            console.log(`      • WebSocket: ${item.joinResult.websocketUrl ? 'Available' : 'Not provided'}`);
+          });
+
+        console.log(`\n🚀 Ready for Live Streaming Integration:`);
+        console.log(`   1. Use the provided WebSocket URLs for real-time connections`);
+        console.log(`   2. Join the LiveKit rooms using the room names`);
+        console.log(`   3. Handle authentication if requiresAuthentication is true`);
+        console.log(`   4. Implement WebRTC for video/audio streaming`);
+        console.log(`   5. Monitor stream status and handle disconnections`);
+
+        // Show example integration code
+        console.log(`\n💻 Integration Example:`);
+        console.log(`   // Join a live stream`);
+        console.log(`   const joinResult = await client.joinLiveStream(mintId);`);
+        console.log(`   `);
+        console.log(`   if (joinResult.success) {`);
+        console.log(`     // Connect with LiveKit`);
+        console.log(`     const room = new LiveKit.Room();`);
+        console.log(`     await room.connect(joinResult.websocketUrl, joinResult.roomName);`);
+        console.log(`     `);
+        console.log(`     // Handle participant events`);
+        console.log(`     room.on('participantConnected', (participant) => {`);
+        console.log(`       console.log(\`Participant \${participant.identity} joined\`);`);
+        console.log(`     });`);
+        console.log(`     `);
+        console.log(`     // Handle track events (video/audio)`);
+        console.log(`     room.on('trackSubscribed', (track, participant) => {`);
+        console.log(`       // Attach media elements`);
+        console.log(`       if (track.kind === 'video') {`);
+        console.log(`         document.getElementById('remoteVideo').srcObject = new MediaStream([track]);`);
+        console.log(`       }`);
+        console.log(`     });`);
+        console.log(`   }`);
+      }
+
+      // Show error analysis
+      if (failedJoins > 0) {
+        console.log(`\n❌ Failed Join Attempts Analysis:`);
+        const errorsByCode = new Map<string, number>();
+
+        joinAttempts
+          .filter(a => !a.joinResult.success)
+          .forEach(item => {
+            const errorCode = item.joinResult.error?.code || 'UNKNOWN';
+            errorsByCode.set(errorCode, (errorsByCode.get(errorCode) || 0) + 1);
+          });
+
+        errorsByCode.forEach((count, code) => {
+          const percentage = ((count / failedJoins) * 100).toFixed(1);
+          console.log(`   • ${code}: ${count} (${percentage}%)`);
+        });
+
+        console.log(`\n💡 Common Failure Reasons:`);
+        console.log(`   • STREAM_NOT_FOUND: Stream may not be active or accessible`);
+        console.log(`   • ACCESS_DENIED: Permission required or stream is private`);
+        console.log(`   • RATE_LIMITED: Too many join attempts, wait and retry`);
+        console.log(`   • INVALID_PARAMETER: Check mintId format and validity`);
+      }
+    }
+
+    return { client, joinAttempts };
+  } catch (error) {
+    console.error('❌ Error in join live stream example:', error);
     throw error;
   }
 }

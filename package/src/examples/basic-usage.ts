@@ -74,6 +74,7 @@ export const getStreamInfoExample = livestreamExamples.getStreamInfoExample;
 export const checkCreatorApprovalExample = livestreamExamples.checkCreatorApprovalExample;
 export const getLiveKitConnectionInfoExample = livestreamExamples.getLiveKitConnectionInfoExample;
 export const getVideoStreamAnalysisExample = livestreamExamples.getVideoStreamAnalysisExample;
+export const joinLiveStreamExample = livestreamExamples.joinLiveStreamExample;
 
 // Best Practices Examples
 export const productionBestPractices = bestPracticesExamples.productionBestPractices;
@@ -121,6 +122,7 @@ export async function runAllBasicExamples() {
     creatorApproval: null as any,
     liveKitConnection: null as any,
     videoStreamAnalysis: null as any,
+    joinStream: null as any,
   };
 
   try {
@@ -196,6 +198,9 @@ export async function runAllBasicExamples() {
     results.videoStreamAnalysis = await getVideoStreamAnalysisExample();
     console.log();
 
+    results.joinStream = await joinLiveStreamExample();
+    console.log();
+
     results.jurisdictionTest = await jurisdictionAndConnectionExample();
     console.log();
 
@@ -218,6 +223,7 @@ export async function runAllBasicExamples() {
     console.log('   • Creator approval status checking');
     console.log('   • LiveKit video streaming connections');
     console.log('   • Comprehensive video stream analysis');
+    console.log('   • Live stream joining functionality');
     console.log('   • Error handling and rate limiting');
     console.log('   • Statistics and state management');
     console.log('   • Configuration management and lifecycle');
@@ -252,6 +258,7 @@ export const examples = {
   checkCreatorApprovalExample,
   getLiveKitConnectionInfoExample,
   getVideoStreamAnalysisExample,
+  joinLiveStreamExample,
   jurisdictionAndConnectionExample,
 
   // Main runner
@@ -336,7 +343,8 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('   4. Creator approval demo (test isApprovedCreator)');
   console.log('   5. LiveKit video streaming demo (test getLiveKitConnectionInfo)');
   console.log('   6. Video stream analysis demo (test getVideoStreamAnalysis)');
-  console.log('   7. All examples (comprehensive demo)');
+  console.log('   7. Join live stream demo (test joinLiveStream)');
+  console.log('   8. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -417,6 +425,20 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'join':
+    case 'join-stream':
+    case 'joinlive':
+    case 'live-join':
+      joinLiveStreamExample()
+        .then(() => {
+          console.log('\n✅ Join live stream demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Join live stream demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'all':
     case 'full':
       runAllBasicExamples()
@@ -437,7 +459,8 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   approval      - Creator approval demo (isApprovedCreator)');
       console.log('   livekit       - LiveKit video streaming demo (getLiveKitConnectionInfo)');
       console.log('   analysis      - Video stream analysis demo (getVideoStreamAnalysis)');
-      console.log('   all           - Run all examples');
+      console.log('   join          - Join live stream demo (joinLiveStream)');
+    console.log('   all           - Run all examples');
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');
       console.log('Example: node basic-usage.ts quick');

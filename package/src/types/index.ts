@@ -24,6 +24,7 @@ export type {
   LiveCoin,
   LiveStreamInfo,
   LiveKitConnectionInfo,
+  LiveKitRegion,
   StreamClip,
   APIResponse,
   ArrayResponse,
@@ -34,6 +35,11 @@ export type {
   StreamStatistics,
   JurisdictionResponse,
   SolPriceResponse,
+  JoinLiveStreamResponse,
+  StreamParticipant,
+  StreamQualityMetrics,
+  LiveStreamSession,
+  StreamRecording,
 } from './api.types';
 
 export type {
@@ -51,15 +57,13 @@ export type {
 export type {
   LogContext,
   LogEntry,
-  HTTPMethod,
-  StreamStatus,
   EventHandler,
   AsyncEventHandler,
   DeepPartial,
 } from './common.types';
 
-// Export enum as value, not type
-export { LogLevel } from './common.types';
+// Export enums as values, not types
+export { LogLevel, StreamStatus, HTTPMethod } from './api.types';
 
 export type {
   ClientState,
@@ -69,7 +73,6 @@ export type {
   RateLimiterState,
   StreamFilters,
   StreamAnalytics,
-  StreamQualityMetrics,
 } from './domain.types';
 
 export type { APIError } from './common.types';

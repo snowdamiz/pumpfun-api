@@ -239,12 +239,12 @@
   - Combine all video stream methods into comprehensive analysis
   - Story: US3
 
-- [ ] **T038** - Add joinLiveStream method [P]
+- [x] **T038** - Add joinLiveStream method [P] ✅
   - File: `package/src/services/live/live-streams.service.ts`
   - Add method to attempt joining active live streams
   - Story: US3
 
-- [ ] **T039** - Create video stream types and interfaces [P]
+- [x] **T039** - Create video stream types and interfaces [P] ✅
   - File: `package/src/types/api.types.ts`
   - Define TypeScript interfaces for LiveStreamInfo, LiveKitConnectionInfo, and related types
   - Story: US3
