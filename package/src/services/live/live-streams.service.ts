@@ -16,6 +16,7 @@ import {
   JoinLiveStreamResponse,
   SearchLiveStreamsParams,
   StreamSearchResult,
+  StreamStatistics,
 } from '../../types';
 import { Logger } from '../../infrastructure/logging/logger';
 import { RateLimiter } from '../../infrastructure/rate-limiting/rate-limiter';
@@ -522,6 +523,152 @@ export class LiveStreamsService {
       });
 
       return errorResponse;
+    }
+  }
+
+  /**
+   * Get comprehensive statistics for live streaming data
+   *
+   * This method calculates and returns aggregate statistics for live streaming data,
+   * including total streams, participants, averages, top streams, and mode distribution.
+   */
+  async getStreamStatistics(): Promise<StreamStatistics> {
+    this.logger.info('Calculating live stream statistics', {
+      operation: 'getStreamStatistics',
+    });
+
+    try {
+      // Fetch live streaming data with a reasonable limit to calculate statistics
+      // Using a higher limit to get comprehensive data for statistics
+      const liveCoins = await this.getLiveCoins({
+        limit: 100, // Get up to 100 live streams for statistics
+        includeNsfw: false, // Exclude NSFW from general statistics
+        sort: 'currently_live',
+        order: 'DESC',
+      });
+
+      // Calculate basic statistics
+      const totalLiveStreams = liveCoins.length;
+      const totalParticipants = liveCoins.reduce(
+        (sum, coin) => sum + coin.num_participants,
+        0
+      );
+      const averageParticipants =
+        totalLiveStreams > 0 ? Math.round(totalParticipants / totalLiveStreams) : 0;
+
+      // Get top streams by participant count
+      const topStreams = liveCoins
+        .filter(coin => coin.num_participants > 0)
+        .sort((a, b) => b.num_participants - a.num_participants)
+        .slice(0, 10)
+        .map(coin => ({
+          mintId: coin.mint,
+          name: coin.name,
+          participants: coin.num_participants,
+        }));
+
+      // Calculate mode distribution
+      let modeDistribution = { interactive: 0, broadcast: 0 };
+
+      // For mode distribution, we need to get detailed stream info for each live coin
+      // This is more expensive but provides accurate statistics
+      if (totalLiveStreams > 0) {
+        try {
+          // Get stream info for a sample of live streams to determine mode distribution
+          const sampleSize = Math.min(totalLiveStreams, 20); // Sample up to 20 streams
+          const sampleCoins = liveCoins.slice(0, sampleSize);
+
+          const streamInfoPromises = sampleCoins.map(async (coin) => {
+            try {
+              const streamInfo = await this.streamInfoService.getLiveStreamInfo(coin.mint);
+              return streamInfo?.mode;
+            } catch (error) {
+              this.logger.warn('Failed to get stream info for mode distribution', {
+                mintId: coin.mint,
+                error: error instanceof Error ? error.message : String(error),
+              });
+              return null;
+            }
+          });
+
+          const streamModes = await Promise.all(streamInfoPromises);
+
+          // Count modes from successfully retrieved stream info
+          const validModes = streamModes.filter((mode): mode is 'interactive' | 'broadcast' =>
+            mode === 'interactive' || mode === 'broadcast'
+          );
+
+          // If we have some valid mode data, use it; otherwise estimate based on available data
+          if (validModes.length > 0) {
+            modeDistribution = validModes.reduce(
+              (acc, mode) => {
+                acc[mode]++;
+                return acc;
+              },
+              { interactive: 0, broadcast: 0 }
+            );
+
+            // Scale up to estimate total distribution
+            const scaleFactor = totalLiveStreams / validModes.length;
+            modeDistribution.interactive = Math.round(modeDistribution.interactive * scaleFactor);
+            modeDistribution.broadcast = Math.round(modeDistribution.broadcast * scaleFactor);
+          } else {
+            // Fallback: estimate distribution based on participant patterns
+            // Streams with more participants are more likely to be broadcast
+            const highParticipantStreams = liveCoins.filter(coin => coin.num_participants >= 10);
+            const lowParticipantStreams = liveCoins.filter(coin => coin.num_participants < 10);
+
+            modeDistribution.interactive = lowParticipantStreams.length;
+            modeDistribution.broadcast = highParticipantStreams.length;
+          }
+        } catch (error) {
+          this.logger.warn('Failed to calculate accurate mode distribution, using fallback', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+
+          // Simple fallback: split evenly
+          const halfStreams = Math.floor(totalLiveStreams / 2);
+          modeDistribution = {
+            interactive: totalLiveStreams - halfStreams,
+            broadcast: halfStreams,
+          };
+        }
+      }
+
+      const statistics: StreamStatistics = {
+        totalLiveStreams,
+        totalParticipants,
+        averageParticipants,
+        topStreams,
+        modeDistribution,
+        calculatedAt: new Date().toISOString(),
+      };
+
+      this.logger.info('Successfully calculated stream statistics', {
+        totalLiveStreams: statistics.totalLiveStreams,
+        totalParticipants: statistics.totalParticipants,
+        averageParticipants: statistics.averageParticipants,
+        topStreamsCount: statistics.topStreams.length,
+        interactiveStreams: statistics.modeDistribution.interactive,
+        broadcastStreams: statistics.modeDistribution.broadcast,
+        calculatedAt: statistics.calculatedAt,
+      });
+
+      return statistics;
+    } catch (error) {
+      this.state.errorCount++;
+      const pumpFunError = this.errorHandler.handleError(error, 'getStreamStatistics', {
+        operation: 'getStreamStatistics',
+        requestTime: new Date().toISOString(),
+      });
+
+      this.logger.error('Failed to calculate stream statistics', {
+        error: pumpFunError.toJSON(),
+        resolution: pumpFunError.getResolution(),
+        errorCategory: pumpFunError.details?.errorCategory,
+      });
+
+      throw pumpFunError;
     }
   }
 

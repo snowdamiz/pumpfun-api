@@ -17,6 +17,7 @@ import {
   LiveKitConnectionInfo,
   VideoStreamAnalysis,
   JoinLiveStreamResponse,
+  StreamStatistics,
 } from '../types';
 import {
   EXAMPLE_STREAM_LIMIT,
@@ -1202,6 +1203,187 @@ export async function searchLiveStreamsExample() {
     };
   } catch (error) {
     console.error('❌ Error in search live streams example:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 20: Get comprehensive stream statistics
+ *
+ * This example demonstrates the new getStreamStatistics method that calculates
+ * and returns aggregate statistics for live streaming data across all streams.
+ */
+export async function getStreamStatisticsExample() {
+  console.log('=== Stream Statistics Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 20000,
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableColors: true,
+    },
+  });
+
+  try {
+    console.log('📊 Calculating comprehensive live stream statistics...\n');
+
+    const startTime = Date.now();
+    const statistics = await client.getStreamStatistics();
+    const calculationTime = Date.now() - startTime;
+
+    console.log(`✅ Statistics calculated in ${calculationTime}ms\n`);
+
+    // Display total statistics
+    console.log('📈 Global Streaming Statistics:');
+    console.log(`   📡 Total Live Streams: ${statistics.totalLiveStreams}`);
+    console.log(`   👥 Total Participants: ${statistics.totalParticipants.toLocaleString()}`);
+    console.log(`   📊 Average Participants per Stream: ${statistics.averageParticipants}`);
+    console.log(`   ⏰ Calculated at: ${new Date(statistics.calculatedAt).toLocaleString()}`);
+
+    // Display top streams
+    if (statistics.topStreams.length > 0) {
+      console.log(`\n🏆 Top ${statistics.topStreams.length} Live Streams by Participants:`);
+      statistics.topStreams.forEach((stream, index) => {
+        console.log(`   ${index + 1}. ${stream.name}`);
+        console.log(`      👥 Participants: ${stream.participants.toLocaleString()}`);
+        console.log(`      🔗 Mint: ${stream.mintId}`);
+      });
+    } else {
+      console.log('\n🏆 No active streams found for top streams ranking');
+    }
+
+    // Display mode distribution
+    console.log('\n🎥 Stream Mode Distribution:');
+    console.log(`   📹 Interactive Streams: ${statistics.modeDistribution.interactive}`);
+    console.log(`   📺 Broadcast Streams: ${statistics.modeDistribution.broadcast}`);
+
+    const totalStreams = statistics.modeDistribution.interactive + statistics.modeDistribution.broadcast;
+    if (totalStreams > 0) {
+      const interactivePercentage = ((statistics.modeDistribution.interactive / totalStreams) * 100).toFixed(1);
+      const broadcastPercentage = ((statistics.modeDistribution.broadcast / totalStreams) * 100).toFixed(1);
+      console.log(`   📊 Interactive: ${interactivePercentage}% | Broadcast: ${broadcastPercentage}%`);
+    }
+
+    // Calculate additional insights
+    console.log('\n💡 Streaming Insights:');
+
+    if (statistics.totalLiveStreams === 0) {
+      console.log('   ⚠️ No live streams currently active');
+      console.log('   💡 Try again later when more streams are active');
+    } else {
+      // Participant distribution insights
+      if (statistics.averageParticipants > 100) {
+        console.log('   🔥 High engagement - Average participants > 100');
+      } else if (statistics.averageParticipants > 50) {
+        console.log('   📈 Good engagement - Average participants > 50');
+      } else if (statistics.averageParticipants > 10) {
+        console.log('   👥 Moderate engagement - Average participants > 10');
+      } else {
+        console.log('   📉 Low engagement - Average participants < 10');
+      }
+
+      // Mode distribution insights
+      const interactiveRatio = statistics.modeDistribution.interactive / totalStreams;
+      if (interactiveRatio > 0.7) {
+        console.log('   🎮 Interactive-dominant platform (>70% interactive)');
+      } else if (interactiveRatio > 0.3) {
+        console.log('   🔄 Mixed content (30-70% interactive)');
+      } else {
+        console.log('   📺 Broadcast-dominant platform (>70% broadcast)');
+      }
+
+      // Top stream insights
+      if (statistics.topStreams.length > 0) {
+        const topStream = statistics.topStreams[0];
+        if (topStream) {
+          const topStreamPercentage = ((topStream.participants / statistics.totalParticipants) * 100).toFixed(1);
+          console.log(`   👑 Top stream (${topStream.name}) has ${topStreamPercentage}% of all participants`);
+        }
+      }
+    }
+
+    // Performance metrics
+    console.log('\n⚡ Performance Metrics:');
+    console.log(`   ⏱️  Calculation Time: ${calculationTime}ms`);
+    if (calculationTime < 1000) {
+      console.log('   ✅ Excellent performance (< 1 second)');
+    } else if (calculationTime < 3000) {
+      console.log('   ✅ Good performance (< 3 seconds)');
+    } else if (calculationTime < 10000) {
+      console.log('   ⚠️  Moderate performance (< 10 seconds)');
+    } else {
+      console.log('   ⚠️  Slow performance (> 10 seconds)');
+    }
+
+    // API efficiency metrics
+    console.log('\n📊 API Efficiency Analysis:');
+    if (statistics.totalLiveStreams > 0) {
+      const participantsPerStream = statistics.totalParticipants / statistics.totalLiveStreams;
+      console.log(`   👥 Participants per Stream: ${participantsPerStream.toFixed(1)}`);
+
+      // Stream health indicator
+      const healthyStreams = statistics.topStreams.filter(s => s.participants > 5).length;
+      const healthPercentage = ((healthyStreams / statistics.totalLiveStreams) * 100).toFixed(1);
+      console.log(`   💚 Stream Health: ${healthPercentage}% have >5 participants`);
+
+      // Engagement level
+      if (participantsPerStream > 50) {
+        console.log('   🔥 High engagement platform');
+      } else if (participantsPerStream > 20) {
+        console.log('   📈 Growing engagement platform');
+      } else if (participantsPerStream > 5) {
+        console.log('   📊 Moderate engagement platform');
+      } else {
+        console.log('   🌱 Early-stage platform');
+      }
+    }
+
+    console.log('\n🎯 Stream Statistics Usage Examples:');
+    console.log('   // Get current streaming statistics');
+    console.log('   const stats = await client.getStreamStatistics();');
+    console.log('');
+    console.log('   // Monitor platform health');
+    console.log('   console.log(`Active streams: ${stats.totalLiveStreams}`);');
+    console.log('   console.log(`Total engagement: ${stats.totalParticipants}`);');
+    console.log('');
+    console.log('   // Find top performing streams');
+    console.log('   const topStream = stats.topStreams[0];');
+    console.log('   if (topStream) {');
+    console.log('     console.log(`Top stream: ${topStream.name}`);');
+    console.log('     console.log(`Participants: ${topStream.participants}`);');
+    console.log('   }');
+    console.log('');
+    console.log('   // Track content preferences');
+    console.log('   const interactivePercentage = ');
+    console.log('     (stats.modeDistribution.interactive / (');
+    console.log('       stats.modeDistribution.interactive + stats.modeDistribution.broadcast');
+    console.log('     )) * 100;');
+    console.log('   console.log(`Interactive content: ${interactivePercentage.toFixed(1)}%`);');
+
+    return { client, statistics, calculationTime };
+  } catch (error) {
+    console.error('❌ Error calculating stream statistics:', error);
+
+    // Provide helpful error context
+    if (error instanceof Error) {
+      console.log('\n💡 Possible Solutions:');
+      if (error.message.includes('rate limit')) {
+        console.log('   • Wait before making another statistics request');
+        console.log('   • Check rate limit status with client.isRateLimited()');
+      } else if (error.message.includes('network') || error.message.includes('timeout')) {
+        console.log('   • Check internet connection');
+        console.log('   • Increase timeout configuration');
+        console.log('   • Try again later');
+      } else if (error.message.includes('API')) {
+        console.log('   • Verify API endpoints are accessible');
+        console.log('   • Check API service status');
+      } else {
+        console.log('   • Review error details above');
+        console.log('   • Check client configuration');
+      }
+    }
+
     throw error;
   }
 }

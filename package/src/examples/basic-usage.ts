@@ -76,6 +76,7 @@ export const getLiveKitConnectionInfoExample = livestreamExamples.getLiveKitConn
 export const getVideoStreamAnalysisExample = livestreamExamples.getVideoStreamAnalysisExample;
 export const joinLiveStreamExample = livestreamExamples.joinLiveStreamExample;
 export const searchLiveStreamsExample = livestreamExamples.searchLiveStreamsExample;
+export const getStreamStatisticsExample = livestreamExamples.getStreamStatisticsExample;
 
 // Best Practices Examples
 export const productionBestPractices = bestPracticesExamples.productionBestPractices;
@@ -125,6 +126,7 @@ export async function runAllBasicExamples() {
     videoStreamAnalysis: null as any,
     joinStream: null as any,
     searchStreams: null as any,
+    streamStatistics: null as any,
   };
 
   try {
@@ -206,6 +208,9 @@ export async function runAllBasicExamples() {
     results.searchStreams = await searchLiveStreamsExample();
     console.log();
 
+    results.streamStatistics = await getStreamStatisticsExample();
+    console.log();
+
     results.jurisdictionTest = await jurisdictionAndConnectionExample();
     console.log();
 
@@ -230,6 +235,7 @@ export async function runAllBasicExamples() {
     console.log('   • Comprehensive video stream analysis');
     console.log('   • Live stream joining functionality');
     console.log('   • Keyword search across streams');
+    console.log('   • Aggregate stream statistics');
     console.log('   • Error handling and rate limiting');
     console.log('   • Statistics and state management');
     console.log('   • Configuration management and lifecycle');
@@ -266,6 +272,7 @@ export const examples = {
   getVideoStreamAnalysisExample,
   joinLiveStreamExample,
   searchLiveStreamsExample,
+  getStreamStatisticsExample,
   jurisdictionAndConnectionExample,
 
   // Main runner
@@ -351,7 +358,8 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('   5. LiveKit video streaming demo (test getLiveKitConnectionInfo)');
   console.log('   6. Video stream analysis demo (test getVideoStreamAnalysis)');
   console.log('   7. Join live stream demo (test joinLiveStream)');
-  console.log('   8. All examples (comprehensive demo)');
+  console.log('   8. Stream statistics demo (test getStreamStatistics)');
+  console.log('   9. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -459,6 +467,19 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'statistics':
+    case 'stats':
+    case 'stream-statistics':
+      getStreamStatisticsExample()
+        .then(() => {
+          console.log('\n✅ Stream statistics demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Stream statistics demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'all':
     case 'full':
       runAllBasicExamples()
@@ -481,6 +502,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   analysis      - Video stream analysis demo (getVideoStreamAnalysis)');
       console.log('   join          - Join live stream demo (joinLiveStream)');
       console.log('   search        - Search live streams demo (searchLiveStreams)');
+      console.log('   statistics    - Stream statistics demo (getStreamStatistics)');
       console.log('   all           - Run all examples');
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');

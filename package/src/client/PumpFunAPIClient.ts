@@ -21,6 +21,7 @@ import {
   JoinLiveStreamResponse,
   SearchLiveStreamsParams,
   StreamSearchResult,
+  StreamStatistics,
 } from '../types';
 
 interface JurisdictionResponse {
@@ -247,6 +248,19 @@ export class PumpFunAPIClient {
   public async searchLiveStreams(params: SearchLiveStreamsParams): Promise<StreamSearchResult[]> {
     this.ensureInitialized();
     return this.liveStreamsService.searchLiveStreams(params);
+  }
+
+  /**
+   * Get comprehensive statistics for live streaming data
+   *
+   * This method calculates and returns aggregate statistics for live streaming data,
+   * including total streams, participants, averages, top streams, and mode distribution.
+   *
+   * @returns Promise<StreamStatistics> - Comprehensive stream statistics
+   */
+  public async getStreamStatistics(): Promise<StreamStatistics> {
+    this.ensureInitialized();
+    return this.liveStreamsService.getStreamStatistics();
   }
 
   /**
