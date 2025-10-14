@@ -229,7 +229,7 @@
   - Add method to generate LiveKit connection details with regions and room info
   - Story: US3
 
-- [ ] **T036** - Create LiveKit region configuration
+- [x] **T036** - Create LiveKit region configuration ✅
   - File: `package/src/constants/api.constants.ts`
   - Define and configure available LiveKit server regions with optimal selection
   - Story: US3
