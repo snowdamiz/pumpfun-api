@@ -219,7 +219,7 @@
   - Add method to fetch detailed live stream information from livestream-api
   - Story: US3
 
-- [ ] **T034** - Implement isApprovedCreator method [P]
+- [x] **T034** - Implement isApprovedCreator method [P] ✅
   - File: `package/src/services/live/stream-info.service.ts`
   - Add method to check if a creator is approved for streaming
   - Story: US3

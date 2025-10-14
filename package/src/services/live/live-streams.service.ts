@@ -172,4 +172,11 @@ export class LiveStreamsService {
   async getLiveStreamInfo(mintId: string): Promise<LiveStreamInfo | null> {
     return this.streamInfoService.getLiveStreamInfo(mintId);
   }
+
+  /**
+   * Check if a creator is approved for streaming
+   */
+  async isApprovedCreator(mintId: string): Promise<boolean> {
+    return this.streamInfoService.isApprovedCreator(mintId);
+  }
 }

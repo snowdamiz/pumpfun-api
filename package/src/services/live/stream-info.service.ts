@@ -187,4 +187,142 @@ export class LiveStreamInfoService {
       throw error;
     }
   }
+
+  /**
+   * Check if a creator is approved for streaming
+   */
+  async isApprovedCreator(mintId: string): Promise<boolean> {
+    this.logger.info('Checking creator approval status', {
+      mintId,
+      operation: 'isApprovedCreator',
+    });
+
+    try {
+      // Use the livestream API endpoint for creator approval check
+      const response = await axios.get(
+        `https://livestream-api.pump.fun/livestream/is-approved-creator?mintId=${mintId}`,
+        {
+          timeout: this.config.timeout,
+          headers: {
+            'User-Agent': 'PumpFun-API-Client/1.0.0',
+            Accept: 'application/json',
+          },
+        }
+      );
+
+      // The API returns a boolean value directly
+      const isApproved = Boolean(response.data);
+
+      this.logger.info('Successfully checked creator approval status', {
+        mintId,
+        isApproved,
+        responseType: typeof response.data,
+      });
+
+      return isApproved;
+    } catch (error: any) {
+      // Handle Axios errors specifically
+      if (error.response) {
+        const statusCode = error.response.status;
+        const responseData = error.response.data;
+
+        if (statusCode === 404) {
+          // If creator is not found, they are not approved
+          this.logger.info('Creator not found, treating as not approved', {
+            mintId,
+            statusCode,
+          });
+          return false;
+        }
+
+        if (statusCode === 400) {
+          throw new ValidationError({
+            message: `Invalid request for creator approval check: ${responseData?.message || error.message}`,
+            details: {
+              mintId,
+              statusCode,
+              endpoint: '/livestream/is-approved-creator',
+              responseStatus: statusCode,
+              responseData: error.response.data,
+            },
+          });
+        }
+
+        if (statusCode === 401) {
+          throw new AuthenticationError({
+            message: `Unauthorized access to creator approval API: ${responseData?.message || error.message}`,
+            details: {
+              mintId,
+              statusCode,
+            },
+          });
+        }
+
+        if (statusCode === 403) {
+          throw new AuthorizationError({
+            message: `Forbidden access to creator approval API: ${responseData?.message || error.message}`,
+            details: {
+              mintId,
+              statusCode,
+            },
+          });
+        }
+
+        if (statusCode >= 500) {
+          throw new ServerError({
+            message: `Server error from creator approval API: ${responseData?.message || error.message}`,
+            statusCode,
+            details: {
+              mintId,
+              statusCode,
+            },
+          });
+        }
+
+        throw new NetworkError({
+          message: `HTTP ${statusCode} error from creator approval API: ${responseData?.message || error.message}`,
+          code: 'CREATOR_APPROVAL_API_HTTP_ERROR',
+          statusCode,
+          details: {
+            mintId,
+            endpoint: '/livestream/is-approved-creator',
+            responseStatus: statusCode,
+            responseData: error.response.data,
+          },
+        });
+      }
+
+      // Handle network errors
+      if (
+        error.code === 'ECONNREFUSED' ||
+        error.code === 'ENOTFOUND' ||
+        error.code === 'ETIMEDOUT'
+      ) {
+        throw new NetworkError({
+          message: `Network error connecting to creator approval API: ${error.message}`,
+          code: error.code,
+          details: {
+            mintId,
+            errorCode: error.code,
+            baseURL: 'https://livestream-api.pump.fun',
+          },
+        });
+      }
+
+      // Handle timeout errors
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        throw new TimeoutError({
+          message: `Request timeout while checking creator approval: ${error.message}`,
+          timeout: this.config.timeout,
+          details: {
+            mintId,
+            timeout: this.config.timeout,
+          },
+        });
+      }
+
+      // Re-throw unknown errors
+      throw error;
+    }
+  }
 }

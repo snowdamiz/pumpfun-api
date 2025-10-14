@@ -237,6 +237,14 @@ export class PumpFunAPIClient {
   }
 
   /**
+   * Check if a creator is approved for streaming
+   */
+  public async isApprovedCreator(mintId: string): Promise<boolean> {
+    this.ensureInitialized();
+    return this.liveStreamsService.isApprovedCreator(mintId);
+  }
+
+  /**
    * Validate jurisdiction for API access
    */
   public async validateJurisdiction(): Promise<boolean> {

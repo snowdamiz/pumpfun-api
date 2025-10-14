@@ -669,7 +669,100 @@ export async function getStreamInfoExample() {
 }
 
 /**
- * Example 15: Validate jurisdiction and test connection
+ * Example 15: Check creator approval status
+ */
+export async function checkCreatorApprovalExample() {
+  console.log('=== Check Creator Approval Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 10000,
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableColors: true,
+    },
+  });
+
+  try {
+    // First get some live coins to test with
+    console.log('🔍 Getting live coins to test creator approval...');
+    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
+
+    if (liveCoins.length === 0) {
+      console.log('⚠️ No live coins found to test creator approval');
+      return { client, approvals: [] };
+    }
+
+    console.log(
+      `📋 Testing creator approval for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
+    );
+
+    const approvals: Array<{
+      mint: string;
+      name: string;
+      symbol: string;
+      isApproved: boolean;
+    }> = [];
+
+    for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
+      const coin = liveCoins[i];
+      if (!coin) {
+        console.log(`${i + INDEX_OFFSET}. ⚠️ Skipping undefined coin data`);
+        continue;
+      }
+
+      console.log(`${i + INDEX_OFFSET}. Checking approval for: ${coin.name} (${coin.symbol})`);
+      console.log(`   🔗 Mint: ${coin.mint}`);
+
+      try {
+        const isApproved = await client.isApprovedCreator(coin.mint);
+
+        console.log(`   ✅ Approval Status: ${isApproved ? '✅ APPROVED' : '❌ NOT APPROVED'}`);
+
+        if (isApproved) {
+          console.log(`   🎬 This creator can start live streams`);
+        } else {
+          console.log(`   🚫 This creator cannot start live streams`);
+        }
+
+        approvals.push({
+          mint: coin.mint,
+          name: coin.name,
+          symbol: coin.symbol,
+          isApproved,
+        });
+      } catch (error) {
+        console.log(
+          `   ❌ Error checking approval: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        approvals.push({
+          mint: coin.mint,
+          name: coin.name,
+          symbol: coin.symbol,
+          isApproved: false,
+        });
+      }
+
+      console.log('');
+    }
+
+    // Summary
+    const approvedCount = approvals.filter(a => a.isApproved).length;
+    console.log(`📊 Approval Summary:`);
+    console.log(`   Total Checked: ${approvals.length}`);
+    console.log(`   Approved: ${approvedCount}`);
+    console.log(`   Not Approved: ${approvals.length - approvedCount}`);
+    console.log(`   Approval Rate: ${((approvedCount / approvals.length) * 100).toFixed(1)}%`);
+
+    return { client, approvals };
+  } catch (error) {
+    console.error('❌ Error in creator approval example:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 16: Validate jurisdiction and test connection
  */
 export async function jurisdictionAndConnectionExample() {
   console.log('=== Jurisdiction & Connection Example ===');
@@ -849,6 +942,15 @@ export async function runAllBasicExamples() {
       client: PumpFunAPIClient;
       streamInfos: Array<{ mint: string; name: string; info: LiveStreamInfo | null }>;
     } | null;
+    creatorApproval: {
+      client: PumpFunAPIClient;
+      approvals: Array<{
+        mint: string;
+        name: string;
+        symbol: string;
+        isApproved: boolean;
+      }>;
+    } | null;
     jurisdictionTest: {
       client: PumpFunAPIClient;
       connectionTest: boolean;
@@ -883,6 +985,7 @@ export async function runAllBasicExamples() {
     titledStreams: null,
     comprehensiveData: null,
     streamInfo: null,
+    creatorApproval: null,
     jurisdictionTest: null,
   };
 
@@ -940,6 +1043,9 @@ export async function runAllBasicExamples() {
     results.streamInfo = await getStreamInfoExample();
     console.log();
 
+    results.creatorApproval = await checkCreatorApprovalExample();
+    console.log();
+
     results.jurisdictionTest = await jurisdictionAndConnectionExample();
     console.log();
 
@@ -957,6 +1063,7 @@ export async function runAllBasicExamples() {
     console.log('   • Titled streams discovery');
     console.log('   • Comprehensive data gathering');
     console.log('   • Detailed stream information');
+    console.log('   • Creator approval status checking');
     console.log('   • Error handling and rate limiting');
     console.log('   • Statistics and state management');
     console.log('   • Configuration management and lifecycle');
@@ -988,6 +1095,7 @@ export const examples = {
   getTitledStreamsExample,
   getComprehensiveLiveDataExample,
   getStreamInfoExample,
+  checkCreatorApprovalExample,
   jurisdictionAndConnectionExample,
 
   // Main runner
@@ -1069,7 +1177,8 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('   1. Quick test (verifies basic functionality)');
   console.log('   2. Basic initialization demo');
   console.log('   3. Live coins demo (with API calls)');
-  console.log('   4. All examples (comprehensive demo)');
+  console.log('   4. Creator approval demo (test isApprovedCreator)');
+  console.log('   5. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -1110,6 +1219,19 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'approval':
+    case 'creator':
+    case 'approved':
+      checkCreatorApprovalExample()
+        .then(() => {
+          console.log('\n✅ Creator approval demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Creator approval demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'all':
     case 'full':
       runAllBasicExamples()
@@ -1127,6 +1249,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   quick    - Quick functionality test');
       console.log('   basic    - Basic initialization demo');
       console.log('   live     - Live coins API demo');
+      console.log('   approval - Creator approval demo (isApprovedCreator)');
       console.log('   all      - Run all examples');
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');
