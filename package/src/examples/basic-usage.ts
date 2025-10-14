@@ -31,6 +31,7 @@ import * as errorHandlingExamples from './error-handling-examples';
 import * as configurationExamples from './configuration-examples';
 import * as livestreamExamples from './livestream-examples';
 import * as bestPracticesExamples from './best-practices-examples';
+import * as advancedFilteringExamples from './advanced-filtering-examples';
 
 // Import constants and types
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
@@ -77,6 +78,14 @@ export const getVideoStreamAnalysisExample = livestreamExamples.getVideoStreamAn
 export const joinLiveStreamExample = livestreamExamples.joinLiveStreamExample;
 export const searchLiveStreamsExample = livestreamExamples.searchLiveStreamsExample;
 export const getStreamStatisticsExample = livestreamExamples.getStreamStatisticsExample;
+
+// Advanced Filtering Examples (T043)
+export const demonstratePredefinedFilters = advancedFilteringExamples.demonstratePredefinedFilters;
+export const demonstrateCustomFilters = advancedFilteringExamples.demonstrateCustomFilters;
+export const demonstrateComplexCriteria = advancedFilteringExamples.demonstrateComplexCriteria;
+export const demonstrateCompoundQueries = advancedFilteringExamples.demonstrateCompoundQueries;
+export const demonstratePerformanceComparison = advancedFilteringExamples.demonstratePerformanceComparison;
+export const runAdvancedFilteringExamples = advancedFilteringExamples.runAdvancedFilteringExamples;
 
 // Best Practices Examples
 export const productionBestPractices = bestPracticesExamples.productionBestPractices;
@@ -127,6 +136,13 @@ export async function runAllBasicExamples() {
     joinStream: null as any,
     searchStreams: null as any,
     streamStatistics: null as any,
+
+    // Advanced filtering examples (T043)
+    predefinedFilters: null as any,
+    customFilters: null as any,
+    complexCriteria: null as any,
+    compoundQueries: null as any,
+    performanceComparison: null as any,
   };
 
   try {
@@ -211,6 +227,24 @@ export async function runAllBasicExamples() {
     results.streamStatistics = await getStreamStatisticsExample();
     console.log();
 
+    // Advanced filtering examples (T043)
+    console.log('🔍 ADVANCED FILTERING EXAMPLES (T043)');
+    console.log('='.repeat(REPEAT_COUNT_60));
+    results.predefinedFilters = await demonstratePredefinedFilters();
+    console.log();
+
+    results.customFilters = await demonstrateCustomFilters();
+    console.log();
+
+    results.complexCriteria = await demonstrateComplexCriteria();
+    console.log();
+
+    results.compoundQueries = await demonstrateCompoundQueries();
+    console.log();
+
+    results.performanceComparison = await demonstratePerformanceComparison();
+    console.log();
+
     results.jurisdictionTest = await jurisdictionAndConnectionExample();
     console.log();
 
@@ -236,6 +270,11 @@ export async function runAllBasicExamples() {
     console.log('   • Live stream joining functionality');
     console.log('   • Keyword search across streams');
     console.log('   • Aggregate stream statistics');
+    console.log('   • Advanced filtering with custom criteria (T043)');
+    console.log('   • Predefined filter builders (high-quality, trending, professional)');
+    console.log('   • Complex multi-criteria filtering');
+    console.log('   • Compound filter queries with AND/OR logic');
+    console.log('   • Performance optimization and metrics');
     console.log('   • Error handling and rate limiting');
     console.log('   • Statistics and state management');
     console.log('   • Configuration management and lifecycle');
@@ -274,6 +313,14 @@ export const examples = {
   searchLiveStreamsExample,
   getStreamStatisticsExample,
   jurisdictionAndConnectionExample,
+
+  // Advanced filtering examples (T043)
+  demonstratePredefinedFilters,
+  demonstrateCustomFilters,
+  demonstrateComplexCriteria,
+  demonstrateCompoundQueries,
+  demonstratePerformanceComparison,
+  runAdvancedFilteringExamples,
 
   // Main runner
   runAllBasicExamples,
@@ -359,7 +406,8 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('   6. Video stream analysis demo (test getVideoStreamAnalysis)');
   console.log('   7. Join live stream demo (test joinLiveStream)');
   console.log('   8. Stream statistics demo (test getStreamStatistics)');
-  console.log('   9. All examples (comprehensive demo)');
+  console.log('   9. Advanced filtering demo (T043 - custom filters, compound queries)');
+  console.log('   10. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -480,6 +528,19 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'advanced':
+    case 'filtering':
+    case 'advanced-filtering':
+      runAdvancedFilteringExamples()
+        .then(() => {
+          console.log('\n✅ Advanced filtering demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Advanced filtering demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'all':
     case 'full':
       runAllBasicExamples()
@@ -503,6 +564,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   join          - Join live stream demo (joinLiveStream)');
       console.log('   search        - Search live streams demo (searchLiveStreams)');
       console.log('   statistics    - Stream statistics demo (getStreamStatistics)');
+      console.log('   advanced      - Advanced filtering demo (T043 - custom filters, compound queries)');
       console.log('   all           - Run all examples');
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');

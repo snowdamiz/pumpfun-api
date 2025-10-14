@@ -23,6 +23,12 @@ import {
   StreamSearchResult,
   StreamStatistics,
 } from '../types';
+import {
+  AdvancedFilterCriteria,
+  AdvancedFilterResult,
+  CompoundFilterQuery,
+  StreamFilterFunction,
+} from '../services/live/stream-filters.service';
 
 interface JurisdictionResponse {
   valid: boolean;
@@ -261,6 +267,70 @@ export class PumpFunAPIClient {
   public async getStreamStatistics(): Promise<StreamStatistics> {
     this.ensureInitialized();
     return this.liveStreamsService.getStreamStatistics();
+  }
+
+  /**
+   * Apply advanced filtering with custom criteria
+   *
+   * This method provides powerful filtering capabilities with custom filter functions
+   * and complex queries for fine-grained control over stream selection.
+   *
+   * @param criteria - Advanced filter criteria with multiple filtering options
+   * @param params - Optional base parameters for stream fetching
+   * @returns Promise<AdvancedFilterResult> - Filtered streams with metadata
+   */
+  public async applyAdvancedFilters(
+    criteria: AdvancedFilterCriteria,
+    params?: GetLiveCoinsParams
+  ): Promise<AdvancedFilterResult> {
+    this.ensureInitialized();
+    return this.liveStreamsService.applyAdvancedFilters(criteria, params);
+  }
+
+  /**
+   * Apply compound filter queries with logical operators
+   *
+   * This method allows complex filtering with AND/OR logical operators
+   * across multiple filter groups for sophisticated query building.
+   *
+   * @param query - Compound filter query with groups and logical operators
+   * @param params - Optional base parameters for stream fetching
+   * @returns Promise<AdvancedFilterResult> - Filtered streams with metadata
+   */
+  public async applyCompoundFilter(
+    query: CompoundFilterQuery,
+    params?: GetLiveCoinsParams
+  ): Promise<AdvancedFilterResult> {
+    this.ensureInitialized();
+    return this.liveStreamsService.applyCompoundFilter(query, params);
+  }
+
+  /**
+   * Create custom filter function with optional name
+   *
+   * This method allows creating named custom filter functions for
+   * advanced filtering scenarios.
+   *
+   * @param filterFn - Custom filter function that takes a LiveCoin and returns boolean
+   * @param name - Optional name for the filter function for debugging
+   * @returns StreamFilterFunction - Named custom filter function
+   */
+  public createCustomFilter(filterFn: StreamFilterFunction, name?: string): StreamFilterFunction {
+    this.ensureInitialized();
+    return this.liveStreamsService.createCustomFilter(filterFn, name);
+  }
+
+  /**
+   * Get predefined filter builders for common use cases
+   *
+   * This method provides access to a collection of predefined filter builders
+   * for common filtering scenarios like high-quality streams, trending streams, etc.
+   *
+   * @returns Object containing filter builder functions
+   */
+  public getFilterBuilders() {
+    this.ensureInitialized();
+    return this.liveStreamsService.getFilterBuilders();
   }
 
   /**

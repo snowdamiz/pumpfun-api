@@ -86,3 +86,12 @@ export {
   LIVE_STREAMING_RATE_LIMIT_CONFIG,
   DEFAULT_LOGGER_CONFIG,
 } from './config.types';
+
+// Export advanced filtering types from stream-filters.service
+export type {
+  StreamFilterFunction,
+  AdvancedFilterCriteria,
+  AdvancedFilterResult,
+  CompoundFilterQuery,
+  FilterGroup,
+} from '../services/live/stream-filters.service';
