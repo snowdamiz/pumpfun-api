@@ -70,7 +70,9 @@ export abstract class PumpFunError extends Error {
     // Default retry delays based on error type
     switch (this.code) {
       case 'RATE_LIMIT_EXCEEDED':
-        return this.details?.retryAfter ? this.details?.retryAfter * 1000 : 60000;
+        return this.details?.retryAfter && typeof this.details.retryAfter === 'number'
+          ? this.details.retryAfter * 1000
+          : 60000;
       case 'NETWORK_TIMEOUT':
         return 2000;
       case 'CONNECTION_REFUSED':
@@ -477,7 +479,7 @@ export class ErrorFactory {
       case 429:
         return new RateLimitError({
           message,
-          retryAfter: data?.retryAfter,
+          retryAfter: typeof data?.retryAfter === 'number' ? data.retryAfter : undefined,
           details: data,
           originalError,
         });
