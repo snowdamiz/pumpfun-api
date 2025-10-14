@@ -17,6 +17,7 @@ import {
   LiveStreamInfo,
   LiveKitConnectionInfo,
   ValidatedConfig,
+  VideoStreamAnalysis,
 } from '../types';
 
 interface JurisdictionResponse {
@@ -251,6 +252,18 @@ export class PumpFunAPIClient {
   public async getLiveKitConnectionInfo(mintId: string): Promise<LiveKitConnectionInfo | null> {
     this.ensureInitialized();
     return this.liveStreamsService.getLiveKitConnectionInfo(mintId);
+  }
+
+  /**
+   * Get comprehensive video stream analysis for a specific mint
+   *
+   * This method combines all video stream related information into a single
+   * comprehensive analysis, including stream status, creator approval, and
+   * LiveKit connection details.
+   */
+  public async getVideoStreamAnalysis(mintId: string): Promise<VideoStreamAnalysis> {
+    this.ensureInitialized();
+    return this.liveStreamsService.getVideoStreamAnalysis(mintId);
   }
 
   /**

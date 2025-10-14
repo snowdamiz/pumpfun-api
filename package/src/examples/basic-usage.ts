@@ -73,6 +73,7 @@ export const getComprehensiveLiveDataExample = livestreamExamples.getComprehensi
 export const getStreamInfoExample = livestreamExamples.getStreamInfoExample;
 export const checkCreatorApprovalExample = livestreamExamples.checkCreatorApprovalExample;
 export const getLiveKitConnectionInfoExample = livestreamExamples.getLiveKitConnectionInfoExample;
+export const getVideoStreamAnalysisExample = livestreamExamples.getVideoStreamAnalysisExample;
 
 // Best Practices Examples
 export const productionBestPractices = bestPracticesExamples.productionBestPractices;
@@ -119,6 +120,7 @@ export async function runAllBasicExamples() {
     streamInfo: null as any,
     creatorApproval: null as any,
     liveKitConnection: null as any,
+    videoStreamAnalysis: null as any,
   };
 
   try {
@@ -191,6 +193,9 @@ export async function runAllBasicExamples() {
     results.liveKitConnection = await getLiveKitConnectionInfoExample();
     console.log();
 
+    results.videoStreamAnalysis = await getVideoStreamAnalysisExample();
+    console.log();
+
     results.jurisdictionTest = await jurisdictionAndConnectionExample();
     console.log();
 
@@ -212,6 +217,7 @@ export async function runAllBasicExamples() {
     console.log('   • Detailed stream information');
     console.log('   • Creator approval status checking');
     console.log('   • LiveKit video streaming connections');
+    console.log('   • Comprehensive video stream analysis');
     console.log('   • Error handling and rate limiting');
     console.log('   • Statistics and state management');
     console.log('   • Configuration management and lifecycle');
@@ -245,6 +251,7 @@ export const examples = {
   getStreamInfoExample,
   checkCreatorApprovalExample,
   getLiveKitConnectionInfoExample,
+  getVideoStreamAnalysisExample,
   jurisdictionAndConnectionExample,
 
   // Main runner
@@ -328,7 +335,8 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('   3. Live coins demo (with API calls)');
   console.log('   4. Creator approval demo (test isApprovedCreator)');
   console.log('   5. LiveKit video streaming demo (test getLiveKitConnectionInfo)');
-  console.log('   6. All examples (comprehensive demo)');
+  console.log('   6. Video stream analysis demo (test getVideoStreamAnalysis)');
+  console.log('   7. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -395,6 +403,20 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'analysis':
+    case 'video-analysis':
+    case 'stream-analysis':
+    case 'comprehensive':
+      getVideoStreamAnalysisExample()
+        .then(() => {
+          console.log('\n✅ Video stream analysis demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Video stream analysis demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'all':
     case 'full':
       runAllBasicExamples()
@@ -409,15 +431,22 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
 
     default:
       console.log('❌ Unknown demo type. Available options:');
-      console.log('   quick     - Quick functionality test');
-      console.log('   basic     - Basic initialization demo');
-      console.log('   live      - Live coins API demo');
-      console.log('   approval  - Creator approval demo (isApprovedCreator)');
-      console.log('   livekit   - LiveKit video streaming demo (getLiveKitConnectionInfo)');
-      console.log('   all       - Run all examples');
+      console.log('   quick         - Quick functionality test');
+      console.log('   basic         - Basic initialization demo');
+      console.log('   live          - Live coins API demo');
+      console.log('   approval      - Creator approval demo (isApprovedCreator)');
+      console.log('   livekit       - LiveKit video streaming demo (getLiveKitConnectionInfo)');
+      console.log('   analysis      - Video stream analysis demo (getVideoStreamAnalysis)');
+      console.log('   all           - Run all examples');
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');
       console.log('Example: node basic-usage.ts quick');
+      console.log('');
+      console.log('Video Analysis Options:');
+      console.log('   analysis      - Video stream analysis demo');
+      console.log('   video-analysis - Same as analysis');
+      console.log('   stream-analysis - Same as analysis');
+      console.log('   comprehensive  - Same as analysis');
       process.exit(EXIT_FAILURE);
   }
 }

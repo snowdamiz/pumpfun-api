@@ -12,6 +12,7 @@ import {
   LiveKitConnectionInfo,
   LiveStreamsServiceConfig,
   ServiceState,
+  VideoStreamAnalysis,
 } from '../../types';
 import { Logger } from '../../infrastructure/logging/logger';
 import { RateLimiter } from '../../infrastructure/rate-limiting/rate-limiter';
@@ -198,6 +199,105 @@ export class LiveStreamsService {
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
+    }
+  }
+
+  /**
+   * Get comprehensive video stream analysis for a specific mint
+   *
+   * This method combines all video stream related information into a single
+   * comprehensive analysis, including stream status, creator approval, and
+   * LiveKit connection details.
+   */
+  async getVideoStreamAnalysis(mintId: string): Promise<VideoStreamAnalysis> {
+    this.logger.info('Starting comprehensive video stream analysis', {
+      mintId,
+      operation: 'getVideoStreamAnalysis',
+    });
+
+    try {
+      // Execute all three analysis components in parallel for efficiency
+      const [streamInfo, isApprovedCreator, liveKitConnection] = await Promise.allSettled([
+        this.streamInfoService.getLiveStreamInfo(mintId),
+        this.streamInfoService.isApprovedCreator(mintId),
+        this.streamInfoService.getLiveKitConnectionInfo(mintId),
+      ]);
+
+      // Extract results from Promise.allSettled
+      const streamInfoResult = streamInfo.status === 'fulfilled' ? streamInfo.value : null;
+      const isApprovedCreatorResult =
+        isApprovedCreator.status === 'fulfilled' ? isApprovedCreator.value : false;
+      const liveKitConnectionResult =
+        liveKitConnection.status === 'fulfilled' ? liveKitConnection.value : null;
+
+      // Log any errors that occurred during parallel execution
+      if (streamInfo.status === 'rejected') {
+        const streamError = streamInfo.reason;
+        this.logger.warn('Failed to get stream info during analysis', {
+          mintId,
+          error: streamError instanceof Error ? streamError.message : String(streamError),
+        });
+      }
+
+      if (isApprovedCreator.status === 'rejected') {
+        const approvalError = isApprovedCreator.reason;
+        this.logger.warn('Failed to check creator approval during analysis', {
+          mintId,
+          error: approvalError instanceof Error ? approvalError.message : String(approvalError),
+        });
+      }
+
+      if (liveKitConnection.status === 'rejected') {
+        const connectionError = liveKitConnection.reason;
+        this.logger.warn('Failed to get LiveKit connection info during analysis', {
+          mintId,
+          error:
+            connectionError instanceof Error ? connectionError.message : String(connectionError),
+        });
+      }
+
+      // Determine if there's an active stream
+      const hasActiveStream = !!(streamInfoResult && streamInfoResult.isLive);
+
+      // Create the comprehensive analysis result
+      const analysis: VideoStreamAnalysis = {
+        hasActiveStream,
+        isApprovedCreator: isApprovedCreatorResult,
+        streamInfo: streamInfoResult ?? undefined,
+        liveKitConnection: liveKitConnectionResult ?? undefined,
+        analyzedAt: new Date().toISOString(),
+      };
+
+      this.logger.info('Successfully completed video stream analysis', {
+        mintId,
+        hasActiveStream: analysis.hasActiveStream,
+        isApprovedCreator: analysis.isApprovedCreator,
+        hasStreamInfo: !!analysis.streamInfo,
+        hasLiveKitConnection: !!analysis.liveKitConnection,
+        streamId: analysis.streamInfo?.id,
+        participantCount: analysis.streamInfo?.numParticipants,
+        analyzedAt: analysis.analyzedAt,
+      });
+
+      return analysis;
+    } catch (unknownError) {
+      const errorMessage =
+        unknownError instanceof Error ? unknownError.message : String(unknownError);
+      const errorType = unknownError instanceof Error ? unknownError.constructor.name : 'Unknown';
+
+      this.logger.error('Unexpected error during video stream analysis', {
+        mintId,
+        error: errorMessage,
+        errorType,
+      });
+
+      // Re-throw as a more specific error if possible
+      if (unknownError instanceof Error) {
+        throw unknownError;
+      }
+
+      // Wrap unknown errors
+      throw new Error(`Video stream analysis failed for mintId ${mintId}: ${errorMessage}`);
     }
   }
 }

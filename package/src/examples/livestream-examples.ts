@@ -11,7 +11,7 @@
  */
 
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
-import { LogLevel, LiveStreamInfo, LiveKitConnectionInfo } from '../types';
+import { LogLevel, LiveStreamInfo, LiveKitConnectionInfo, VideoStreamAnalysis } from '../types';
 import {
   EXAMPLE_STREAM_LIMIT,
   MIN_PARTICIPANTS,
@@ -596,6 +596,178 @@ export async function getLiveKitConnectionInfoExample() {
     return { client, connections };
   } catch (error) {
     console.error('❌ Error in LiveKit connection example:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example 17: Get comprehensive video stream analysis
+ *
+ * This example demonstrates the new getVideoStreamAnalysis method that combines
+ * all video stream related information into a single comprehensive analysis.
+ */
+export async function getVideoStreamAnalysisExample() {
+  console.log('=== Video Stream Analysis Example ===');
+
+  const client = new PumpFunAPIClient({
+    timeout: 15000,
+    loggerConfig: {
+      level: LogLevel.INFO,
+      enableConsole: true,
+      enableColors: true,
+    },
+  });
+
+  try {
+    // First get some live coins to test with
+    console.log('🔍 Getting live coins to test video stream analysis...');
+    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
+
+    if (liveCoins.length === 0) {
+      console.log('⚠️ No live coins found to test video stream analysis');
+      return { client, analyses: [] };
+    }
+
+    console.log(
+      `🎬 Testing comprehensive video stream analysis for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
+    );
+
+    const analyses: Array<{
+      mint: string;
+      name: string;
+      symbol: string;
+      analysis: VideoStreamAnalysis;
+    }> = [];
+
+    for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
+      const coin = liveCoins[i];
+      if (!coin) {
+        console.log(`${i + INDEX_OFFSET}. ⚠️ Skipping undefined coin data`);
+        continue;
+      }
+
+      console.log(`${i + INDEX_OFFSET}. Analyzing video stream for: ${coin.name} (${coin.symbol})`);
+      console.log(`   🔗 Mint: ${coin.mint}`);
+      console.log(`   👥 Live Participants: ${coin.num_participants}`);
+      console.log(`   📺 Stream Title: "${coin.livestream_title ?? 'No Title'}"`);
+
+      try {
+        const analysis = await client.getVideoStreamAnalysis(coin.mint);
+
+        console.log(`   ✅ Video Stream Analysis Complete:`);
+        console.log(`      🔴 Active Stream: ${analysis.hasActiveStream ? 'YES' : 'NO'}`);
+        console.log(`      ✅ Creator Approved: ${analysis.isApprovedCreator ? 'YES' : 'NO'}`);
+
+        if (analysis.streamInfo) {
+          console.log(`      📺 Stream Details:`);
+          console.log(`         • Stream ID: ${analysis.streamInfo.id}`);
+          console.log(`         • Title: "${analysis.streamInfo.title ?? 'No Title'}"`);
+          console.log(`         • Mode: ${analysis.streamInfo.mode}`);
+          console.log(
+            `         • Participants: ${analysis.streamInfo.numParticipants}/${analysis.streamInfo.maxParticipants}`
+          );
+          console.log(`         • Live Status: ${analysis.streamInfo.isLive ? 'LIVE' : 'OFFLINE'}`);
+          console.log(`         • Quality Score: ${analysis.streamInfo.downrankScore}/100`);
+        }
+
+        if (analysis.liveKitConnection) {
+          console.log(`      🎥 LiveKit Connection:`);
+          console.log(`         • Room: ${analysis.liveKitConnection.roomName}`);
+          console.log(`         • WebSocket: ${analysis.liveKitConnection.websocketUrl}`);
+          console.log(`         • Regions: ${analysis.liveKitConnection.regions.length} available`);
+          console.log(
+            `         • Auth Required: ${analysis.liveKitConnection.requiresAuthentication ? 'YES' : 'NO'}`
+          );
+
+          // Show best region
+          const bestRegion = analysis.liveKitConnection.regions[0];
+          if (bestRegion) {
+            console.log(
+              `         • Best Region: ${bestRegion.region} (Distance: ${bestRegion.distance})`
+            );
+          }
+        }
+
+        // Analysis Summary
+        console.log(`      📊 Analysis Summary:`);
+        if (analysis.hasActiveStream && analysis.isApprovedCreator) {
+          console.log(`         🟢 READY for video streaming - All checks passed`);
+        } else if (analysis.hasActiveStream && !analysis.isApprovedCreator) {
+          console.log(`         🟡 Stream active but creator not approved`);
+        } else if (!analysis.hasActiveStream && analysis.isApprovedCreator) {
+          console.log(`         🟡 Creator approved but no active stream`);
+        } else {
+          console.log(`         🔴 Not ready for video streaming`);
+        }
+
+        console.log(`      ⏰ Analyzed at: ${new Date(analysis.analyzedAt).toLocaleString()}`);
+
+        analyses.push({
+          mint: coin.mint,
+          name: coin.name,
+          symbol: coin.symbol,
+          analysis,
+        });
+      } catch (error) {
+        console.log(
+          `   ❌ Error analyzing video stream: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        // Don't add failed analyses to the array
+      }
+
+      console.log('');
+    }
+
+    // Summary Statistics
+    console.log(`📊 Video Stream Analysis Summary:`);
+    console.log(`   Total Analyzed: ${analyses.length}`);
+
+    if (analyses.length > 0) {
+      const activeStreams = analyses.filter(a => a.analysis.hasActiveStream).length;
+      const approvedCreators = analyses.filter(a => a.analysis.isApprovedCreator).length;
+      const withLiveKitConnection = analyses.filter(
+        a => a.analysis.liveKitConnection !== null
+      ).length;
+      const readyForStreaming = analyses.filter(
+        a => a.analysis.hasActiveStream && a.analysis.isApprovedCreator
+      ).length;
+
+      console.log(
+        `   Active Streams: ${activeStreams} (${((activeStreams / analyses.length) * 100).toFixed(1)}%)`
+      );
+      console.log(
+        `   Approved Creators: ${approvedCreators} (${((approvedCreators / analyses.length) * 100).toFixed(1)}%)`
+      );
+      console.log(
+        `   LiveKit Connections: ${withLiveKitConnection} (${((withLiveKitConnection / analyses.length) * 100).toFixed(1)}%)`
+      );
+      console.log(
+        `   Ready for Streaming: ${readyForStreaming} (${((readyForStreaming / analyses.length) * 100).toFixed(1)}%)`
+      );
+
+      if (readyForStreaming > 0) {
+        console.log(`\n🎥 Ready for Video Streaming:`);
+        analyses
+          .filter(a => a.analysis.hasActiveStream && a.analysis.isApprovedCreator)
+          .forEach((item, index) => {
+            console.log(`   ${index + 1}. ${item.name} (${item.symbol})`);
+            console.log(`      • Mint: ${item.mint}`);
+            console.log(`      • Room: ${item.analysis.liveKitConnection?.roomName || 'N/A'}`);
+            console.log(`      • Participants: ${item.analysis.streamInfo?.numParticipants || 0}`);
+          });
+
+        console.log(`\n💡 Integration Tips:`);
+        console.log(`   1. Use getVideoStreamAnalysis() for comprehensive stream status`);
+        console.log(`   2. Check hasActiveStream && isApprovedCreator before connecting`);
+        console.log(`   3. Use LiveKit connection info for WebRTC video streaming`);
+        console.log(`   4. Monitor analysis.analyzedAt for freshness of data`);
+        console.log(`   5. Handle cases where components may be null/undefined`);
+      }
+    }
+
+    return { client, analyses };
+  } catch (error) {
+    console.error('❌ Error in video stream analysis example:', error);
     throw error;
   }
 }
