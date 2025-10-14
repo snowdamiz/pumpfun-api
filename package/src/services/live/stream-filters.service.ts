@@ -212,9 +212,7 @@ export class StreamFilters {
       });
 
       // Filter by currently live while preserving original API response order
-      const topStreams = liveStreams
-        .filter(stream => stream.is_currently_live)
-        .slice(0, limit);
+      const topStreams = liveStreams.filter(stream => stream.is_currently_live).slice(0, limit);
 
       this.logger.info('Successfully fetched top live streams', {
         requested: limit,

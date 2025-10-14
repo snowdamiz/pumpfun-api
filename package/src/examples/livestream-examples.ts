@@ -1475,7 +1475,9 @@ export async function getStreamClipsExample() {
 
         // Display details about the clips
         if (allClips.length > 0) {
-          console.log(`      📋 Clip Types: ${[...new Set(allClips.map(clip => clip.clipType))].join(', ')}`);
+          console.log(
+            `      📋 Clip Types: ${[...new Set(allClips.map(clip => clip.clipType))].join(', ')}`
+          );
 
           const totalDuration = allClips.reduce((sum, clip) => sum + (clip.duration || 0), 0);
           const totalViews = allClips.reduce((sum, clip) => sum + (clip.view_count || 0), 0);
@@ -1492,13 +1494,19 @@ export async function getStreamClipsExample() {
           // Show oldest and newest clips
           const sortedByDate = allClips
             .filter(clip => clip.created_at)
-            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            .sort((a, b) => new Date(a.created_at!).getTime() - new Date(b.created_at!).getTime());
 
           if (sortedByDate.length > 0) {
             const oldest = sortedByDate[0];
             const newest = sortedByDate[sortedByDate.length - 1];
-            console.log(`      📅 Oldest Clip: ${new Date(oldest.created_at).toLocaleString()} (${oldest.clipType})`);
-            console.log(`      📅 Newest Clip: ${new Date(newest.created_at).toLocaleString()} (${newest.clipType})`);
+            if (oldest && newest) {
+              console.log(
+                `      📅 Oldest Clip: ${new Date(oldest.created_at!).toLocaleString()} (${oldest.clipType})`
+              );
+              console.log(
+                `      📅 Newest Clip: ${new Date(newest.created_at!).toLocaleString()} (${newest.clipType})`
+              );
+            }
           }
         } else {
           console.log(`      ⚠️ No clips found for this stream`);
@@ -1539,8 +1547,14 @@ export async function getStreamClipsExample() {
 
     if (clipTests.length > 0) {
       const totalAllClips = clipTests.reduce((sum, test) => sum + test.allClips.length, 0);
-      const totalCompleteClips = clipTests.reduce((sum, test) => sum + test.completeClips.length, 0);
-      const totalHighlightClips = clipTests.reduce((sum, test) => sum + test.highlightClips.length, 0);
+      const totalCompleteClips = clipTests.reduce(
+        (sum, test) => sum + test.completeClips.length,
+        0
+      );
+      const totalHighlightClips = clipTests.reduce(
+        (sum, test) => sum + test.highlightClips.length,
+        0
+      );
       const streamsWithClips = clipTests.filter(test => test.allClips.length > 0).length;
 
       console.log(`   Streams with Clips: ${streamsWithClips}`);
@@ -1555,7 +1569,9 @@ export async function getStreamClipsExample() {
         // Clip type distribution
         const completePercentage = ((totalCompleteClips / totalAllClips) * 100).toFixed(1);
         const highlightPercentage = ((totalHighlightClips / totalAllClips) * 100).toFixed(1);
-        console.log(`   Clip Type Distribution: ${completePercentage}% Complete, ${highlightPercentage}% Highlight`);
+        console.log(
+          `   Clip Type Distribution: ${completePercentage}% Complete, ${highlightPercentage}% Highlight`
+        );
       }
 
       // Show streams with the most clips

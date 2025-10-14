@@ -888,7 +888,9 @@ export class LiveStreamsService {
         clips = [];
       } else if (responseData.clips && Array.isArray(responseData.clips)) {
         // API returned {clips: [], hasMore: boolean} format
-        clips = responseData.clips.filter(clip => this.isValidStreamClip(clip, mintId.trim()));
+        clips = responseData.clips.filter((clip: any) =>
+          this.isValidStreamClip(clip, mintId.trim())
+        );
         this.logger.debug('Processed clips API response with pagination', {
           mintId: mintId.trim(),
           clipCount: clips.length,
@@ -896,7 +898,7 @@ export class LiveStreamsService {
         });
       } else if (Array.isArray(responseData)) {
         // Fallback: API returned array directly (older format)
-        clips = responseData.filter(clip => this.isValidStreamClip(clip, mintId.trim()));
+        clips = responseData.filter((clip: any) => this.isValidStreamClip(clip, mintId.trim()));
         this.logger.debug('Processed clips API response (array format)', {
           mintId: mintId.trim(),
           clipCount: clips.length,
@@ -980,7 +982,7 @@ export class LiveStreamsService {
     if (!clip.mintId || typeof clip.mintId !== 'string') {
       this.logger.warn('Invalid clip: missing or invalid mintId', {
         mintId,
-        clipMintId: clip.mintId
+        clipMintId: clip.mintId,
       });
       return false;
     }
@@ -989,7 +991,7 @@ export class LiveStreamsService {
     if (clip.mintId !== mintId) {
       this.logger.warn('Invalid clip: mintId mismatch', {
         expectedMintId: mintId,
-        clipMintId: clip.mintId
+        clipMintId: clip.mintId,
       });
       return false;
     }
@@ -998,7 +1000,7 @@ export class LiveStreamsService {
     if (clip.clipType && !['COMPLETE', 'HIGHLIGHT'].includes(clip.clipType)) {
       this.logger.warn('Invalid clip: invalid clipType', {
         mintId,
-        clipType: clip.clipType
+        clipType: clip.clipType,
       });
       return false;
     }
@@ -1008,7 +1010,7 @@ export class LiveStreamsService {
       if (typeof clip.duration !== 'number' || clip.duration < 0) {
         this.logger.warn('Invalid clip: invalid duration', {
           mintId,
-          duration: clip.duration
+          duration: clip.duration,
         });
         return false;
       }
@@ -1018,7 +1020,7 @@ export class LiveStreamsService {
       if (typeof clip.view_count !== 'number' || clip.view_count < 0) {
         this.logger.warn('Invalid clip: invalid view_count', {
           mintId,
-          view_count: clip.view_count
+          view_count: clip.view_count,
         });
         return false;
       }
@@ -1033,7 +1035,7 @@ export class LiveStreamsService {
         } catch {
           this.logger.warn(`Invalid clip: invalid ${field} URL`, {
             mintId,
-            [field]: clip[field]
+            [field]: clip[field],
           });
           return false;
         }

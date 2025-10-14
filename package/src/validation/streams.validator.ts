@@ -5,10 +5,7 @@
  * including parameter validation and response validation.
  */
 
-import {
-  LiveCoin,
-  GetLiveCoinsParams,
-} from '../types';
+import { LiveCoin, GetLiveCoinsParams, StreamClip } from '../types';
 import { ServerError, ConfigurationError } from '../infrastructure/error-handling/errors';
 import { Logger } from '../infrastructure/logging/logger';
 
@@ -976,5 +973,422 @@ export class LiveStreamsValidator {
 
       return totalWeight > 0 ? totalScore / totalWeight : 0;
     };
+  }
+
+  // ============================================================================
+  // Stream Clip Validation (T049)
+  // ============================================================================
+
+  /**
+   * Validate stream clips response array
+   */
+  validateStreamClipsResponse(response: any): StreamClip[] {
+    if (!Array.isArray(response)) {
+      throw new ServerError({
+        message: 'Invalid response format: expected array of stream clips',
+        statusCode: 500,
+        details: {
+          expectedType: 'array',
+          receivedType: typeof response,
+          response,
+        },
+      });
+    }
+
+    const streamClips: StreamClip[] = [];
+    const validationErrors: string[] = [];
+
+    for (let i = 0; i < response.length; i++) {
+      const clip = response[i];
+
+      try {
+        const validatedClip = this.validateStreamClip(clip, i);
+        streamClips.push(validatedClip);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        validationErrors.push(`Item ${i}: ${errorMessage}`);
+      }
+    }
+
+    if (validationErrors.length > 0) {
+      this.logger.warn('Some stream clips failed validation', {
+        validationErrors,
+        totalItems: response.length,
+        validItems: streamClips.length,
+      });
+    }
+
+    return streamClips;
+  }
+
+  /**
+   * Validate individual stream clip object
+   */
+  validateStreamClip(clip: any, index: number): StreamClip {
+    const errors: string[] = [];
+
+    // Type checking
+    if (!clip || typeof clip !== 'object') {
+      errors.push(`Item ${index}: Expected object, got ${typeof clip}`);
+      throw new ServerError({
+        message: `Invalid stream clip data at index ${index}`,
+        statusCode: 500,
+        details: { errors, index, clipData: clip },
+      });
+    }
+
+    // Required field validation
+    const requiredFields: (keyof StreamClip)[] = ['id', 'mintId', 'clipType'];
+    for (const field of requiredFields) {
+      if (!(field in clip)) {
+        errors.push(`Item ${index}: Missing required field '${field}'`);
+      }
+    }
+
+    // Type validation for required fields
+    if (clip.id && typeof clip.id !== 'string') {
+      errors.push(`Item ${index}: Field 'id' must be string, got ${typeof clip.id}`);
+    }
+
+    if (clip.mintId && typeof clip.mintId !== 'string') {
+      errors.push(`Item ${index}: Field 'mintId' must be string, got ${typeof clip.mintId}`);
+    }
+
+    if (clip.clipType && typeof clip.clipType !== 'string') {
+      errors.push(`Item ${index}: Field 'clipType' must be string, got ${typeof clip.clipType}`);
+    }
+
+    // Format validation for specific fields
+    if (clip.mintId && !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(clip.mintId)) {
+      errors.push(
+        `Item ${index}: Field 'mintId' has invalid Solana address format: ${clip.mintId}`
+      );
+    }
+
+    // Validate clip type enum
+    if (clip.clipType && !['COMPLETE', 'HIGHLIGHT'].includes(clip.clipType)) {
+      errors.push(
+        `Item ${index}: Field 'clipType' must be 'COMPLETE' or 'HIGHLIGHT', got '${clip.clipType}'`
+      );
+    }
+
+    // Optional fields validation (if present)
+    const optionalFields: (keyof StreamClip)[] = [
+      'duration',
+      'view_count',
+      'created_at',
+      'clip_url',
+    ];
+    for (const field of optionalFields) {
+      if (clip[field] !== undefined && clip[field] !== null) {
+        switch (field) {
+          case 'duration':
+            if (typeof clip[field] !== 'number' || clip[field] < 1) {
+              errors.push(
+                `Item ${index}: Field '${field}' must be a positive number, got ${clip[field]}`
+              );
+            }
+            break;
+          case 'view_count':
+            if (typeof clip[field] !== 'number' || clip[field] < 0) {
+              errors.push(
+                `Item ${index}: Field '${field}' must be a non-negative number, got ${clip[field]}`
+              );
+            }
+            break;
+          case 'created_at':
+            if (typeof clip[field] !== 'string') {
+              errors.push(
+                `Item ${index}: Field '${field}' must be string (ISO 8601), got ${typeof clip[field]}`
+              );
+            } else {
+              // Validate ISO 8601 format
+              const date = new Date(clip[field]);
+              if (isNaN(date.getTime())) {
+                errors.push(
+                  `Item ${index}: Field '${field}' must be a valid ISO 8601 date, got '${clip[field]}'`
+                );
+              }
+            }
+            break;
+          case 'clip_url':
+            if (typeof clip[field] !== 'string') {
+              errors.push(
+                `Item ${index}: Field '${field}' must be string (URL), got ${typeof clip[field]}`
+              );
+            } else {
+              // Basic URL validation
+              try {
+                new URL(clip[field]);
+              } catch {
+                errors.push(
+                  `Item ${index}: Field '${field}' must be a valid URL, got '${clip[field]}'`
+                );
+              }
+            }
+            break;
+        }
+      }
+    }
+
+    // If we have validation errors, throw a detailed error
+    if (errors.length > 0) {
+      throw new ServerError({
+        message: `Stream clip validation failed for item at index ${index}`,
+        statusCode: 500,
+        details: { errors, index, clipData: this.sanitizeClipForLogging(clip) },
+      });
+    }
+
+    // Create a clean, validated StreamClip object with proper typing
+    const validatedClip: StreamClip = {
+      id: clip.id,
+      mintId: clip.mintId,
+      clipType: clip.clipType as 'COMPLETE' | 'HIGHLIGHT',
+      // Optional fields (only include if present and valid)
+      ...(clip.duration !== undefined && { duration: clip.duration }),
+      ...(clip.view_count !== undefined && { view_count: clip.view_count }),
+      ...(clip.created_at !== undefined && { created_at: clip.created_at }),
+      ...(clip.clip_url !== undefined && { clip_url: clip.clip_url }),
+    };
+
+    return validatedClip;
+  }
+
+  /**
+   * Validate getStreamClips parameters
+   */
+  validateGetStreamClipsParams(params: {
+    limit?: number;
+    clipType?: 'COMPLETE' | 'HIGHLIGHT';
+  }): void {
+    const errors: string[] = [];
+
+    // Validate limit
+    if (params.limit !== undefined) {
+      if (typeof params.limit !== 'number') {
+        errors.push(`Invalid limit type: ${typeof params.limit}. Must be a number.`);
+      } else if (params.limit < 1) {
+        errors.push(`Invalid limit: ${params.limit}. Must be at least 1.`);
+      } else if (params.limit > 100) {
+        errors.push(`Invalid limit: ${params.limit}. Maximum allowed is 100.`);
+      }
+    }
+
+    // Validate clip type
+    if (params.clipType !== undefined) {
+      const validClipTypes = ['COMPLETE', 'HIGHLIGHT'];
+      if (!validClipTypes.includes(params.clipType)) {
+        errors.push(
+          `Invalid clip type: "${params.clipType}". Must be one of: ${validClipTypes.join(', ')}.`
+        );
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new ConfigurationError({
+        message: `getStreamClips parameter validation failed:\n${errors.map((error, index) => `  ${index + 1}. ${error}`).join('\n')}`,
+        details: {
+          operation: 'getStreamClips',
+          providedParams: params,
+          validationErrors: errors,
+        },
+      });
+    }
+  }
+
+  /**
+   * Validate clip filtering parameters
+   */
+  validateClipFilterParams(params: {
+    mintId?: string;
+    clipTypes?: ('COMPLETE' | 'HIGHLIGHT')[];
+    minDuration?: number;
+    maxDuration?: number;
+    sortBy?: 'created_at' | 'duration' | 'view_count';
+    sortOrder?: 'ASC' | 'DESC';
+    limit?: number;
+    offset?: number;
+  }): void {
+    const errors: string[] = [];
+
+    // Validate mintId if provided
+    if (params.mintId !== undefined) {
+      if (typeof params.mintId !== 'string') {
+        errors.push(`Invalid mintId type: ${typeof params.mintId}. Must be string.`);
+      } else if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(params.mintId)) {
+        errors.push(`Invalid mintId format: ${params.mintId}. Must be valid Solana address.`);
+      }
+    }
+
+    // Validate clip types if provided
+    if (params.clipTypes !== undefined) {
+      if (!Array.isArray(params.clipTypes)) {
+        errors.push(`Invalid clipTypes type: ${typeof params.clipTypes}. Must be array.`);
+      } else {
+        const validClipTypes = ['COMPLETE', 'HIGHLIGHT'];
+        for (let i = 0; i < params.clipTypes.length; i++) {
+          const clipType = params.clipTypes[i];
+          if (clipType && !validClipTypes.includes(clipType)) {
+            errors.push(
+              `Invalid clip type at index ${i}: "${clipType}". Must be one of: ${validClipTypes.join(', ')}.`
+            );
+          }
+        }
+      }
+    }
+
+    // Validate duration filters
+    if (params.minDuration !== undefined) {
+      if (typeof params.minDuration !== 'number' || params.minDuration < 1) {
+        errors.push(`Invalid minDuration: ${params.minDuration}. Must be a positive number.`);
+      }
+    }
+
+    if (params.maxDuration !== undefined) {
+      if (typeof params.maxDuration !== 'number' || params.maxDuration < 1) {
+        errors.push(`Invalid maxDuration: ${params.maxDuration}. Must be a positive number.`);
+      }
+    }
+
+    // Validate duration range consistency
+    if (params.minDuration !== undefined && params.maxDuration !== undefined) {
+      if (params.minDuration > params.maxDuration) {
+        errors.push(
+          `Invalid duration range: minDuration (${params.minDuration}) cannot be greater than maxDuration (${params.maxDuration}).`
+        );
+      }
+    }
+
+    // Validate sort parameters
+    if (params.sortBy !== undefined) {
+      const validSortFields = ['created_at', 'duration', 'view_count'];
+      if (!validSortFields.includes(params.sortBy)) {
+        errors.push(
+          `Invalid sort field: "${params.sortBy}". Must be one of: ${validSortFields.join(', ')}.`
+        );
+      }
+    }
+
+    if (params.sortOrder !== undefined) {
+      const validSortOrders = ['ASC', 'DESC'];
+      if (!validSortOrders.includes(params.sortOrder)) {
+        errors.push(
+          `Invalid sort order: "${params.sortOrder}". Must be one of: ${validSortOrders.join(', ')}.`
+        );
+      }
+    }
+
+    // Validate pagination
+    if (params.limit !== undefined) {
+      if (typeof params.limit !== 'number' || params.limit < 1 || params.limit > 1000) {
+        errors.push('Limit must be a number between 1 and 1000');
+      }
+    }
+
+    if (params.offset !== undefined) {
+      if (typeof params.offset !== 'number' || params.offset < 0) {
+        errors.push('Offset must be a non-negative number');
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new ConfigurationError({
+        message: `Clip filter parameter validation failed:\n${errors.map((error, index) => `  ${index + 1}. ${error}`).join('\n')}`,
+        details: {
+          operation: 'filterClips',
+          providedParams: params,
+          validationErrors: errors,
+        },
+      });
+    }
+  }
+
+  /**
+   * Sanitize clip data for logging to remove sensitive or large fields
+   */
+  private sanitizeClipForLogging(clip: any): any {
+    if (!clip || typeof clip !== 'object') {
+      return clip;
+    }
+
+    const sanitized = { ...clip };
+    // Truncate long URLs for logging
+    if (sanitized.clip_url && typeof sanitized.clip_url === 'string') {
+      if (sanitized.clip_url.length > 100) {
+        sanitized.clip_url = `${sanitized.clip_url.substring(0, 97)}...`;
+      }
+    }
+    return sanitized;
+  }
+
+  /**
+   * Validate clip type conversion from string to enum
+   */
+  validateClipType(clipType: any): 'COMPLETE' | 'HIGHLIGHT' {
+    if (typeof clipType !== 'string') {
+      throw new ConfigurationError({
+        message: `Clip type must be a string, got ${typeof clipType}`,
+        details: { providedValue: clipType },
+      });
+    }
+
+    const upperClipType = clipType.toUpperCase();
+    const validClipTypes = ['COMPLETE', 'HIGHLIGHT'];
+
+    if (!validClipTypes.includes(upperClipType)) {
+      throw new ConfigurationError({
+        message: `Invalid clip type: "${clipType}". Must be one of: ${validClipTypes.join(', ')}`,
+        details: {
+          providedValue: clipType,
+          validValues: validClipTypes,
+        },
+      });
+    }
+
+    return upperClipType as 'COMPLETE' | 'HIGHLIGHT';
+  }
+
+  /**
+   * Batch validate multiple clips with error aggregation
+   */
+  validateStreamClipsBatch(
+    clips: any[],
+    options: {
+      continueOnError?: boolean;
+      maxErrors?: number;
+    } = {}
+  ): { validClips: StreamClip[]; errors: string[] } {
+    const { continueOnError = true, maxErrors = 50 } = options;
+    const validClips: StreamClip[] = [];
+    const errors: string[] = [];
+
+    for (let i = 0; i < clips.length; i++) {
+      const clip = clips[i];
+
+      try {
+        const validatedClip = this.validateStreamClip(clip, i);
+        validClips.push(validatedClip);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        errors.push(`Clip ${i}: ${errorMessage}`);
+
+        // Stop processing if we've hit max errors and not continuing on error
+        if (!continueOnError && errors.length >= maxErrors) {
+          break;
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      this.logger.warn('Stream clip batch validation completed with errors', {
+        totalClips: clips.length,
+        validClips: validClips.length,
+        errorCount: errors.length,
+        errors: errors.slice(0, maxErrors), // Log only first maxErrors
+      });
+    }
+
+    return { validClips, errors };
   }
 }

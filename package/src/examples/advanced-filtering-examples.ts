@@ -119,8 +119,8 @@ export async function demonstrateCustomFilters() {
         console.log(`      👥 Participants: ${stream.num_participants}`);
         console.log(`      💬 Messages: ${stream.reply_count}`);
         console.log(`      💰 Market Cap: $${stream.usd_market_cap.toLocaleString()}`);
-        console.log(`      🐦 Twitter: ${stream.twitter || 'None'}`);
-        console.log(`      📱 Telegram: ${stream.telegram || 'None'}`);
+        console.log(`      🐦 Twitter: ${stream.twitter ?? 'None'}`);
+        console.log(`      📱 Telegram: ${stream.telegram ?? 'None'}`);
       });
     }
 
