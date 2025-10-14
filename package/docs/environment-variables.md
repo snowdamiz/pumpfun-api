@@ -172,53 +172,6 @@ require('dotenv').config({ path: '.env.local' });
 
 **Note**: Environment files are for development only. They are excluded from npm distribution.
 
-### Docker Environment
-
-```dockerfile
-FROM node:18-alpine
-
-# Set environment variables
-ENV PUMPFUN_API_BASE_URL=https://api.pump.fun
-ENV PUMPFUN_LOG_LEVEL=INFO
-ENV PUMPFUN_RATE_LIMIT_REQUESTS=60
-
-# Copy application code
-COPY . /app
-WORKDIR /app
-
-# Install dependencies and run
-RUN npm install
-CMD ["npm", "start"]
-```
-
-### Kubernetes ConfigMap
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pumpfun-config
-data:
-  PUMPFUN_API_BASE_URL: "https://api.pump.fun"
-  PUMPFUN_LOG_LEVEL: "INFO"
-  PUMPFUN_RATE_LIMIT_REQUESTS: "60"
-  PUMPFUN_API_TIMEOUT: "10000"
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: pumpfun-app
-spec:
-  template:
-    spec:
-      containers:
-      - name: app
-        image: pumpfun-app:latest
-        envFrom:
-        - configMapRef:
-            name: pumpfun-config
-```
-
 ## Configuration Precedence
 
 The client merges configuration in the following order (later values override earlier ones):
