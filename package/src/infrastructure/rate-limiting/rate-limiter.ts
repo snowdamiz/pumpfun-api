@@ -62,7 +62,7 @@ export class RateLimiter {
    * Load rate limit configuration from environment variables
    */
   private loadFromEnvironment(): void {
-    if (typeof process !== 'undefined' && process?.env) {
+    if (typeof process !== 'undefined' && process.env) {
       if (process.env.MAX_REQUESTS_PER_MINUTE) {
         this.config.maxRequestsPerWindow = parseInt(process.env.MAX_REQUESTS_PER_MINUTE, 10);
       }

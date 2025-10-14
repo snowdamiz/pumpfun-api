@@ -313,11 +313,11 @@ export async function getLiveCoinsExample() {
 
     liveCoins.forEach((coin, index) => {
       console.log(`${index + 1}. ${coin.name} (${coin.symbol})`);
-      console.log(`   📺 Stream: ${coin.livestream_title || 'No Title'}`);
+      console.log(`   📺 Stream: ${coin.livestream_title ?? 'No Title'}`);
       console.log(`   👥 Participants: ${coin.num_participants}`);
       console.log(`   💬 Chat Messages: ${coin.reply_count}`);
-      console.log(`   💰 Market Cap: $${coin.usd_market_cap?.toFixed(2) || 'N/A'}`);
-      console.log(`   🖼️  Thumbnail: ${coin.thumbnail || 'No thumbnail'}`);
+      console.log(`   💰 Market Cap: $${coin.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
+      console.log(`   🖼️  Thumbnail: ${coin.thumbnail ?? 'No thumbnail'}`);
       console.log(`   🔗 Mint: ${coin.mint}`);
       console.log('');
     });
@@ -357,8 +357,8 @@ export async function getActiveStreamsExample() {
       console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
       console.log(`   👥 Active Participants: ${stream.num_participants}`);
       console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
-      console.log(`   📺 Stream Title: "${stream.livestream_title || 'No Title'}"`);
-      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) || 'N/A'}`);
+      console.log(`   📺 Stream Title: "${stream.livestream_title ?? 'No Title'}"`);
+      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
       console.log('');
     });
 
@@ -388,8 +388,8 @@ export async function getTopLiveStreamsExample() {
       console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
       console.log(`   👥 Participants: ${stream.num_participants}`);
       console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
-      console.log(`   📺 Title: "${stream.livestream_title || 'No Title'}"`);
-      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) || 'N/A'}`);
+      console.log(`   📺 Title: "${stream.livestream_title ?? 'No Title'}"`);
+      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
       console.log(`   🕒 Created: ${new Date(stream.created_timestamp * 1000).toLocaleString()}`);
       console.log('');
     });
@@ -721,7 +721,7 @@ export async function clientLifecycleManagement() {
   } finally {
     // Always clean up
     console.log('🔄 Shutting down client...');
-    await client.shutdown();
+    client.shutdown();
     console.log('✅ Client shut down successfully');
   }
 }
@@ -900,7 +900,7 @@ export default runAllBasicExamples;
 /**
  * Quick test to verify the updated basic usage file works correctly
  */
-export async function quickTest() {
+export function quickTest() {
   console.log('🧪 Quick Test - Basic Usage Functionality');
   console.log('='.repeat(50));
 

@@ -22,10 +22,13 @@ import { Logger } from '../logging/logger';
  * Centralized error handler for PumpFun API client
  */
 export class ErrorHandler {
+  // eslint-disable-next-line no-useless-constructor
   constructor(
     private config: ErrorHandlerConfig,
     private logger: Logger
-  ) {}
+  ) {
+    // Required for parameter properties
+  }
 
   /**
    * Main error handling method that routes to specific handlers

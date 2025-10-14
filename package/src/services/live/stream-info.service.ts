@@ -21,10 +21,13 @@ import { Logger } from '../../infrastructure/logging/logger';
  * Service for handling live stream information operations
  */
 export class LiveStreamInfoService {
+  // eslint-disable-next-line no-useless-constructor
   constructor(
     private config: LiveStreamsServiceConfig,
     private logger: Logger
-  ) {}
+  ) {
+    // Required for parameter properties
+  }
 
   /**
    * Get live stream information for a specific mint

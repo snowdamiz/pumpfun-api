@@ -450,7 +450,7 @@ export class PumpFunAPIClient {
   /**
    * Attempt automatic error recovery
    */
-  public async attemptErrorRecovery(error: PumpFunError): Promise<boolean> {
+  public attemptErrorRecovery(error: PumpFunError): boolean {
     this.ensureInitialized();
 
     try {
@@ -581,7 +581,7 @@ export class PumpFunAPIClient {
   /**
    * Graceful shutdown
    */
-  public async shutdown(): Promise<void> {
+  public shutdown(): void {
     this.logger.info('Shutting down PumpFunAPIClient', {
       finalStats: this.getStatistics(),
     });

@@ -14,11 +14,14 @@ import { ErrorHandler } from '../../infrastructure/error-handling/error-handler'
  * Handles stream filtering and ranking operations
  */
 export class StreamFilters {
+  // eslint-disable-next-line no-useless-constructor
   constructor(
     private logger: Logger,
     private errorHandler: ErrorHandler,
     private getLiveCoinsFn: (params?: GetLiveCoinsParams) => Promise<LiveCoin[]>
-  ) {}
+  ) {
+    // Required for parameter properties
+  }
 
   /**
    * Get active streams with minimum participants
@@ -102,7 +105,7 @@ export class StreamFilters {
         requested: limit,
         returned: topStreams.length,
         totalFetched: liveStreams.length,
-        topParticipants: topStreams[0]?.num_participants || 0,
+        topParticipants: topStreams[0]?.num_participants ?? 0,
       });
 
       return topStreams;

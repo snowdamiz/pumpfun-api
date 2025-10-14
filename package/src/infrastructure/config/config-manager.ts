@@ -219,7 +219,7 @@ export class ConfigurationManager {
     }
 
     // Retry configuration
-    const retryConfig: any = {};
+    const retryConfig: Partial<import('../../types').RetryConfig> = {};
     if (process.env.PUMPFUN_RETRY_MAX_RETRIES) {
       const maxRetries = parseInt(process.env.PUMPFUN_RETRY_MAX_RETRIES, 10);
       if (!isNaN(maxRetries) && maxRetries >= 0) {

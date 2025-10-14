@@ -12,26 +12,35 @@
 /** One second in milliseconds */
 export const ONE_SECOND_MS = 1000;
 
+/** Seconds per minute */
+export const SECONDS_PER_MINUTE = 60;
+
 /** One minute in milliseconds */
-export const ONE_MINUTE_MS = 60 * ONE_SECOND_MS;
+export const ONE_MINUTE_MS = SECONDS_PER_MINUTE * ONE_SECOND_MS;
 
 /** Thirty seconds in milliseconds */
 export const THIRTY_SECONDS_MS = 30 * ONE_SECOND_MS;
 
+/** Small count for burst sizes */
+export const SMALL_BURST_SIZE = 5;
+
 /** Five seconds in milliseconds */
-export const FIVE_SECONDS_MS = 5 * ONE_SECOND_MS;
+export const FIVE_SECONDS_MS = SMALL_BURST_SIZE * ONE_SECOND_MS;
 
 /** Ten seconds in milliseconds */
 export const TEN_SECONDS_MS = 10 * ONE_SECOND_MS;
 
+/** Quarter minute in seconds */
+export const QUARTER_MINUTE_SECONDS = 15;
+
 /** Fifteen seconds in milliseconds */
-export const FIFTEEN_SECONDS_MS = 15 * ONE_SECOND_MS;
+export const FIFTEEN_SECONDS_MS = QUARTER_MINUTE_SECONDS * ONE_SECOND_MS;
 
 /** Thirty seconds in milliseconds */
 export const THIRTY_SECONDS_MS_ALIAS = 30 * ONE_SECOND_MS;
 
 /** One hour in milliseconds */
-export const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
+export const ONE_HOUR_MS = SECONDS_PER_MINUTE * ONE_MINUTE_MS;
 
 // ============================================================================
 // Default Configuration Values
@@ -150,8 +159,11 @@ export const USER_AGENT = '@pumpfun/api-client/1.0.0';
 /** Default log level */
 export const DEFAULT_LOG_LEVEL = 'INFO';
 
+/** Kilobyte in bytes */
+export const KILOBYTE = 1024;
+
 /** Maximum log file size (not implemented yet) */
-export const MAX_LOG_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+export const MAX_LOG_FILE_SIZE = 10 * KILOBYTE * KILOBYTE; // 10MB
 
 // ============================================================================
 // Performance Constants

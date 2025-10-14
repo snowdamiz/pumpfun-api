@@ -12,16 +12,16 @@ export abstract class PumpFunError extends Error {
   public readonly statusCode: number;
   public readonly timestamp: string;
   public readonly isRetryable: boolean;
-  public readonly details?: Record<string, any>;
-  public readonly originalError?: any;
+  public readonly details?: Record<string, unknown>;
+  public readonly originalError?: unknown;
 
   constructor(options: {
     message: string;
     code: string;
     statusCode: number;
     isRetryable: boolean;
-    details?: Record<string, any>;
-    originalError?: any;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
   }) {
     super(options.message);
     this.name = this.constructor.name;
@@ -70,7 +70,7 @@ export abstract class PumpFunError extends Error {
     // Default retry delays based on error type
     switch (this.code) {
       case 'RATE_LIMIT_EXCEEDED':
-        return this.details?.retryAfter ? this.details.retryAfter * 1000 : 60000;
+        return this.details?.retryAfter ? this.details?.retryAfter * 1000 : 60000;
       case 'NETWORK_TIMEOUT':
         return 2000;
       case 'CONNECTION_REFUSED':
@@ -104,7 +104,7 @@ export abstract class PumpFunError extends Error {
   /**
    * Convert error to JSON for logging/serialization
    */
-  toJSON(): Record<string, any> {
+  toJSON(): Record<string, unknown> {
     return {
       name: this.name,
       message: this.message,
@@ -126,8 +126,8 @@ export class NetworkError extends PumpFunError {
     message: string;
     code: string;
     statusCode?: number;
-    details?: Record<string, any>;
-    originalError?: any;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
   }) {
     super({
       ...options,
@@ -155,8 +155,8 @@ export class RateLimitError extends PumpFunError {
   constructor(options: {
     message?: string;
     retryAfter?: number;
-    details?: Record<string, any>;
-    originalError?: any;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
   }) {
     super({
       message: options.message ?? 'Rate limit exceeded. Please try again later.',
@@ -191,7 +191,11 @@ export class RateLimitError extends PumpFunError {
  * Authentication errors (invalid credentials, expired tokens)
  */
 export class AuthenticationError extends PumpFunError {
-  constructor(options: { message?: string; details?: Record<string, any>; originalError?: any }) {
+  constructor(options: {
+    message?: string;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
+  }) {
     super({
       message: options.message ?? 'Authentication failed. Invalid credentials or expired token.',
       code: 'AUTHENTICATION_FAILED',
@@ -216,7 +220,11 @@ export class AuthenticationError extends PumpFunError {
  * Authorization errors (insufficient permissions)
  */
 export class AuthorizationError extends PumpFunError {
-  constructor(options: { message?: string; details?: Record<string, any>; originalError?: any }) {
+  constructor(options: {
+    message?: string;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
+  }) {
     super({
       message: options.message ?? 'Access denied. Insufficient permissions for this operation.',
       code: 'ACCESS_DENIED',
@@ -243,9 +251,9 @@ export class ValidationError extends PumpFunError {
   constructor(options: {
     message: string;
     field?: string;
-    value?: any;
-    details?: Record<string, any>;
-    originalError?: any;
+    value?: unknown;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
   }) {
     super({
       message: options.message,
@@ -284,8 +292,8 @@ export class NotFoundError extends PumpFunError {
     message?: string;
     resource?: string;
     resourceId?: string;
-    details?: Record<string, any>;
-    originalError?: any;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
   }) {
     super({
       message: options.message ?? 'The requested resource was not found.',
@@ -323,8 +331,8 @@ export class ServerError extends PumpFunError {
   constructor(options: {
     message?: string;
     statusCode?: number;
-    details?: Record<string, any>;
-    originalError?: any;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
   }) {
     super({
       message:
@@ -352,7 +360,11 @@ export class ServerError extends PumpFunError {
  * Configuration errors (invalid client configuration)
  */
 export class ConfigurationError extends PumpFunError {
-  constructor(options: { message: string; details?: Record<string, any>; originalError?: any }) {
+  constructor(options: {
+    message: string;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
+  }) {
     super({
       message: options.message,
       code: 'CONFIGURATION_ERROR',
@@ -379,8 +391,8 @@ export class TimeoutError extends NetworkError {
   constructor(options: {
     message?: string;
     timeout?: number;
-    details?: Record<string, any>;
-    originalError?: any;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
   }) {
     super({
       message:
@@ -418,9 +430,13 @@ export class ErrorFactory {
   /**
    * Create appropriate error instance from HTTP response and error data
    */
-  static createFromResponse(statusCode: number, data: any, originalError?: any): PumpFunError {
-    const message = data?.message || this.getDefaultMessage(statusCode);
-    const code = data?.code || this.getDefaultCode(statusCode);
+  static createFromResponse(
+    statusCode: number,
+    data: Record<string, unknown> | undefined,
+    originalError?: unknown
+  ): PumpFunError {
+    const message = (data?.message as string) || this.getDefaultMessage(statusCode);
+    const code = (data?.code as string) || this.getDefaultCode(statusCode);
 
     switch (statusCode) {
       case 400:
@@ -491,7 +507,7 @@ export class ErrorFactory {
   /**
    * Create error from network-related issues
    */
-  static createFromNetworkError(error: any): NetworkError {
+  static createFromNetworkError(error: { code?: string; message?: string }): NetworkError {
     const code = error.code || 'NETWORK_ERROR';
     const message = error.message || 'Network error occurred';
 
@@ -538,7 +554,7 @@ export class ErrorFactory {
    */
   static createConfigurationError(
     message: string,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ): ConfigurationError {
     return new ConfigurationError({
       message,
@@ -608,7 +624,7 @@ export class ErrorUtils {
   /**
    * Check if an error is retryable
    */
-  static isRetryable(error: any): boolean {
+  static isRetryable(error: unknown): boolean {
     if (error instanceof PumpFunError) {
       return error.canRetry();
     }
@@ -618,7 +634,7 @@ export class ErrorUtils {
   /**
    * Get retry delay for an error
    */
-  static getRetryDelay(error: any): number {
+  static getRetryDelay(error: unknown): number {
     if (error instanceof PumpFunError) {
       return error.getRetryDelay();
     }
@@ -628,7 +644,7 @@ export class ErrorUtils {
   /**
    * Get resolution suggestions for an error
    */
-  static getResolution(error: any): string[] {
+  static getResolution(error: unknown): string[] {
     if (error instanceof PumpFunError) {
       return error.getResolution();
     }
@@ -638,25 +654,27 @@ export class ErrorUtils {
   /**
    * Format error for logging
    */
-  static formatForLogging(error: any): string {
+  static formatForLogging(error: unknown): string {
     if (error instanceof PumpFunError) {
       return `${error.name} (${error.code}): ${error.message}`;
     }
-    return error?.message || error?.toString() || 'Unknown error';
+    const err = error as Error;
+    return err?.message || err?.toString() || 'Unknown error';
   }
 
   /**
    * Convert error to safe JSON (removing circular references)
    */
-  static toJSON(error: any): Record<string, any> {
+  static toJSON(error: unknown): Record<string, unknown> {
     if (error instanceof PumpFunError) {
       return error.toJSON();
     }
 
+    const err = error as Error;
     return {
-      name: error?.name,
-      message: error?.message,
-      stack: error?.stack,
+      name: err?.name,
+      message: err?.message,
+      stack: err?.stack,
     };
   }
 }
