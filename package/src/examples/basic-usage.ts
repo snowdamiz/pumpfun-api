@@ -418,7 +418,9 @@ export async function getTopLiveStreamsExample() {
       console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
       console.log(`   📺 Title: "${stream.livestream_title ?? 'No Title'}"`);
       console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
-      console.log(`   🕒 Created: ${new Date(stream.created_timestamp * TIMESTAMP_MULTIPLIER).toLocaleString()}`);
+      console.log(
+        `   🕒 Created: ${new Date(stream.created_timestamp * TIMESTAMP_MULTIPLIER).toLocaleString()}`
+      );
       console.log('');
     });
 
@@ -995,7 +997,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
 
   // Get command line arguments
   const args = process.argv.slice(2);
-  const demoType = args[0] || 'quick';
+  const demoType = args[0] ?? 'quick';
 
   console.log(`🎯 Running demo: ${demoType}`);
   console.log('');
@@ -1003,13 +1005,15 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   switch (demoType.toLowerCase()) {
     case 'quick':
     case 'test':
-      quickTest().then(success => {
-        console.log(`\n🏁 Quick test ${success ? 'PASSED' : 'FAILED'}`);
-        process.exit(success ? 0 : 1);
-      }).catch(err => {
-        console.error('\n💥 Quick test crashed:', err);
-        process.exit(1);
-      });
+      quickTest()
+        .then(success => {
+          console.log(`\n🏁 Quick test ${success ? 'PASSED' : 'FAILED'}`);
+          process.exit(success ? 0 : 1);
+        })
+        .catch(err => {
+          console.error('\n💥 Quick test crashed:', err);
+          process.exit(1);
+        });
       break;
 
     case 'basic':
@@ -1020,22 +1024,26 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
 
     case 'live':
     case 'api':
-      getLiveCoinsExample().then(() => {
-        console.log('\n✅ Live coins demo completed');
-      }).catch(err => {
-        console.error('\n💥 Live coins demo failed:', err);
-        process.exit(1);
-      });
+      getLiveCoinsExample()
+        .then(() => {
+          console.log('\n✅ Live coins demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Live coins demo failed:', err);
+          process.exit(1);
+        });
       break;
 
     case 'all':
     case 'full':
-      runAllBasicExamples().then(() => {
-        console.log('\n🎉 All examples completed!');
-      }).catch(err => {
-        console.error('\n💥 Examples execution failed:', err);
-        process.exit(1);
-      });
+      runAllBasicExamples()
+        .then(() => {
+          console.log('\n🎉 All examples completed!');
+        })
+        .catch(err => {
+          console.error('\n💥 Examples execution failed:', err);
+          process.exit(1);
+        });
       break;
 
     default:

@@ -342,7 +342,9 @@ export class ConfigurationManager {
         if (typeof retryConfig.maxDelay !== 'number' || isNaN(retryConfig.maxDelay)) {
           errors.push(`Invalid maxDelay: ${retryConfig.maxDelay}. Must be a valid number.`);
         } else if (retryConfig.maxDelay < ConfigurationManager.MIN_MAX_DELAY) {
-          errors.push(`Invalid maxDelay: ${retryConfig.maxDelay}ms. Minimum is ${ConfigurationManager.MIN_MAX_DELAY}ms (1 second).`);
+          errors.push(
+            `Invalid maxDelay: ${retryConfig.maxDelay}ms. Minimum is ${ConfigurationManager.MIN_MAX_DELAY}ms (1 second).`
+          );
         } else if (retryConfig.maxDelay > NUMERIC_CONSTANTS.MAX_MAX_DELAY) {
           errors.push(
             `Invalid maxDelay: ${retryConfig.maxDelay}ms. Maximum is ${NUMERIC_CONSTANTS.MAX_MAX_DELAY}ms (5 minutes).`
@@ -388,11 +390,15 @@ export class ConfigurationManager {
           errors.push(
             `Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Must be a valid number.`
           );
-        } else if (rateLimitConfig.maxRequestsPerWindow < ConfigurationManager.MIN_RATE_LIMIT_REQUESTS) {
+        } else if (
+          rateLimitConfig.maxRequestsPerWindow < ConfigurationManager.MIN_RATE_LIMIT_REQUESTS
+        ) {
           errors.push(
             `Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Must be at least ${ConfigurationManager.MIN_RATE_LIMIT_REQUESTS}.`
           );
-        } else if (rateLimitConfig.maxRequestsPerWindow > ConfigurationManager.MAX_RATE_LIMIT_REQUESTS) {
+        } else if (
+          rateLimitConfig.maxRequestsPerWindow > ConfigurationManager.MAX_RATE_LIMIT_REQUESTS
+        ) {
           errors.push(
             `Invalid maxRequestsPerWindow: ${rateLimitConfig.maxRequestsPerWindow}. Maximum is ${ConfigurationManager.MAX_RATE_LIMIT_REQUESTS} to prevent server overload.`
           );
@@ -417,7 +423,9 @@ export class ConfigurationManager {
         if (typeof rateLimitConfig.maxBurst !== 'number' || isNaN(rateLimitConfig.maxBurst)) {
           errors.push(`Invalid maxBurst: ${rateLimitConfig.maxBurst}. Must be a valid number.`);
         } else if (rateLimitConfig.maxBurst < ConfigurationManager.MIN_BURST) {
-          errors.push(`Invalid maxBurst: ${rateLimitConfig.maxBurst}. Must be at least ${ConfigurationManager.MIN_BURST}.`);
+          errors.push(
+            `Invalid maxBurst: ${rateLimitConfig.maxBurst}. Must be at least ${ConfigurationManager.MIN_BURST}.`
+          );
         }
       }
 
@@ -471,7 +479,9 @@ export class ConfigurationManager {
           errors.push(
             `Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Must be at least 1.0.`
           );
-        } else if (rateLimitConfig.backoffMultiplier > ConfigurationManager.MAX_BACKOFF_MULTIPLIER) {
+        } else if (
+          rateLimitConfig.backoffMultiplier > ConfigurationManager.MAX_BACKOFF_MULTIPLIER
+        ) {
           errors.push(
             `Invalid backoffMultiplier: ${rateLimitConfig.backoffMultiplier}. Maximum is ${ConfigurationManager.MAX_BACKOFF_MULTIPLIER}.0.`
           );

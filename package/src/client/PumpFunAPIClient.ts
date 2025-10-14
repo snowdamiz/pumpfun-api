@@ -250,7 +250,9 @@ export class PumpFunAPIClient {
       // Apply rate limiting before making the request
       await this.rateLimiter.waitForRequest();
 
-      const response = await this.httpClient.get<JurisdictionResponse>('/auth/is-valid-jurisdiction');
+      const response = await this.httpClient.get<JurisdictionResponse>(
+        '/auth/is-valid-jurisdiction'
+      );
 
       // Update statistics
       this.state.requestCount++;
