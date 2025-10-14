@@ -249,7 +249,7 @@
   - Define TypeScript interfaces for LiveStreamInfo, LiveKitConnectionInfo, and related types
   - Story: US3
 
-- [ ] **T040** - Create unit tests for video streaming methods
+- [x] **T040** - Create unit tests for video streaming methods ✅
   - File: `package/tests/unit/video-streams.test.ts`
   - Test all video streaming methods with mock data and edge cases
   - Story: US3
