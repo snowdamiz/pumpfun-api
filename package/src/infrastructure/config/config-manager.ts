@@ -46,11 +46,11 @@ export class ConfigurationManager {
       ? Object.fromEntries(Object.entries(inputConfig).filter(([_, value]) => value !== undefined))
       : {};
 
-    // Merge configuration: defaults < environment < explicit config
+    // Merge configuration: defaults < explicit config < environment variables (for deployment overrides)
     const mergedConfig = {
       ...DEFAULT_CLIENT_CONFIG,
-      ...envConfig,
       ...filteredConfig,
+      ...envConfig,
     };
 
     this.validateConfig(mergedConfig);
@@ -63,18 +63,18 @@ export class ConfigurationManager {
       authToken: mergedConfig.authToken,
       loggerConfig: {
         ...DEFAULT_LOGGER_CONFIG,
-        ...envConfig.loggerConfig,
         ...inputConfig?.loggerConfig,
+        ...envConfig.loggerConfig,
       },
       rateLimitConfig: {
         ...DEFAULT_RATE_LIMIT_CONFIG,
-        ...envConfig.rateLimitConfig,
         ...inputConfig?.rateLimitConfig,
+        ...envConfig.rateLimitConfig,
       },
       retryConfig: {
         ...DEFAULT_RETRY_CONFIG,
-        ...envConfig.retryConfig,
         ...inputConfig?.retryConfig,
+        ...envConfig.retryConfig,
       },
     };
 

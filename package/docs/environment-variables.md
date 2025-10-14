@@ -1,17 +1,49 @@
-# Environment Variables
+# Configuration Options
 
-The PumpFun API client supports configuration through environment variables, making it easy to configure without changing code. Environment variables follow a clear precedence: **defaults < environment variables < explicit configuration**.
+The PumpFun API client supports flexible configuration with **configuration objects as the primary method** and environment variables as optional overrides for deployment scenarios.
 
-**Note**: The environment variables and defaults are based on the proven working examples from `src/examples/basic-usage.ts`, ensuring compatibility with existing functionality.
+## Recommended: Configuration Objects
 
-## Configuration Loading
+The preferred way to configure the client is by passing a configuration object:
 
-The client automatically loads configuration from environment variables when initialized. Environment variables are particularly useful for:
+```typescript
+import { PumpFunAPIClient } from '@pumpfun/api-client';
 
-- Deployment-specific settings
-- CI/CD pipelines
-- Docker containers
-- Development vs production environments
+const client = new PumpFunAPIClient({
+  baseURL: 'https://frontend-api-v3.pump.fun',
+  timeout: 10000,
+  wsURL: 'wss://api.pump.fun/ws',
+  rateLimitConfig: {
+    maxRequestsPerWindow: 60,
+    windowMs: 60000
+  },
+  retryConfig: {
+    maxRetries: 3,
+    baseDelay: 1000
+  },
+  loggerConfig: {
+    level: 'INFO',
+    enableConsole: true,
+    enableColors: true
+  }
+});
+```
+
+## Environment Variables (Optional Override)
+
+For deployment scenarios where you need to override configuration without code changes, environment variables are supported. Configuration precedence: **defaults < explicit config < environment variables**.
+
+**Note**: Environment variables are primarily useful for Docker, Kubernetes, CI/CD pipelines, and other deployment scenarios. For application development, prefer configuration objects.
+
+## When to Use Environment Variables
+
+Environment variables are ideal for:
+
+- **Docker containers** - Runtime configuration without rebuilding images
+- **Kubernetes deployments** - ConfigMaps and Secrets
+- **CI/CD pipelines** - Environment-specific settings
+- **Production deployments** - Override defaults without code changes
+- **Multi-environment setups** - Different configs for staging/production
 
 ## Supported Environment Variables
 
@@ -77,54 +109,68 @@ The client automatically loads configuration from environment variables when ini
 
 ## Usage Examples
 
-### Basic Usage with Environment Variables
+### Recommended: Configuration Object Approach
 
 ```typescript
 import { PumpFunAPIClient } from '@pumpfun/api-client';
 
-// Client will automatically load configuration from environment variables
-const client = new PumpFunAPIClient();
-
-// Or override specific values
+// Primary method - explicit configuration
 const client = new PumpFunAPIClient({
-  timeout: 15000, // Overrides PUMPFUN_API_TIMEOUT
+  baseURL: 'https://frontend-api-v3.pump.fun',
+  timeout: 10000,
+  rateLimitConfig: {
+    maxRequestsPerWindow: 60,
+    windowMs: 60000
+  },
+  loggerConfig: {
+    level: 'INFO',
+    enableConsole: true
+  }
 });
 ```
 
-### Environment File Setup
+### Environment Variables as Optional Override
+
+```typescript
+import { PumpFunAPIClient } from '@pumpfun/api-client';
+
+// Uses defaults, can be overridden by environment variables in deployment
+const client = new PumpFunAPIClient();
+
+// Environment variables will override defaults in production
+// PUMPFUN_API_BASE_URL=https://prod-api.pump.fun
+// PUMPFUN_RATE_LIMIT_REQUESTS=120
+```
+
+### Development Environment Setup (Optional)
+
+For local development, you can optionally use environment files:
 
 1. Copy the example environment file:
 ```bash
 cp .env.example .env.local
 ```
 
-2. Edit `.env.local` with your settings (based on working examples):
+2. Edit `.env.local` with your development settings:
 ```bash
-# API Configuration (matches working examples)
-PUMPFUN_API_BASE_URL=https://frontend-api-v3.pump.fun
-PUMPFUN_API_TIMEOUT=10000
-
-# Rate Limiting (matches working examples)
-MAX_REQUESTS_PER_MINUTE=60
-RATE_LIMIT_DELAY_MS=1000
-
-# Logging (matches working examples)
-LOG_LEVEL=info
+# Development overrides (optional)
+PUMPFUN_API_BASE_URL=https://dev-api.pump.fun
+PUMPFUN_LOG_LEVEL=DEBUG
 ENABLE_RESPONSE_LOGGING=true
-
-# Development (from working examples)
 NODE_ENV=development
 DEBUG=pumpfun:*
 ```
 
-3. Load environment variables:
+3. Load environment variables in development:
 ```bash
-# Using dotenv (development)
+# Using dotenv (development only)
 dotenv -e .env.local node your-app.js
 
-# Or in your application
+# Or in your development code
 require('dotenv').config({ path: '.env.local' });
 ```
+
+**Note**: Environment files are for development only. They are excluded from npm distribution.
 
 ### Docker Environment
 
@@ -178,15 +224,15 @@ spec:
 The client merges configuration in the following order (later values override earlier ones):
 
 1. **Default values** built into the client
-2. **Environment variables** (both `PUMPFUN_*` and legacy variables)
-3. **Explicit configuration** passed to constructor
+2. **Explicit configuration** passed to constructor
+3. **Environment variables** (both `PUMPFUN_*` and legacy variables) - for deployment overrides
 
 Example:
 ```typescript
 // Default: timeout = 10000
-// Environment: PUMPFUN_API_TIMEOUT = 15000
 // Explicit: { timeout: 20000 }
-// Result: timeout = 20000 (explicit config wins)
+// Environment: PUMPFUN_API_TIMEOUT = 30000
+// Result: timeout = 30000 (environment variables win for deployment overrides)
 ```
 
 ## Legacy Variable Support
@@ -223,17 +269,13 @@ Configuration validation failed:
 
 ## Best Practices
 
-1. **Use specific environment files** for different environments:
-   - `.env.development` for development
-   - `.env.production` for production
-   - `.env.test` for testing
-
-2. **Set sensible defaults** in your application code
-
-3. **Document required environment variables** in your README
-
-4. **Use environment-specific prefixes** when possible to avoid conflicts
-
-5. **Validate environment variables** at application startup
-
-6. **Never commit sensitive values** to version control (use `.env.local` for secrets)
+1. **Use configuration objects** as the primary method for application code
+2. **Reserve environment variables** for deployment scenarios and infrastructure configuration
+3. **Set sensible defaults** in your configuration objects
+4. **Use environment variables** for:
+   - API endpoints (dev/staging/prod URLs)
+   - Authentication credentials
+   - Rate limiting adjustments for different environments
+   - Debug/logging levels for development vs production
+5. **Document environment variables** for deployment teams
+6. **Never commit sensitive values** to version control (use proper secrets management)
