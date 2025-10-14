@@ -276,14 +276,9 @@
   - Extend filtering capabilities with custom filter functions and complex queries
   - Story: US4
 
-- [ ] **T044** - Create search and filter utility functions [P]
+- [x] **T044** - Create search and filter utility functions [P] ✅
   - File: `package/src/validation/streams.validator.ts`
   - Create utility functions for complex search patterns and result filtering
-  - Story: US4
-
-- [ ] **T045** - Implement caching for search results [P]
-  - File: `package/src/infrastructure/http/http-client.ts`
-  - Add optional caching layer for search and filter operations
   - Story: US4
 
 - [ ] **T046** - Create unit tests for search functionality
