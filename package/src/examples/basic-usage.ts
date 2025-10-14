@@ -131,12 +131,6 @@ export function customConfiguration() {
 export function environmentConfiguration() {
   console.log('=== Environment Variable Configuration ===');
 
-  // These environment variables would be set in your environment:
-  // PUMPFUN_API_BASE_URL=https://frontend-api-v3.pump.fun
-  // PUMPFUN_API_TIMEOUT=15000
-  // PUMPFUN_LOG_LEVEL=DEBUG
-  // PUMPFUN_RATE_LIMIT_REQUESTS=50
-
   const client = new PumpFunAPIClient(); // Will automatically load from environment
 
   console.log('✅ Client initialized using environment variables!');

@@ -523,7 +523,8 @@ export class ConfigurationManager {
 
     // Log warnings if we have a logger
     if (this.logger && warnings.length > 0) {
-      warnings.forEach(warning => this.logger!.warn(`Configuration warning: ${warning}`));
+      const logger = this.logger;
+      warnings.forEach(warning => logger.warn(`Configuration warning: ${warning}`));
     }
 
     // Throw errors if any

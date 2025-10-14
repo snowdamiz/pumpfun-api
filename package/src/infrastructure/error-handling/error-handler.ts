@@ -34,9 +34,9 @@ export class ErrorHandler {
    * Main error handling method that routes to specific handlers
    */
   handleError(
-    error: any,
+    error: unknown,
     operation: string,
-    context?: any
+    context?: Record<string, unknown>
   ):
     | NetworkError
     | ConfigurationError
@@ -46,17 +46,35 @@ export class ErrorHandler {
     | PumpFunAPIError
     | TimeoutError {
     // If it's already a PumpFunError, enhance it with operation context
-    if (error.details && error.details.operation !== undefined) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'details' in error &&
+      error.details &&
+      typeof error.details === 'object' &&
+      'operation' in error.details
+    ) {
+      const errorDetails = error.details as Record<string, unknown>;
       // Add operation context if not already present
-      if (!error.details.operation) {
-        error.details.operation = operation;
+      if (!errorDetails.operation) {
+        errorDetails.operation = operation;
       }
-      if (context && error.details.context) {
-        error.details.context = { ...error.details.context, ...context };
+      if (context && errorDetails.context && typeof errorDetails.context === 'object') {
+        errorDetails.context = {
+          ...(errorDetails.context as Record<string, unknown>),
+          ...context,
+        };
       } else if (context) {
-        error.details.context = context;
+        errorDetails.context = context;
       }
-      return error;
+      return error as
+        | NetworkError
+        | ConfigurationError
+        | ServerError
+        | ValidationError
+        | RateLimitError
+        | PumpFunAPIError
+        | TimeoutError;
     }
 
     // Categorize the error and route to appropriate handler
@@ -85,8 +103,9 @@ export class ErrorHandler {
     }
 
     // Unknown error - wrap in generic NetworkError
+    const errorObj = error as Record<string, unknown>;
     return new NetworkError({
-      message: `Unexpected error during ${operation}: ${error.message || String(error)}`,
+      message: `Unexpected error during ${operation}: ${(errorObj.message as string) || String(error)}`,
       code: 'UNKNOWN_ERROR',
       details: {
         operation,
@@ -99,64 +118,140 @@ export class ErrorHandler {
   /**
    * Error detection methods
    */
-  private isNetworkError(error: any): boolean {
+  private isNetworkError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const errorObj = error as Record<string, unknown>;
+    const hasNetworkErrorCode =
+      errorObj.code === 'ECONNREFUSED' ||
+      errorObj.code === 'ENOTFOUND' ||
+      errorObj.code === 'ECONNRESET' ||
+      errorObj.code === 'EHOSTUNREACH' ||
+      errorObj.code === 'ENETUNREACH' ||
+      errorObj.code === 'ETIMEDOUT';
+
+    const hasNetworkErrorMessage =
+      (errorObj.message &&
+        typeof errorObj.message === 'string' &&
+        (errorObj.message as string).includes('Network Error')) ||
+      (errorObj.message &&
+        typeof errorObj.message === 'string' &&
+        (errorObj.message as string).includes('fetch'));
+
+    return Boolean(hasNetworkErrorCode || hasNetworkErrorMessage);
+  }
+
+  private isTimeoutError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const errorObj = error as Record<string, unknown>;
+    const hasTimeoutCode =
+      errorObj.code === 'ECONNABORTED' ||
+      errorObj.code === 'TIMEOUT';
+
+    const hasTimeoutMessage =
+      (errorObj.message &&
+        typeof errorObj.message === 'string' &&
+        (errorObj.message as string).includes('timeout')) ||
+      (errorObj.message &&
+        typeof errorObj.message === 'string' &&
+        (errorObj.message as string).includes('timed out'));
+
+    return Boolean(hasTimeoutCode || hasTimeoutMessage);
+  }
+
+  private isConfigurationError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const errorObj = error as Record<string, unknown>;
+    if (!errorObj.message || typeof errorObj.message !== 'string') {
+      return false;
+    }
+
+    const message = errorObj.message as string;
     return (
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ENOTFOUND' ||
-      error.code === 'ECONNRESET' ||
-      error.code === 'EHOSTUNREACH' ||
-      error.code === 'ENETUNREACH' ||
-      error.code === 'ETIMEDOUT' ||
-      error.message?.includes('Network Error') ||
-      error.message?.includes('fetch')
+      message.includes('Configuration') ||
+      message.includes('Invalid baseURL') ||
+      message.includes('Invalid timeout') ||
+      message.includes('validation failed')
     );
   }
 
-  private isTimeoutError(error: any): boolean {
+  private isAPIValidationError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const errorObj = error as Record<string, unknown>;
+    if (!errorObj.message || typeof errorObj.message !== 'string') {
+      return false;
+    }
+
+    const message = errorObj.message as string;
     return (
-      error.code === 'ECONNABORTED' ||
-      error.code === 'TIMEOUT' ||
-      error.message?.includes('timeout') ||
-      error.message?.includes('timed out')
+      message.includes('Invalid response') ||
+      message.includes('validation') ||
+      message.includes('schema') ||
+      message.includes('format')
     );
   }
 
-  private isConfigurationError(error: any): boolean {
-    return (
-      error.message?.includes('Configuration') ||
-      error.message?.includes('Invalid baseURL') ||
-      error.message?.includes('Invalid timeout') ||
-      error.message?.includes('validation failed')
-    );
+  private isRateLimitExceededError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const errorObj = error as Record<string, unknown>;
+    const message = errorObj.message as string;
+
+    const hasRateLimitMessage =
+      (message &&
+        typeof message === 'string' &&
+        message.includes('rate limit')) ||
+      (message &&
+        typeof message === 'string' &&
+        message.includes('too many requests')) ||
+      (message &&
+        typeof message === 'string' &&
+        message.includes('429'));
+
+    const hasRateLimitStatus =
+      errorObj.status === 429 ||
+      (errorObj.response &&
+        typeof errorObj.response === 'object' &&
+        ((errorObj.response as Record<string, unknown>).status === 429));
+
+    return Boolean(hasRateLimitMessage || hasRateLimitStatus);
   }
 
-  private isAPIValidationError(error: any): boolean {
-    return (
-      error.message?.includes('Invalid response') ||
-      error.message?.includes('validation') ||
-      error.message?.includes('schema') ||
-      error.message?.includes('format')
-    );
-  }
+  private isHTTPError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
 
-  private isRateLimitExceededError(error: any): boolean {
-    return (
-      error.message?.includes('rate limit') ||
-      error.message?.includes('too many requests') ||
-      error.message?.includes('429') ||
-      error.status === 429 ||
-      error.response?.status === 429
-    );
-  }
+    const errorObj = error as Record<string, unknown>;
+    const hasResponse =
+      errorObj.response &&
+      typeof errorObj.response === 'object';
 
-  private isHTTPError(error: any): boolean {
-    return error.response && typeof error.response.status === 'number';
+    if (!hasResponse) {
+      return false;
+    }
+
+    const responseObj = errorObj.response as Record<string, unknown>;
+    return typeof responseObj.status === 'number';
   }
 
   /**
    * Error categorization for logging and metrics
    */
-  categorizeError(error: any, _operation: string): string {
+  categorizeError(error: unknown, _operation: string): string {
     // Network connectivity issues
     if (this.isNetworkError(error)) {
       return 'NETWORK';
@@ -184,7 +279,9 @@ export class ErrorHandler {
 
     // HTTP status errors
     if (this.isHTTPError(error)) {
-      const status = error.response?.status;
+      const errorObj = error as Record<string, unknown>;
+      const responseObj = errorObj.response as Record<string, unknown>;
+      const status = responseObj?.status as number;
       if (status >= 400 && status < 500) {
         return 'CLIENT_ERROR';
       } else if (status >= 500) {
@@ -198,14 +295,19 @@ export class ErrorHandler {
   /**
    * Specific error handlers
    */
-  private handleNetworkError(error: any, operation: string, context?: any): NetworkError {
+  private handleNetworkError(
+    error: unknown,
+    operation: string,
+    context?: Record<string, unknown>
+  ): NetworkError {
+    const errorObj = error as Record<string, unknown>;
     return new NetworkError({
-      message: `Network error during ${operation}: ${error.message}`,
-      code: error.code || 'NETWORK_ERROR',
+      message: `Network error during ${operation}: ${errorObj.message || String(error)}`,
+      code: (errorObj.code as string) || 'NETWORK_ERROR',
       originalError: error,
       details: {
         operation,
-        errorCode: error.code,
+        errorCode: errorObj.code,
         isRetryable: true,
         retryAfter: 1000,
         suggestions: this.getNetworkErrorRecovery(error, operation),
