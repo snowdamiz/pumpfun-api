@@ -40,6 +40,31 @@ const RATE_LIMIT_WINDOW = 60000;
 const ACTIVE_STREAMS_LIMIT = 10;
 const TEST_CONNECTION_TIMEOUT = 5000;
 const TIMESTAMP_MULTIPLIER = 1000;
+const INDEX_OFFSET = 1;
+const JSON_INDENTATION = 2;
+const PROMISE_DELAY = 100;
+const INVALID_TIMEOUT = -1000;
+const MAX_RETRIES_BASIC = 2;
+const MAX_RETRIES_CUSTOM = 5;
+const MAX_RETRIES_PRODUCTION = 3;
+const LIVE_COINS_LIMIT = 20;
+const ACTIVE_STREAMS_LIMIT_SMALL = 10;
+const TOP_STREAMS_LIMIT = 5;
+const TOP_ACTIVE_PARTICIPANTS = 3;
+const MIN_ACTIVE_PARTICIPANTS = 2;
+const TITLED_ACTIVE_PARTICIPANTS = 3;
+const MIN_TITLED_PARTICIPANTS = 1;
+const STREAM_INFO_LIMIT = 3;
+const MAX_STREAM_INFO_TEST = 2;
+const DESCRIPTION_PREVIEW_LENGTH = 100;
+const SUBSTRING_START = 0;
+const TO_FIXED_DECIMALS = 2;
+const SUCCESS_RATE_DECIMALS = 1;
+const ARGV_SLICE_START = 2;
+const EXIT_SUCCESS = 0;
+const EXIT_FAILURE = 1;
+const REPEAT_COUNT_60 = 60;
+const REPEAT_COUNT_50 = 50;
 
 // ============================================================================
 // Installation and Setup Examples
@@ -73,7 +98,7 @@ export function customConfiguration() {
     baseURL: 'https://frontend-api-v3.pump.fun',
     timeout: EXAMPLE_TIMEOUT,
     retryConfig: {
-      maxRetries: 5,
+      maxRetries: MAX_RETRIES_CUSTOM,
       baseDelay: RETRY_DELAY_2,
       maxDelay: MAX_DELAY,
       backoffFactor: BACKOFF_FACTOR,
@@ -92,7 +117,10 @@ export function customConfiguration() {
   });
 
   console.log('✅ Client initialized with custom configuration!');
-  console.log('📋 Configuration:', JSON.stringify(client.getConfiguration(), null, 2));
+  console.log(
+    '📋 Configuration:',
+    JSON.stringify(client.getConfiguration(), null, JSON_INDENTATION)
+  );
 
   return client;
 }
@@ -208,7 +236,7 @@ export async function basicErrorHandling() {
   const client = new PumpFunAPIClient({
     timeout: TEST_CONNECTION_TIMEOUT, // Short timeout for demonstration
     retryConfig: {
-      maxRetries: 2,
+      maxRetries: MAX_RETRIES_BASIC,
       baseDelay: BASE_DELAY,
     },
   });
@@ -218,7 +246,7 @@ export async function basicErrorHandling() {
     console.log('🔄 Attempting operation...');
 
     // Simulate operation that might fail
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, PROMISE_DELAY));
 
     console.log('✅ Operation completed successfully');
   } catch (error) {
@@ -245,7 +273,7 @@ export function configurationValidation() {
   try {
     // This will throw an error due to invalid timeout
     new PumpFunAPIClient({
-      timeout: -1000, // Invalid timeout
+      timeout: INVALID_TIMEOUT, // Invalid timeout
       baseURL: 'not-a-valid-url', // Invalid URL
     });
 
@@ -340,11 +368,11 @@ export async function getLiveCoinsExample() {
     console.log(`✅ Found ${liveCoins.length} live streaming coins:\n`);
 
     liveCoins.forEach((coin, index) => {
-      console.log(`${index + 1}. ${coin.name} (${coin.symbol})`);
+      console.log(`${index + INDEX_OFFSET}. ${coin.name} (${coin.symbol})`);
       console.log(`   📺 Stream: ${coin.livestream_title ?? 'No Title'}`);
       console.log(`   👥 Participants: ${coin.num_participants}`);
       console.log(`   💬 Chat Messages: ${coin.reply_count}`);
-      console.log(`   💰 Market Cap: $${coin.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
+      console.log(`   💰 Market Cap: $${coin.usd_market_cap?.toFixed(TO_FIXED_DECIMALS) ?? 'N/A'}`);
       console.log(`   🖼️  Thumbnail: ${coin.thumbnail ?? 'No thumbnail'}`);
       console.log(`   🔗 Mint: ${coin.mint}`);
       console.log('');
@@ -382,11 +410,13 @@ export async function getActiveStreamsExample() {
     console.log(`✅ Found ${activeStreams.length} active streams:\n`);
 
     activeStreams.forEach((stream, index) => {
-      console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
+      console.log(`${index + INDEX_OFFSET}. ${stream.name} (${stream.symbol})`);
       console.log(`   👥 Active Participants: ${stream.num_participants}`);
       console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
       console.log(`   📺 Stream Title: "${stream.livestream_title ?? 'No Title'}"`);
-      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
+      console.log(
+        `   💎 Market Cap: $${stream.usd_market_cap?.toFixed(TO_FIXED_DECIMALS) ?? 'N/A'}`
+      );
       console.log('');
     });
 
@@ -413,11 +443,13 @@ export async function getTopLiveStreamsExample() {
     console.log(`✅ Top ${EXAMPLE_STREAM_LIMIT} Live Streams:\n`);
 
     topStreams.forEach((stream, index) => {
-      console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
+      console.log(`${index + INDEX_OFFSET}. ${stream.name} (${stream.symbol})`);
       console.log(`   👥 Participants: ${stream.num_participants}`);
       console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
       console.log(`   📺 Title: "${stream.livestream_title ?? 'No Title'}"`);
-      console.log(`   💎 Market Cap: $${stream.usd_market_cap?.toFixed(2) ?? 'N/A'}`);
+      console.log(
+        `   💎 Market Cap: $${stream.usd_market_cap?.toFixed(TO_FIXED_DECIMALS) ?? 'N/A'}`
+      );
       console.log(
         `   🕒 Created: ${new Date(stream.created_timestamp * TIMESTAMP_MULTIPLIER).toLocaleString()}`
       );
@@ -453,11 +485,13 @@ export async function getTitledStreamsExample() {
     console.log(`✅ Found ${titledStreams.length} titled streams:\n`);
 
     titledStreams.forEach((stream, index) => {
-      console.log(`${index + 1}. ${stream.name} (${stream.symbol})`);
+      console.log(`${index + INDEX_OFFSET}. ${stream.name} (${stream.symbol})`);
       console.log(`   📺 Title: "${stream.livestream_title}"`);
       console.log(`   👥 Participants: ${stream.num_participants}`);
       console.log(`   💬 Messages: ${stream.reply_count}`);
-      console.log(`   📝 Description: ${stream.description.substring(0, 100)}...`);
+      console.log(
+        `   📝 Description: ${stream.description.substring(SUBSTRING_START, DESCRIPTION_PREVIEW_LENGTH)}...`
+      );
       console.log('');
     });
 
@@ -477,8 +511,8 @@ export async function getComprehensiveLiveDataExample() {
   const client = new PumpFunAPIClient({
     timeout: 15000,
     retryConfig: {
-      maxRetries: 3,
-      baseDelay: 1000,
+      maxRetries: MAX_RETRIES_PRODUCTION,
+      baseDelay: BASE_DELAY,
     },
     loggerConfig: {
       level: LogLevel.DEBUG,
@@ -491,15 +525,17 @@ export async function getComprehensiveLiveDataExample() {
     console.log('📊 Gathering comprehensive live stream data...');
 
     // Get basic live coins
-    const liveCoins = await client.getLiveCoins({ limit: 20 });
+    const liveCoins = await client.getLiveCoins({ limit: LIVE_COINS_LIMIT });
     console.log(`📡 Found ${liveCoins.length} live coins`);
 
     // Get active streams
-    const activeStreams = await client.getActiveStreams(1, { limit: 10 });
+    const activeStreams = await client.getActiveStreams(MIN_PARTICIPANTS, {
+      limit: ACTIVE_STREAMS_LIMIT_SMALL,
+    });
     console.log(`🔥 Found ${activeStreams.length} active streams`);
 
     // Get top streams
-    const topStreams = await client.getTopLiveStreams(5);
+    const topStreams = await client.getTopLiveStreams(TOP_STREAMS_LIMIT);
     console.log(`🏆 Top ${topStreams.length} streams by participants`);
 
     // Get titled streams
@@ -507,11 +543,17 @@ export async function getComprehensiveLiveDataExample() {
     console.log(`📝 Found ${titledStreams.length} titled streams`);
 
     // Get top active streams
-    const topActiveStreams = await client.getTopActiveStreams(3, 2);
+    const topActiveStreams = await client.getTopActiveStreams(
+      TOP_ACTIVE_PARTICIPANTS,
+      MIN_ACTIVE_PARTICIPANTS
+    );
     console.log(`⭐ Top ${topActiveStreams.length} active streams`);
 
     // Get titled active streams
-    const titledActiveStreams = await client.getTitledActiveStreams(3, 1);
+    const titledActiveStreams = await client.getTitledActiveStreams(
+      TITLED_ACTIVE_PARTICIPANTS,
+      MIN_TITLED_PARTICIPANTS
+    );
     console.log(`🎯 Found ${titledActiveStreams.length} titled active streams`);
 
     console.log('\n📈 Summary Statistics:');
@@ -564,25 +606,27 @@ export async function getStreamInfoExample() {
   try {
     // First get some live coins to test with
     console.log('🔍 Getting live coins to test stream info...');
-    const liveCoins = await client.getLiveCoins({ limit: 3 });
+    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test stream info');
       return { client, streamInfos: [] };
     }
 
-    console.log(`📡 Testing stream info for ${Math.min(liveCoins.length, 2)} coins...\n`);
+    console.log(
+      `📡 Testing stream info for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
+    );
 
     const streamInfos: Array<{ mint: string; name: string; info: LiveStreamInfo | null }> = [];
 
-    for (let i = 0; i < Math.min(liveCoins.length, 2); i++) {
+    for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
       const coin = liveCoins[i];
       if (!coin) {
-        console.log(`${i + 1}. ⚠️ Skipping undefined coin data`);
+        console.log(`${i + INDEX_OFFSET}. ⚠️ Skipping undefined coin data`);
         continue;
       }
 
-      console.log(`${i + 1}. Getting stream info for: ${coin.name} (${coin.symbol})`);
+      console.log(`${i + INDEX_OFFSET}. Getting stream info for: ${coin.name} (${coin.symbol})`);
       console.log(`   🔗 Mint: ${coin.mint}`);
 
       try {
@@ -663,7 +707,7 @@ export async function jurisdictionAndConnectionExample() {
     console.log('\n📊 Client Statistics:');
     console.log(`   Requests Made: ${stats.requestCount}`);
     console.log(`   Errors: ${stats.errorCount}`);
-    console.log(`   Success Rate: ${stats.successRate.toFixed(1)}%`);
+    console.log(`   Success Rate: ${stats.successRate.toFixed(SUCCESS_RATE_DECIMALS)}%`);
     console.log(`   Rate Limited: ${client.isRateLimited() ? 'Yes' : 'No'}`);
     console.log(`   Backoff Remaining: ${client.getRateLimitBackoffRemaining()}ms`);
 
@@ -702,13 +746,13 @@ export function productionBestPractices() {
   const client = new PumpFunAPIClient({
     timeout: 15000, // Reasonable timeout
     retryConfig: {
-      maxRetries: 3, // Don't overdo retries
-      baseDelay: 1000,
-      maxDelay: 10000,
+      maxRetries: MAX_RETRIES_PRODUCTION, // Don't overdo retries
+      baseDelay: BASE_DELAY,
+      maxDelay: MAX_DELAY,
     },
     rateLimitConfig: {
-      maxRequestsPerWindow: 50, // Conservative rate limiting
-      windowMs: 60000,
+      maxRequestsPerWindow: RATE_LIMIT_REQUESTS, // Conservative rate limiting
+      windowMs: RATE_LIMIT_WINDOW,
       enableBackoff: true,
       enableBurstProtection: true,
     },
@@ -773,8 +817,18 @@ export async function runAllBasicExamples() {
     connectionTest: boolean | null;
     healthCheck: {
       client: PumpFunAPIClient;
-      state: any;
-      stats: any;
+      state: {
+        isInitialized: boolean;
+        requestCount: number;
+        errorCount: number;
+        lastRequestTime: number | null;
+      };
+      stats: {
+        requestCount: number;
+        errorCount: number;
+        errorRate: number;
+        successRate: number;
+      };
       connected: boolean;
     } | null;
     errorHandling: PumpFunAPIClient | null;
@@ -786,9 +840,38 @@ export async function runAllBasicExamples() {
     activeStreams: { client: PumpFunAPIClient; activeStreams: LiveCoin[] } | null;
     topStreams: { client: PumpFunAPIClient; topStreams: LiveCoin[] } | null;
     titledStreams: { client: PumpFunAPIClient; titledStreams: LiveCoin[] } | null;
-    comprehensiveData: any | null;
-    streamInfo: { client: PumpFunAPIClient; streamInfos: any[] } | null;
-    jurisdictionTest: any | null;
+    comprehensiveData: {
+      client: PumpFunAPIClient;
+      data: {
+        liveCoins: LiveCoin[];
+        activeStreams: LiveCoin[];
+        topStreams: LiveCoin[];
+        titledStreams: LiveCoin[];
+        topActiveStreams: LiveCoin[];
+        titledActiveStreams: LiveCoin[];
+      };
+    } | null;
+    streamInfo: {
+      client: PumpFunAPIClient;
+      streamInfos: Array<{ mint: string; name: string; info: LiveStreamInfo | null }>;
+    } | null;
+    jurisdictionTest: {
+      client: PumpFunAPIClient;
+      connectionTest: boolean;
+      jurisdictionValid: boolean;
+      statistics: {
+        requestCount: number;
+        errorCount: number;
+        errorRate: number;
+        successRate: number;
+      };
+      state: {
+        isInitialized: boolean;
+        requestCount: number;
+        errorCount: number;
+        lastRequestTime: number | null;
+      };
+    } | null;
   } = {
     basicInit: null,
     customConfig: null,
@@ -843,7 +926,7 @@ export async function runAllBasicExamples() {
 
     // API Usage Examples - Live Streams
     console.log('🔴 API USAGE EXAMPLES - LIVE STREAMS');
-    console.log('='.repeat(60));
+    console.log('='.repeat(REPEAT_COUNT_60));
 
     results.liveCoins = await getLiveCoinsExample();
     console.log();
@@ -930,9 +1013,9 @@ export default runAllBasicExamples;
 /**
  * Quick test to verify the updated basic usage file works correctly
  */
-export async function quickTest() {
+export function quickTest() {
   console.log('🧪 Quick Test - Basic Usage Functionality');
-  console.log('='.repeat(50));
+  console.log('='.repeat(REPEAT_COUNT_50));
 
   try {
     // Test basic client creation
@@ -985,7 +1068,7 @@ export async function quickTest() {
  */
 if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('🚀 PumpFun API Client - Basic Usage Examples');
-  console.log('='.repeat(60));
+  console.log('='.repeat(REPEAT_COUNT_60));
   console.log('');
 
   console.log('📋 Available examples:');
@@ -996,7 +1079,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('');
 
   // Get command line arguments
-  const args = process.argv.slice(2);
+  const args = process.argv.slice(ARGV_SLICE_START);
   const demoType = args[0] ?? 'quick';
 
   console.log(`🎯 Running demo: ${demoType}`);
@@ -1005,15 +1088,14 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   switch (demoType.toLowerCase()) {
     case 'quick':
     case 'test':
-      quickTest()
-        .then(success => {
-          console.log(`\n🏁 Quick test ${success ? 'PASSED' : 'FAILED'}`);
-          process.exit(success ? 0 : 1);
-        })
-        .catch(err => {
-          console.error('\n💥 Quick test crashed:', err);
-          process.exit(1);
-        });
+      try {
+        const success = quickTest();
+        console.log(`\n🏁 Quick test ${success ? 'PASSED' : 'FAILED'}`);
+        process.exit(success ? EXIT_SUCCESS : EXIT_FAILURE);
+      } catch (err) {
+        console.error('\n💥 Quick test crashed:', err);
+        process.exit(EXIT_FAILURE);
+      }
       break;
 
     case 'basic':
@@ -1030,7 +1112,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         })
         .catch(err => {
           console.error('\n💥 Live coins demo failed:', err);
-          process.exit(1);
+          process.exit(EXIT_FAILURE);
         });
       break;
 
@@ -1042,7 +1124,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         })
         .catch(err => {
           console.error('\n💥 Examples execution failed:', err);
-          process.exit(1);
+          process.exit(EXIT_FAILURE);
         });
       break;
 
@@ -1055,6 +1137,6 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');
       console.log('Example: node basic-usage.ts quick');
-      process.exit(1);
+      process.exit(EXIT_FAILURE);
   }
 }
