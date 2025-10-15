@@ -47,8 +47,9 @@
     "prebuild": "npm run clean",
     "docs:generate": "typedoc --out docs src/index.ts --excludePrivate --excludeInternal",
     "security:audit": "npm audit --audit-level moderate",
-    "size:check": "npm run build && du -sh dist/",
-    "ci": "npm run type-check && npm run lint && npm run test:coverage && npm run build"
+    "size:check": "npm run build && node scripts/analyze-bundle.js",
+    "performance:test": "node scripts/performance-test.js",
+    "ci": "npm run type-check && npm run lint && npm run test:coverage && npm run build && npm run performance:test"
   },
   "keywords": [
     "pumpfun",
@@ -86,6 +87,7 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^18.0.0",

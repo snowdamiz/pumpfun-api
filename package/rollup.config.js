@@ -4,6 +4,7 @@ import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import { createRequire } from 'module';
 import path from 'path';
+import terser from '@rollup/plugin-terser';
 
 const require = createRequire(import.meta.url);
 const pkg = require('./package.json');
@@ -51,11 +52,77 @@ const baseConfig = {
       'axios': 'axios',
       'ws': 'WebSocket'
     }
+  },
+  treeshake: {
+    moduleSideEffects: false,
+    propertyReadSideEffects: false,
+    unknownGlobalSideEffects: false,
+    tryCatchDeoptimization: false
   }
 };
 
+const createPlugins = ({ includeTerser = true, isTypes = false }) => {
+  const plugins = [
+    nodeResolve({
+      preferBuiltins: false,
+      extensions: ['.js', '.ts'],
+      browser: false
+    }),
+    commonjs(),
+  ];
+
+  if (!isTypes) {
+    plugins.push(
+      typescript({
+        tsconfig: './tsconfig.build.json',
+        declaration: false,
+        declarationMap: false,
+        moduleResolution: 'node',
+        sourceMap: true,
+        inlineSources: false
+      })
+    );
+
+    if (includeTerser) {
+      plugins.push(
+        terser({
+          format: {
+            comments: false,
+            preamble: `/*! PumpFun API Client v${pkg.version} | ${(new Date()).toISOString().split('T')[0]} */`
+          },
+          compress: {
+            drop_console: false,
+            drop_debugger: true,
+            pure_funcs: ['console.log', 'console.debug'],
+            passes: 2,
+            unsafe: true,
+            unsafe_comps: true,
+            unsafe_Function: true,
+            unsafe_math: true,
+            unsafe_proto: true,
+            unsafe_regexp: true
+          },
+          mangle: {
+            reserved: ['PumpFunAPIClient', 'LiveCoin', 'StreamClip', 'LiveStreamInfo'],
+            toplevel: false
+          }
+        })
+      );
+    }
+  } else {
+    plugins.push(
+      dts({
+        tsconfig: './tsconfig.build.json',
+        respectExternal: true
+      })
+    );
+  }
+
+  return plugins;
+};
+
 export default [
-  // Main ESM build
+  // Main ESM build (minified)
   {
     ...baseConfig,
     input: 'src/index.ts',
@@ -64,22 +131,10 @@ export default [
       file: pkg.module || pkg.exports['.'].import,
       format: 'es'
     },
-    plugins: [
-      nodeResolve({
-        preferBuiltins: false,
-        extensions: ['.js', '.ts']
-      }),
-      commonjs(),
-      typescript({
-        tsconfig: './tsconfig.build.json',
-        declaration: false,
-        declarationMap: false,
-        moduleResolution: 'node'
-      })
-    ]
+    plugins: createPlugins({ includeTerser: true })
   },
 
-  // CJS build
+  // CJS build (minified)
   {
     ...baseConfig,
     input: 'src/index.ts',
@@ -89,22 +144,10 @@ export default [
       format: 'cjs',
       exports: 'named'
     },
-    plugins: [
-      nodeResolve({
-        preferBuiltins: false,
-        extensions: ['.js', '.ts']
-      }),
-      commonjs(),
-      typescript({
-        tsconfig: './tsconfig.build.json',
-        declaration: false,
-        declarationMap: false,
-        moduleResolution: 'node'
-      })
-    ]
+    plugins: createPlugins({ includeTerser: true })
   },
 
-  // Utils ESM build (subpath export)
+  // Utils ESM build (minified)
   {
     ...baseConfig,
     input: 'src/utils/index.ts',
@@ -113,22 +156,10 @@ export default [
       file: 'dist/utils/index.esm.js',
       format: 'es'
     },
-    plugins: [
-      nodeResolve({
-        preferBuiltins: false,
-        extensions: ['.js', '.ts']
-      }),
-      commonjs(),
-      typescript({
-        tsconfig: './tsconfig.build.json',
-        declaration: false,
-        declarationMap: false,
-        moduleResolution: 'node'
-      })
-    ]
+    plugins: createPlugins({ includeTerser: true })
   },
 
-  // Utils CJS build (subpath export)
+  // Utils CJS build (minified)
   {
     ...baseConfig,
     input: 'src/utils/index.ts',
@@ -138,22 +169,10 @@ export default [
       format: 'cjs',
       exports: 'named'
     },
-    plugins: [
-      nodeResolve({
-        preferBuiltins: false,
-        extensions: ['.js', '.ts']
-      }),
-      commonjs(),
-      typescript({
-        tsconfig: './tsconfig.build.json',
-        declaration: false,
-        declarationMap: false,
-        moduleResolution: 'node'
-      })
-    ]
+    plugins: createPlugins({ includeTerser: true })
   },
 
-  // Client ESM build (subpath export)
+  // Client ESM build (minified)
   {
     ...baseConfig,
     input: 'src/client/index.ts',
@@ -162,22 +181,10 @@ export default [
       file: 'dist/client/index.esm.js',
       format: 'es'
     },
-    plugins: [
-      nodeResolve({
-        preferBuiltins: false,
-        extensions: ['.js', '.ts']
-      }),
-      commonjs(),
-      typescript({
-        tsconfig: './tsconfig.build.json',
-        declaration: false,
-        declarationMap: false,
-        moduleResolution: 'node'
-      })
-    ]
+    plugins: createPlugins({ includeTerser: true })
   },
 
-  // Client CJS build (subpath export)
+  // Client CJS build (minified)
   {
     ...baseConfig,
     input: 'src/client/index.ts',
@@ -187,63 +194,42 @@ export default [
       format: 'cjs',
       exports: 'named'
     },
-    plugins: [
-      nodeResolve({
-        preferBuiltins: false,
-        extensions: ['.js', '.ts']
-      }),
-      commonjs(),
-      typescript({
-        tsconfig: './tsconfig.build.json',
-        declaration: false,
-        declarationMap: false,
-        moduleResolution: 'node'
-      })
-    ]
+    plugins: createPlugins({ includeTerser: true })
   },
 
   // Type definitions
   {
+    ...baseConfig,
     input: 'src/index.ts',
     output: {
       file: 'dist/index.d.ts',
       format: 'es'
     },
     external,
-    plugins: [
-      dts({
-        tsconfig: './tsconfig.build.json'
-      })
-    ]
+    plugins: createPlugins({ includeTerser: false, isTypes: true })
   },
 
-  // Utils type definitions (subpath export)
+  // Utils type definitions
   {
+    ...baseConfig,
     input: 'src/utils/index.ts',
     output: {
       file: 'dist/utils/index.d.ts',
       format: 'es'
     },
     external,
-    plugins: [
-      dts({
-        tsconfig: './tsconfig.build.json'
-      })
-    ]
+    plugins: createPlugins({ includeTerser: false, isTypes: true })
   },
 
-  // Client type definitions (subpath export)
+  // Client type definitions
   {
+    ...baseConfig,
     input: 'src/client/index.ts',
     output: {
       file: 'dist/client/index.d.ts',
       format: 'es'
     },
     external,
-    plugins: [
-      dts({
-        tsconfig: './tsconfig.build.json'
-      })
-    ]
+    plugins: createPlugins({ includeTerser: false, isTypes: true })
   }
 ];
