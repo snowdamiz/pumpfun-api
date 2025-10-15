@@ -5,15 +5,15 @@
 
 ## Summary
 
-**Total Tasks**: 38
+**Total Tasks**: 48
 **Task Count by User Story**:
 - User Story 1 (P1): 10 tasks
 - User Story 2 (P1): 8 tasks
-- User Story 3 (P2): 8 tasks
+- User Story 3 (P1): 18 tasks (enhanced with LiveKit integration)
 - User Story 4 (P2): 7 tasks
 - User Story 5 (P3): 5 tasks
-- **Parallel Opportunities**: 23 tasks can be executed in parallel
-- **Estimated Implementation Time**: 2-3 weeks for full completion
+- **Parallel Opportunities**: 33 tasks can be executed in parallel
+- **Estimated Implementation Time**: 3-4 weeks for full completion (enhanced scope)
 
 ## User Story Completion Order
 
@@ -21,12 +21,12 @@
 2. **Phase 2**: Foundational (Core infrastructure - blocks all stories)
 3. **Phase 3**: User Story 1 - Install and Initialize Client (P1)
 4. **Phase 4**: User Story 2 - Access Live Streaming Data (P1)
-5. **Phase 5**: User Story 3 - Analyze Video Stream Sources (P2)
+5. **Phase 5**: User Story 3 - Analyze Video Stream Sources with Built-in LiveKit Integration (P1)
 6. **Phase 6**: User Story 4 - Search and Filter Streaming Data (P2)
 7. **Phase 7**: User Story 5 - Access Stream Clips and History (P3)
 8. **Phase 8**: Polish & Cross-Cutting Concerns
 
-**MVP Scope**: Phases 1-4 (User Stories 1-2) - Core npm package with live streaming data access
+**MVP Scope**: Phases 1-5 (User Stories 1-3) - Core npm package with live streaming data access AND built-in LiveKit integration
 
 ---
 
@@ -209,10 +209,10 @@
 
 **✅ Phase 4 Checkpoint**: User Story 2 complete - core live streaming data access functional
 
-### Phase 5: User Story 3 - Analyze Video Stream Sources (Priority: P2)
+### Phase 5: User Story 3 - Analyze Video Stream Sources with Built-in LiveKit Integration (Priority: P1)
 
-**Story Goal**: Enable developers to analyze video stream sources and integrate LiveKit WebRTC connections
-**Independent Test**: Call getVideoStreamAnalysis() with streaming coin and verify comprehensive video data
+**Story Goal**: Enable developers to analyze video stream sources and connect to live streams using built-in LiveKit integration
+**Independent Test**: Call both getVideoStreamAnalysis() and connectToLiveStream() methods, verify comprehensive video data and successful WebRTC connections
 
 - [x] **T033** - Implement getLiveStreamInfo method [P] ✅
   - File: `package/src/services/live/stream-info.service.ts`
@@ -254,34 +254,94 @@
   - Test all video streaming methods with mock data and edge cases
   - Story: US3
 
-**✅ Phase 5 Checkpoint**: User Story 3 complete - video stream analysis and LiveKit integration functional
+- [ ] **T041** - Implement connectToLiveStream method on PumpFunAPIClient [P]
+  - File: `package/src/client/PumpFunAPIClient.ts`
+  - Add built-in LiveKit integration method that handles API → LiveKit connection automatically
+  - Story: US3
+  - Acceptance: Method establishes WebRTC connection within 5 seconds and returns manageable stream object
+
+- [ ] **T042** - Create LiveKitStreamManager helper class [P]
+  - File: `package/src/services/live/LiveKitStreamManager.ts`
+  - Implement helper class for advanced streaming scenarios with connection management
+  - Story: US3
+  - Acceptance: Class handles all WebRTC setup automatically and provides connection lifecycle management
+
+- [ ] **T043** - Add LiveKit dependency management
+  - File: `package/package.json`
+  - Add LiveKit as optional peer dependency with proper version management
+  - Story: US3
+  - Acceptance: Package works without LiveKit installed, but provides enhanced functionality when available
+
+- [ ] **T044** - Implement WebRTC connection management and error recovery
+  - File: `package/src/services/live/LiveKitStreamManager.ts`
+  - Add automatic reconnection logic, error handling, and connection state management
+  - Story: US3
+  - Acceptance: Network interruptions trigger automatic reconnection within 3 seconds
+
+- [ ] **T045** - Create LiveKitConnectionOptions interface
+  - File: `package/src/types/domain.types.ts`
+  - Define TypeScript interface for connection options including video/audio elements and callbacks
+  - Story: US3
+  - Acceptance: Interface provides full type safety for all LiveKit connection parameters
+
+- [ ] **T046** - Create LiveStreamConnection return type
+  - File: `package/src/types/domain.types.ts`
+  - Define managed WebRTC connection object with lifecycle methods
+  - Story: US3
+  - Acceptance: Return type provides methods for connection management and stream control
+
+- [ ] **T047** - Add LiveKit integration to main client exports
+  - File: `package/src/index.ts`
+  - Export LiveKitStreamManager and related types for user access
+  - Story: US3
+  - Acceptance: All LiveKit-related classes and types are properly exported
+
+- [ ] **T048** - Create LiveKit integration examples
+  - File: `package/src/examples/livekit-integration.ts`
+  - Create examples showing both built-in integration and helper class approaches
+  - Story: US3
+  - Acceptance: Examples demonstrate 80% reduction in boilerplate code compared to manual implementation
+
+- [ ] **T049** - Create unit tests for LiveKit integration
+  - File: `package/tests/unit/livekit-integration.test.ts`
+  - Test connectToLiveStream method and LiveKitStreamManager with mocked WebRTC connections
+  - Story: US3
+  - Acceptance: All LiveKit integration scenarios tested with proper mocking of browser WebRTC APIs
+
+- [ ] **T050** - Add LiveKit integration documentation
+  - File: `package/docs/livekit-integration.md`
+  - Comprehensive documentation for built-in LiveKit functionality with examples
+  - Story: US3
+  - Acceptance: Documentation covers both integration approaches with complete working examples
+
+**✅ Phase 5 Checkpoint**: User Story 3 complete - video stream analysis and built-in LiveKit integration functional
 
 ### Phase 6: User Story 4 - Search and Filter Streaming Data (Priority: P2)
 
 **Story Goal**: Enable developers to search and filter live streams for content discovery
 **Independent Test**: Use search methods and verify appropriate filtered results
 
-- [x] **T041** - Implement searchLiveStreams method [P] ✅
+- [x] **T051** - Implement searchLiveStreams method [P] ✅
   - File: `package/src/services/live/stream-filters.service.ts`
   - Add keyword search across stream names, symbols, descriptions, and titles
   - Story: US4
 
-- [x] **T042** - Implement getStreamStatistics method [P] ✅
+- [x] **T052** - Implement getStreamStatistics method [P] ✅
   - File: `package/src/services/live/live-streams.service.ts`
   - Calculate and return aggregate statistics for live streaming data
   - Story: US4
 
-- [x] **T043** - Add advanced filtering options ✅
+- [x] **T053** - Add advanced filtering options ✅
   - File: `package/src/services/live/stream-filters.service.ts`
   - Extend filtering capabilities with custom filter functions and complex queries
   - Story: US4
 
-- [x] **T044** - Create search and filter utility functions [P] ✅
+- [x] **T054** - Create search and filter utility functions [P] ✅
   - File: `package/src/validation/streams.validator.ts`
   - Create utility functions for complex search patterns and result filtering
   - Story: US4
 
-- [x] **T046** - Create unit tests for search functionality
+- [x] **T055** - Create unit tests for search functionality
   - File: `package/tests/unit/search.test.ts`
   - Test search methods with various keywords, filters, and edge cases
   - Story: US4
@@ -293,22 +353,22 @@
 **Story Goal**: Enable developers to access recorded stream clips and historical data
 **Independent Test**: Call getStreamClips() and verify clip data returned properly
 
-- [x] **T048** - Implement getStreamClips method [P] ✅
+- [x] **T056** - Implement getStreamClips method [P] ✅
   - File: `package/src/services/live/live-streams.service.ts`
   - Add method to fetch stream clips with type filtering and pagination
   - Story: US5
 
-- [x] **T049** - Create clip data validation [P] ✅
+- [x] **T057** - Create clip data validation [P] ✅
   - File: `package/src/validation/streams.validator.ts`
   - Validate clip data against StreamClip TypeScript interfaces
   - Story: US5
 
-- [x] **T050** - Add clip type filtering and sorting [P] ✅
+- [x] **T058** - Add clip type filtering and sorting [P] ✅
   - File: `package/src/services/live/stream-filters.service.ts`
   - Support filtering by COMPLETE/HIGHLIGHT types and various sorting options
   - Story: US5
 
-- [x] **T051** - Create clip utility functions [P] ✅
+- [x] **T059** - Create clip utility functions [P] ✅
   - File: `package/src/utils/index.ts`
   - Utility functions for clip processing, duration calculation, and metadata extraction
   - Story: US5
@@ -319,12 +379,12 @@
 
 **Goal**: Finalize package with advanced features, performance optimization, and production readiness
 
-- [x] **T056** - Optimize bundle size and performance ✅
+- [x] **T060** - Optimize bundle size and performance ✅
   - Files: `package/rollup.config.js`, various source files
   - Optimize bundle size, tree-shaking, and runtime performance
   - Story: Cross-cutting
 
-- [ ] **T058** - Create API reference documentation
+- [ ] **T061** - Create API reference documentation
   - File: `package/docs/api.md`
   - Comprehensive API documentation for all public methods and types
   - Story: Cross-cutting
@@ -406,22 +466,26 @@ npm run dev:task T035 & npm run dev:task T036 & npm run dev:task T037 &
 
 ## Success Criteria
 
-### MVP Success (Phases 1-4)
+### MVP Success (Phases 1-5)
 ✅ Package installs and imports without errors
 ✅ Client initializes and connects to API successfully
 ✅ getLiveCoins() returns live streaming data
 ✅ Rate limiting works correctly (60 req/min)
 ✅ Error handling provides clear messages
-✅ Bundle size under 500KB
+✅ Bundle size under 500KB (excluding optional LiveKit dependency)
+✅ Built-in LiveKit integration establishes WebRTC connections within 5 seconds
+✅ connectToLiveStream() method provides seamless streaming with 80% less boilerplate code
+✅ WebRTC connections handle network interruptions with automatic reconnection
 
 ### Full Success (All Phases)
 ✅ All user stories independently testable
-✅ Video streaming integration with LiveKit
+✅ Complete video streaming integration with built-in LiveKit functionality
+✅ Both direct integration and helper class approaches working seamlessly
 ✅ Search and filtering functionality complete
 ✅ Stream clips and history access working
-✅ Production-ready documentation and examples
-✅ 90%+ test coverage achieved
-✅ Performance benchmarks met
-✅ npm publication ready
+✅ Production-ready documentation with comprehensive LiveKit examples
+✅ 90%+ test coverage achieved including LiveKit integration tests
+✅ Performance benchmarks met (5-second WebRTC connection times)
+✅ npm publication ready as complete streaming solution
 
 This task breakdown provides a clear roadmap for transforming the existing PumpFun API discovery code into a production-ready npm package while maintaining independence between user stories and enabling parallel development where possible.

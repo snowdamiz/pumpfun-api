@@ -7,31 +7,133 @@
 
 ### PumpFunAPIClient
 
-**Purpose**: Main API client class providing access to all PumpFun API functionality
+**Purpose**: Main API client class providing access to all PumpFun API functionality including built-in LiveKit integration
 **Fields**:
 - `httpClient`: HTTPClient - HTTP client with retry logic and interceptors
 - `logger`: Logger - Logging instance for debugging and monitoring
 - `config`: ClientConfig - Configuration options and settings
 - `rateLimiter`: RateLimiter - Rate limiting and request throttling
 
+**Methods**:
+- `connectToLiveStream(mintId: string, options: LiveKitConnectionOptions): Promise<LiveStreamConnection>` - Built-in LiveKit integration
+
 **Relationships**:
 - Uses HTTPClient for all API requests
 - Uses Logger for debugging and error reporting
 - Uses RateLimiter for request throttling
 - Creates LiveCoin, LiveStreamInfo, and other response objects
+- Can instantiate LiveKitStreamManager for advanced streaming scenarios
 
 **Relationships**:
 - Uses HTTPClient from `infrastructure/http/http-client.ts` for all API requests
 - Uses Logger from `infrastructure/logging/logger.ts` for debugging and error reporting
 - Uses RateLimiter from `infrastructure/rate-limiting/rate-limiter.ts` for request throttling
 - Creates LiveCoin, LiveStreamInfo, and other response objects from types in `types/`
+- Creates LiveKitStreamManager instances for WebRTC connections
 
 **Validation Rules**:
 - `config` must be valid ClientConfig object from `types/config.types.ts`
 - `httpClient` must be properly initialized with base URLs from `constants/api.constants.ts`
 - `rateLimiter` must respect 60 requests/minute limit
+- `connectToLiveStream` requires valid mintId and LiveKit connection options
 
 **File Location**: `package/src/client/PumpFunAPIClient.ts`
+
+### LiveKitStreamManager
+
+**Purpose**: Helper class that manages WebRTC connections and handles LiveKit integration automatically
+**Fields**:
+- `client`: PumpFunAPIClient - Reference to main API client
+- `activeConnections`: Map<string, LiveStreamConnection> - Active WebRTC connections
+- `reconnectionAttempts`: Map<string, number> - Reconnection attempt tracking
+- `connectionConfig`: ConnectionConfig - Default connection settings
+
+**Methods**:
+- `connect(mintId: string, options?: LiveKitConnectionOptions): Promise<LiveStreamConnection>` - Establish WebRTC connection
+- `disconnect(connectionId: string): Promise<void>` - Close connection and cleanup
+- `reconnect(connectionId: string): Promise<LiveStreamConnection>` - Attempt reconnection
+- `getConnectionState(connectionId: string): ConnectionState` - Get connection status
+- `muteAudio(connectionId: string): Promise<void>` - Mute audio
+- `unmuteAudio(connectionId: string): Promise<void>` - Unmute audio
+- `muteVideo(connectionId: string): Promise<void>` - Mute video
+- `unmuteVideo(connectionId: string): Promise<void>` - Unmute video
+
+**Relationships**:
+- Created by PumpFunAPIClient or instantiated directly
+- Creates and manages LiveStreamConnection objects
+- Uses HTTPClient to fetch LiveKit connection details
+- Logs connection events and errors
+
+**Validation Rules**:
+- `mintId` must be valid Solana address with active stream
+- `options` must conform to LiveKitConnectionOptions interface
+- Connection limits apply (max 10 concurrent connections)
+- Reconnection attempts limited to 5 per connection
+
+**File Location**: `package/src/services/live/LiveKitStreamManager.ts`
+
+### LiveStreamConnection
+
+**Purpose**: Managed WebRTC connection object returned by connectToLiveStream() method
+**Fields**:
+- `id`: string (required) - Unique connection identifier
+- `mintId`: string (required) - Associated token mint
+- `roomName`: string (required) - LiveKit room name
+- `state`: ConnectionState (required) - Current connection state
+- `isConnected`: boolean (required) - Connection status
+- `createdAt`: number (required) - Connection creation timestamp
+- `lastActivity`: number (required) - Last activity timestamp
+- `reconnectionCount`: number (required) - Number of reconnections
+- `audioTrack`: MediaStreamTrack | null (optional) - Audio track
+- `videoTrack`: MediaStreamTrack | null (optional) - Video track
+- `mediaStream`: MediaStream | null (optional) - Combined media stream
+
+**Methods**:
+- `disconnect(): Promise<void>` - Close connection and cleanup
+- `reconnect(): Promise<void>` - Attempt reconnection
+- `getStats(): Promise<RTCStatsReport>` - Get WebRTC statistics
+- `muteAudio(): void` - Mute audio track
+- `unmuteAudio(): void` - Unmute audio track
+- `muteVideo(): void` - Mute video track
+- `unmuteVideo(): void` - Unmute video track
+
+**Validation Rules**:
+- `id` must be unique UUID string
+- `mintId` must be valid Solana address
+- `state` must be valid ConnectionState enum value
+- Timestamps must be valid Unix timestamps
+- `reconnectionCount` must be non-negative integer
+
+**File Location**: `package/src/types/domain.types.ts`
+
+### LiveKitConnectionOptions
+
+**Purpose**: TypeScript interface defining connection configuration including video/audio elements and event callbacks
+**Fields**:
+- `videoElement`: HTMLVideoElement | null (optional) - Target video element for playback
+- `audioElement`: HTMLAudioElement | null (optional) - Target audio element for playback
+- `autoConnect`: boolean (optional) - Auto-connect on initialization (default: true)
+- `autoPlay`: boolean (optional) - Auto-play media (default: true)
+- `muted`: boolean (optional) - Start muted (default: false)
+- `videoEnabled`: boolean (optional) - Enable video track (default: true)
+- `audioEnabled`: boolean (optional) - Enable audio track (default: true)
+- `preferredQuality`: 'auto' | 'high' | 'medium' | 'low' (optional) - Video quality preference
+- `maxReconnectAttempts`: number (optional) - Maximum reconnection attempts (default: 5)
+- `reconnectDelayMs`: number (optional) - Delay between reconnections (default: 3000)
+- `onConnected`: (connection: LiveStreamConnection) => void (optional) - Connection success callback
+- `onDisconnected`: (connection: LiveStreamConnection) => void (optional) - Connection closed callback
+- `onError`: (error: Error, connection: LiveStreamConnection) => void (optional) - Error callback
+- `onReconnecting`: (connection: LiveStreamConnection) => void (optional) - Reconnection attempt callback
+- `onStateChange`: (state: ConnectionState, connection: LiveStreamConnection) => void (optional) - State change callback
+
+**Validation Rules**:
+- Video/audio elements must be valid DOM elements if provided
+- `maxReconnectAttempts` must be between 0 and 10
+- `reconnectDelayMs` must be positive integer (1000-30000 range)
+- `preferredQuality` must be valid enum value
+- Callbacks must be functions if provided
+
+**File Location**: `package/src/types/domain.types.ts`
 
 ### LiveCoin
 
@@ -273,6 +375,34 @@
 - `ENDED`: Stream has completed
 - `ERROR`: Stream encountered error
 
+### ConnectionState
+
+**Purpose**: Enumeration for WebRTC connection states
+**Values**:
+- `DISCONNECTED`: No active connection
+- `CONNECTING`: Connection attempt in progress
+- `CONNECTED`: Connection established and ready
+- `RECONNECTING`: Reconnection attempt in progress
+- `DISCONNECTING`: Connection is being closed
+- `FAILED`: Connection failed with error
+
+### ConnectionConfig
+
+**Purpose**: Default configuration for LiveKit connections
+**Fields**:
+- `defaultMaxReconnectAttempts`: number - Default maximum reconnection attempts (default: 5)
+- `defaultReconnectDelayMs`: number - Default reconnection delay (default: 3000)
+- `connectionTimeoutMs`: number - Connection timeout (default: 10000)
+- `heartbeatIntervalMs`: number - Connection heartbeat interval (default: 5000)
+- `enableStatistics`: boolean - Enable WebRTC statistics collection (default: true)
+- `enableDebugLogging`: boolean - Enable debug logging for connections (default: false)
+
+**Validation Rules**:
+- `defaultMaxReconnectAttempts` must be between 0 and 10
+- `defaultReconnectDelayMs` must be positive integer (1000-30000 range)
+- `connectionTimeoutMs` must be between 5000 and 60000
+- `heartbeatIntervalMs` must be between 1000 and 30000
+
 ### LogLevel
 
 **Purpose**: Enumeration for logging levels
@@ -329,6 +459,7 @@
 - **Live Streams Service**: `package/src/services/live/live-streams.service.ts`
 - **Stream Filters Service**: `package/src/services/live/stream-filters.service.ts`
 - **Stream Info Service**: `package/src/services/live/stream-info.service.ts`
+- **LiveKit Stream Manager**: `package/src/services/live/LiveKitStreamManager.ts` - WebRTC connection management
 
 ### Infrastructure Components
 - **HTTP Client**: `package/src/infrastructure/http/http-client.ts`
@@ -340,5 +471,9 @@
 ### Constants and Validation
 - **API Constants**: `package/src/constants/api.constants.ts`
 - **Stream Validation**: `package/src/validation/streams.validator.ts`
+
+### Examples and Documentation
+- **LiveKit Integration Examples**: `package/src/examples/livekit-integration.ts`
+- **LiveKit Documentation**: `package/docs/livekit-integration.md`
 
 This data model provides comprehensive type safety and validation for the PumpFun API npm package while maintaining flexibility for future API changes.

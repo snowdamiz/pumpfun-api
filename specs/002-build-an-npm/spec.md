@@ -40,20 +40,64 @@ As a developer building a streaming application, I want to retrieve currently li
 
 ---
 
-### User Story 3 - Analyze Video Stream Sources (Priority: P2)
+### User Story 3 - Analyze Video Stream Sources (Priority: P1)
 
-As a developer building video streaming functionality, I want to analyze video stream sources for specific coins so that I can integrate LiveKit WebRTC connections and provide video playback capabilities.
+As a developer building video streaming functionality, I want to analyze video stream sources for specific coins and connect to live streams using built-in LiveKit integration so that I can provide seamless video playback capabilities with minimal boilerplate code.
 
-**Why this priority**: Video streaming is a key differentiator for PumpFun and enables advanced use cases like video players and streaming applications.
+**Why this priority**: Video streaming is a key differentiator for PumpFun. Built-in LiveKit integration dramatically reduces developer complexity and makes this package the go-to solution for PumpFun streaming.
 
-**Independent Test**: Can be fully tested by calling getVideoStreamAnalysis() with a known streaming coin and verifying all video-related information is returned correctly.
+**Independent Test**: Can be fully tested by calling both getVideoStreamAnalysis() and the new connectToLiveStream() methods, verifying video information is returned correctly and LiveKit connections are established successfully.
+
+**Current Situation (Manual Implementation)**:
+Users currently need to:
+1. Install both packages: @pumpfun/api-client + livekit-client
+2. Manually handle the API → LiveKit integration
+3. Write boilerplate WebRTC connection code
+4. Handle all the error scenarios and connection management
+
+**Better Approach (Built-in Integration)**:
+The npm package includes LiveKit integration as an optional feature:
+
+```typescript
+// Option 1: Built-in LiveKit Integration (Recommended)
+import { PumpFunAPIClient } from '@pumpfun/api-client';
+
+const client = new PumpFunAPIClient();
+
+// Single method to handle everything
+const videoStream = await client.connectToLiveStream(mintId, {
+  videoElement: document.getElementById('video'),
+  audioElement: document.getElementById('audio'),
+  onConnected: () => console.log('Connected!'),
+  onDisconnected: () => console.log('Disconnected'),
+  onError: (error) => console.error('Stream error:', error)
+});
+
+// Option 2: Helper Class
+import { PumpFunAPIClient, LiveKitStreamManager } from '@pumpfun/api-client';
+
+const client = new PumpFunAPIClient();
+const streamManager = new LiveKitStreamManager(client);
+
+const stream = await streamManager.connect(mintId, options);
+```
 
 **Acceptance Scenarios**:
 
 1. **Given** a coin with an active video stream, **When** I call getVideoStreamAnalysis(mintId), **Then** it should return comprehensive video stream information including LiveKit connection details
-2. **Given** a coin without video streaming capabilities, **When** I call getVideoStreamAnalysis(), **Then** it should indicate no active stream exists
-3. **Given** I need LiveKit connection details, **When** I call getLiveKitConnectionInfo() for an active stream, **Then** it should return WebSocket URLs, room names, and region information
-4. **Given** I want to check streaming permissions, **When** I call isApprovedCreator(), **Then** it should accurately reflect whether a creator can stream
+2. **Given** a coin with an active video stream, **When** I call connectToLiveStream(mintId, options), **Then** it should establish a WebRTC connection and return a manageable stream object
+3. **Given** I want to use the helper class approach, **When** I create LiveKitStreamManager and call connect(), **Then** it should handle all WebRTC setup automatically
+4. **Given** a coin without video streaming capabilities, **When** I call connectToLiveStream(), **Then** it should provide clear error messaging about the lack of available streams
+5. **Given** I need LiveKit connection details for manual implementation, **When** I call getLiveKitConnectionInfo() for an active stream, **Then** it should return WebSocket URLs, room names, and region information
+6. **Given** connection issues occur during streaming, **When** using the built-in LiveKit integration, **Then** it should handle reconnection attempts and error recovery automatically
+7. **Given** I want to check streaming permissions, **When** I call isApprovedCreator(), **Then** it should accurately reflect whether a creator can stream
+
+**Implementation Benefits**:
+- Single dependency: No need to install LiveKit separately
+- Simplified API: One method instead of 5-6 manual steps
+- Better error handling: Pre-built error recovery and retry logic
+- Consistent experience: Same patterns as other API methods
+- Type safety: Full TypeScript support for all options
 
 ---
 
@@ -118,14 +162,22 @@ As a developer building content libraries, I want to access stream clips and his
 - **FR-013**: Package MUST provide comprehensive documentation for all public methods and interfaces
 - **FR-014**: Package MUST include examples demonstrating common usage patterns
 - **FR-015**: Package MUST expose the HTTPClient and Logger utilities for advanced use cases
+- **FR-016**: Package MUST include built-in LiveKit integration as an optional feature for WebRTC streaming
+- **FR-017**: Package MUST provide a connectToLiveStream() method that handles API → LiveKit integration automatically
+- **FR-018**: Package MUST export a LiveKitStreamManager helper class for advanced streaming scenarios
+- **FR-019**: Package MUST handle WebRTC connection management, reconnection logic, and error recovery for streaming
+- **FR-020**: Package MUST include TypeScript interfaces for LiveKit connection options and stream management
 
 ### Key Entities
 
-- **PumpFunAPIClient**: Main client class providing access to all PumpFun API functionality
+- **PumpFunAPIClient**: Main client class providing access to all PumpFun API functionality including built-in LiveKit integration
+- **LiveKitStreamManager**: Helper class that manages WebRTC connections and handles LiveKit integration automatically
 - **LiveCoin**: Represents a coin with current live streaming data including participant counts, market data, and stream metadata
 - **LiveStreamInfo**: Contains detailed video stream information including creator, participants, and stream status
 - **LiveKitConnectionInfo**: Provides WebRTC connection details including room names, WebSocket URLs, and regional servers
 - **StreamClip**: Represents recorded stream segments with metadata like duration, creation time, and view counts
+- **LiveStreamConnection**: Managed WebRTC connection object returned by connectToLiveStream() method
+- **LiveKitConnectionOptions**: TypeScript interface defining connection configuration including video/audio elements and event callbacks
 - **APIError**: Standardized error format with codes, messages, and retry information
 
 ### API Requirements
@@ -167,9 +219,13 @@ As a developer building content libraries, I want to access stream clips and his
 - **SC-004**: All exported methods include proper TypeScript types and IntelliSense support
 - **SC-005**: Package maintains backward compatibility for minor version updates
 - **SC-006**: Documentation covers 100% of public APIs with working examples
-- **SC-007**: Package size remains under 500KB when minified and compressed
+- **SC-007**: Package size remains under 500KB when minified and compressed (excluding optional LiveKit dependency)
 - **SC-008**: Unit tests achieve 90%+ code coverage for all critical functionality
 - **SC-009**: API rate limiting is respected with no more than 60 requests per minute
 - **SC-010**: Error messages provide clear guidance for resolving common issues
 - **SC-011**: Package can handle concurrent requests from multiple client instances without conflicts
 - **SC-012**: Response validation catches malformed data and provides helpful error information
+- **SC-013**: LiveKit integration establishes WebRTC connections within 5 seconds for active streams
+- **SC-014**: Built-in LiveKit functionality reduces user boilerplate code by 80% compared to manual implementation
+- **SC-015**: WebRTC connections handle network interruptions with automatic reconnection within 3 seconds
+- **SC-016**: LiveKit integration provides clear error messages for connection failures and stream unavailability
