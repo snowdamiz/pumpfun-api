@@ -1145,11 +1145,25 @@ export class LiveStreamsValidator {
       id: clip.id,
       mintId: clip.mintId,
       clipType: clip.clipType as 'COMPLETE' | 'HIGHLIGHT',
+      duration: clip.duration || 0, // Required field with fallback
+      created_at: clip.created_at || new Date().toISOString(), // Required field with fallback
+      roomName: clip.roomName || `room-${clip.id}`, // Required field with fallback
+      sessionId: clip.sessionId || `session-${clip.id}`, // Required field with fallback
+      startTime: clip.startTime || clip.created_at || new Date().toISOString(), // Required field with fallback
+      endTime: clip.endTime || new Date().toISOString(), // Required field with fallback
+      thumbnailUrl: clip.thumbnailUrl || clip.clip_url || '', // Required field with fallback
+      hidden: clip.hidden || false, // Required field with fallback
       // Optional fields (only include if present and valid)
-      ...(clip.duration !== undefined && { duration: clip.duration }),
       ...(clip.view_count !== undefined && { view_count: clip.view_count }),
-      ...(clip.created_at !== undefined && { created_at: clip.created_at }),
       ...(clip.clip_url !== undefined && { clip_url: clip.clip_url }),
+      ...(clip.thumbnailS3Key !== undefined && { thumbnailS3Key: clip.thumbnailS3Key }),
+      ...(clip.playlistS3Key !== undefined && { playlistS3Key: clip.playlistS3Key }),
+      ...(clip.playlistUrl !== undefined && { playlistUrl: clip.playlistUrl }),
+      ...(clip.mp4Url !== undefined && { mp4Url: clip.mp4Url }),
+      ...(clip.mp4S3Key !== undefined && { mp4S3Key: clip.mp4S3Key }),
+      ...(clip.mp4SizeBytes !== undefined && { mp4SizeBytes: clip.mp4SizeBytes }),
+      ...(clip.mp4CreatedAt !== undefined && { mp4CreatedAt: clip.mp4CreatedAt }),
+      ...(clip.highlightCreatorAddress !== undefined && { highlightCreatorAddress: clip.highlightCreatorAddress }),
     };
 
     return validatedClip;

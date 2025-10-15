@@ -1,44 +1,23 @@
-# Source and test files (will use compiled dist/)
-src/
-tests/
-examples/
-*.ts
-!*.d.ts
-
-# Development configuration
-.eslintrc*
-.prettierrc*
-jest.config.*
-tsconfig.*
-rollup.config.*
-
-# Documentation and specs
-docs/
-specs/
-*.md
-!README.md
-
-# Dependencies
 node_modules/
-
-# Development files
-.coverage/
-.nyc_output/
-.cache/
+dist/
+build/
+coverage/
 *.log
-
-# OS and IDE files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.swp
+*.swo
 *~
-
-# Environment files
-.env*
-.config/
-
-# Claude and development tools
-.claude/
-.npm/
-.eslintcache
+coverage/
+.nyc_output
+.cache/
+.parcel-cache/
+.tmp/
+.temp/

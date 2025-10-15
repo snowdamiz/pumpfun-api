@@ -74,7 +74,6 @@ specs/[###-feature]/
 ### Source Code (repository root)
 
 ```
-package/
 ├── src/
 │   ├── index.ts                 # Main entry point and exports
 │   ├── client/

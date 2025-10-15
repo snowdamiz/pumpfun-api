@@ -37,7 +37,7 @@
 - `rateLimiter` must respect 60 requests/minute limit
 - `connectToLiveStream` requires valid mintId and LiveKit connection options
 
-**File Location**: `package/src/client/PumpFunAPIClient.ts`
+**File Location**: `src/client/PumpFunAPIClient.ts`
 
 ### LiveKitStreamManager
 
@@ -70,7 +70,7 @@
 - Connection limits apply (max 10 concurrent connections)
 - Reconnection attempts limited to 5 per connection
 
-**File Location**: `package/src/services/live/LiveKitStreamManager.ts`
+**File Location**: `src/services/live/LiveKitStreamManager.ts`
 
 ### LiveStreamConnection
 
@@ -104,7 +104,7 @@
 - Timestamps must be valid Unix timestamps
 - `reconnectionCount` must be non-negative integer
 
-**File Location**: `package/src/types/domain.types.ts`
+**File Location**: `src/types/domain.types.ts`
 
 ### LiveKitConnectionOptions
 
@@ -133,7 +133,7 @@
 - `preferredQuality` must be valid enum value
 - Callbacks must be functions if provided
 
-**File Location**: `package/src/types/domain.types.ts`
+**File Location**: `src/types/domain.types.ts`
 
 ### LiveCoin
 
@@ -450,30 +450,30 @@
 ## File Organization
 
 ### Type Definitions
-- **API Types**: `package/src/types/api.types.ts` - LiveCoin, LiveStreamInfo, StreamClip, APIError
-- **Common Types**: `package/src/types/common.types.ts` - Response wrappers, pagination
-- **Config Types**: `package/src/types/config.types.ts` - ClientConfig, RetryConfig, RateLimitConfig
-- **Domain Types**: `package/src/types/domain.types.ts` - Business logic entities
+- **API Types**: `src/types/api.types.ts` - LiveCoin, LiveStreamInfo, StreamClip, APIError
+- **Common Types**: `src/types/common.types.ts` - Response wrappers, pagination
+- **Config Types**: `src/types/config.types.ts` - ClientConfig, RetryConfig, RateLimitConfig
+- **Domain Types**: `src/types/domain.types.ts` - Business logic entities
 
 ### Service Classes
-- **Live Streams Service**: `package/src/services/live/live-streams.service.ts`
-- **Stream Filters Service**: `package/src/services/live/stream-filters.service.ts`
-- **Stream Info Service**: `package/src/services/live/stream-info.service.ts`
-- **LiveKit Stream Manager**: `package/src/services/live/LiveKitStreamManager.ts` - WebRTC connection management
+- **Live Streams Service**: `src/services/live/live-streams.service.ts`
+- **Stream Filters Service**: `src/services/live/stream-filters.service.ts`
+- **Stream Info Service**: `src/services/live/stream-info.service.ts`
+- **LiveKit Stream Manager**: `src/services/live/LiveKitStreamManager.ts` - WebRTC connection management
 
 ### Infrastructure Components
-- **HTTP Client**: `package/src/infrastructure/http/http-client.ts`
-- **Error Handler**: `package/src/infrastructure/error-handling/error-handler.ts`
-- **Logger**: `package/src/infrastructure/logging/logger.ts`
-- **Rate Limiter**: `package/src/infrastructure/rate-limiting/rate-limiter.ts`
-- **Configuration Manager**: `package/src/infrastructure/config/config-manager.ts`
+- **HTTP Client**: `src/infrastructure/http/http-client.ts`
+- **Error Handler**: `src/infrastructure/error-handling/error-handler.ts`
+- **Logger**: `src/infrastructure/logging/logger.ts`
+- **Rate Limiter**: `src/infrastructure/rate-limiting/rate-limiter.ts`
+- **Configuration Manager**: `src/infrastructure/config/config-manager.ts`
 
 ### Constants and Validation
-- **API Constants**: `package/src/constants/api.constants.ts`
-- **Stream Validation**: `package/src/validation/streams.validator.ts`
+- **API Constants**: `src/constants/api.constants.ts`
+- **Stream Validation**: `src/validation/streams.validator.ts`
 
 ### Examples and Documentation
-- **LiveKit Integration Examples**: `package/src/examples/livekit-integration.ts`
-- **LiveKit Documentation**: `package/docs/livekit-integration.md`
+- **LiveKit Integration Examples**: `src/examples/livekit-integration.ts`
+- **LiveKit Documentation**: `docs/livekit-integration.md`
 
 This data model provides comprehensive type safety and validation for the PumpFun API npm package while maintaining flexibility for future API changes.

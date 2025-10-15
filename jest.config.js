@@ -1,21 +1,60 @@
-module.exports = {
+/** @type {import('jest').Config} */
+export default {
+  // TypeScript configuration
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/tests'],
+
+  // Test file patterns
   testMatch: [
-    '**/__tests__/**/*.ts',
-    '**/?(*.)+(spec|test).ts'
+    '**/tests/**/*.test.ts',
+    '**/tests/**/*.spec.ts'
   ],
-  transform: {
-    '^.+\\.ts$': 'ts-jest',
-  },
+
+  // Coverage configuration
+  collectCoverage: true,
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
+    '!src/examples/**',
     '!src/index.ts'
   ],
-  moduleFileExtensions: ['ts', 'js', 'json'],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    }
+  },
+
+  // Module resolution
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1'
+  },
+
+  // Setup files
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+
+  // Transform configuration
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: 'tsconfig.test.json'
+    }]
+  },
+
+  // Mock configuration
+  clearMocks: true,
+  restoreMocks: true,
+
+  // Test timeout
   testTimeout: 30000,
+
+  // Verbose output
   verbose: true,
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts']
+
+  // Reporter configuration
+  reporters: ['default'],
 };
