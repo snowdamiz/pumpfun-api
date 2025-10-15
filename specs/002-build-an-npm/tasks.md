@@ -254,13 +254,13 @@
   - Test all video streaming methods with mock data and edge cases
   - Story: US3
 
-- [ ] **T041** - Implement connectToLiveStream method on PumpFunAPIClient [P]
+- [x] **T041** - Implement connectToLiveStream method on PumpFunAPIClient [P] ✅ 
   - File: `package/src/client/PumpFunAPIClient.ts`
   - Add built-in LiveKit integration method that handles API → LiveKit connection automatically
   - Story: US3
   - Acceptance: Method establishes WebRTC connection within 5 seconds and returns manageable stream object
 
-- [ ] **T042** - Create LiveKitStreamManager helper class [P]
+- [x] **T042** - Create LiveKitStreamManager helper class [P] ✅ 
   - File: `package/src/services/live/LiveKitStreamManager.ts`
   - Implement helper class for advanced streaming scenarios with connection management
   - Story: US3

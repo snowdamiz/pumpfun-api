@@ -96,6 +96,14 @@ export const liveKitConnectionWithCallbacks = livekitExamples.liveKitConnectionW
 export const liveKitErrorHandling = livekitExamples.liveKitErrorHandling;
 export const advancedConnectionManagement = livekitExamples.advancedConnectionManagement;
 
+// LiveKitStreamManager Examples (T042)
+export const basicLiveKitStreamManagerUsage = livekitExamples.basicLiveKitStreamManagerUsage;
+export const liveKitStreamManagerWithConfig = livekitExamples.liveKitStreamManagerWithConfig;
+export const liveKitStreamManagerMultipleConnections = livekitExamples.liveKitStreamManagerMultipleConnections;
+export const liveKitStreamManagerReconnection = livekitExamples.liveKitStreamManagerReconnection;
+export const liveKitStreamManagerErrorHandling = livekitExamples.liveKitStreamManagerErrorHandling;
+export const liveKitStreamManagerLifecycle = livekitExamples.liveKitStreamManagerLifecycle;
+
 // Advanced Filtering Examples (T043)
 export const demonstratePredefinedFilters = advancedFilteringExamples.demonstratePredefinedFilters;
 export const demonstrateCustomFilters = advancedFilteringExamples.demonstrateCustomFilters;
@@ -162,6 +170,14 @@ export async function runAllBasicExamples() {
     liveKitCallbacks: null as any,
     liveKitErrorHandling: null as any,
     liveKitAdvanced: null as any,
+
+    // LiveKitStreamManager examples (T042)
+    streamManagerBasic: null as any,
+    streamManagerConfig: null as any,
+    streamManagerMultiple: null as any,
+    streamManagerReconnection: null as any,
+    streamManagerErrorHandling: null as any,
+    streamManagerLifecycle: null as any,
 
     // T050 clip filtering examples
     clipFilteringT050: null as any,
@@ -277,6 +293,27 @@ export async function runAllBasicExamples() {
     results.liveKitAdvanced = await livekitExamples.advancedConnectionManagement();
     console.log();
 
+    // LiveKitStreamManager examples (T042)
+    console.log('🎛️ LIVEKIT STREAM MANAGER EXAMPLES (T042)');
+    console.log('='.repeat(REPEAT_COUNT_60));
+    results.streamManagerBasic = await livekitExamples.basicLiveKitStreamManagerUsage();
+    console.log();
+
+    results.streamManagerConfig = await livekitExamples.liveKitStreamManagerWithConfig();
+    console.log();
+
+    results.streamManagerMultiple = await livekitExamples.liveKitStreamManagerMultipleConnections();
+    console.log();
+
+    results.streamManagerReconnection = await livekitExamples.liveKitStreamManagerReconnection();
+    console.log();
+
+    results.streamManagerErrorHandling = await livekitExamples.liveKitStreamManagerErrorHandling();
+    console.log();
+
+    results.streamManagerLifecycle = await livekitExamples.liveKitStreamManagerLifecycle();
+    console.log();
+
     // T050 clip filtering examples
     console.log('🎬 T050 CLIP FILTERING EXAMPLES');
     console.log('='.repeat(REPEAT_COUNT_60));
@@ -343,6 +380,10 @@ export async function runAllBasicExamples() {
     console.log('   • LiveKit connection management and error handling');
     console.log('   • Audio/video controls and WebRTC statistics');
     console.log('   • Multiple LiveKit connection management');
+    console.log('   • LiveKitStreamManager helper class (T042)');
+    console.log('   • Advanced WebRTC connection lifecycle management');
+    console.log('   • Automatic reconnection and error recovery');
+    console.log('   • Multiple StreamManager connection handling');
     console.log('   • Keyword search across streams');
     console.log('   • Aggregate stream statistics');
     console.log('   • Advanced filtering with custom criteria (T043)');
@@ -414,6 +455,15 @@ export const examples = {
 
   // LiveKit integration examples (T041) - imported from livekit-examples
   ...livekitExamples,
+
+  // LiveKitStreamManager examples (T042) - imported from livekit-examples
+  basicLiveKitStreamManagerUsage,
+  liveKitStreamManagerWithConfig,
+  liveKitStreamManagerMultipleConnections,
+  liveKitStreamManagerReconnection,
+  liveKitStreamManagerErrorHandling,
+  liveKitStreamManagerLifecycle,
+  runAllLiveKitExamplesWithStreamManager: livekitExamples.runAllLiveKitExamplesWithStreamManager,
 
   // Main runner
   runAllBasicExamples,
@@ -676,6 +726,20 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
         });
       break;
 
+    case 'stream-manager':
+    case 'livestream-manager':
+    case 'livestreammanager':
+    case 't042':
+      livekitExamples.basicLiveKitStreamManagerUsage()
+        .then(() => {
+          console.log('\n✅ LiveKitStreamManager demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 LiveKitStreamManager demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'advanced':
     case 'filtering':
     case 'advanced-filtering':
@@ -716,6 +780,7 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
       console.log('   clip-filter   - Clip filtering demo (advanced filtering and sorting)');
       console.log('   clip-utils    - Clip utilities demo (duration, metadata, validation)');
       console.log('   livekit-integration - LiveKit WebRTC integration demo (T041)');
+      console.log('   stream-manager - LiveKitStreamManager demo (T042 - advanced connection management)');
       console.log(
         '   advanced      - Advanced filtering demo (T043 - custom filters, compound queries)'
       );

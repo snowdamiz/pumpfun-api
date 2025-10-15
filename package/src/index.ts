@@ -19,6 +19,7 @@ export * from './client/PumpFunAPIClient';
 export { LiveStreamsService } from './services/live/live-streams.service';
 export { LiveStreamInfoService } from './services/live/stream-info.service';
 export { StreamFilters } from './services/live/stream-filters.service';
+export { LiveKitStreamManager } from './services/live/LiveKitStreamManager';
 export { BaseService } from './services/base/base.service';
 
 // Export infrastructure components explicitly to avoid conflicts
