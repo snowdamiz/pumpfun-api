@@ -1,5 +1,5 @@
 {
-  "name": "@pumpfun/api-client",
+  "name": "@openworth/pump-api",
   "version": "1.0.0",
   "type": "module",
   "description": "TypeScript client library for PumpFun streaming data API",
@@ -52,20 +52,18 @@
     "video"
   ],
   "author": {
-    "name": "PumpFun Team",
-    "email": "support@pump.fun",
-    "url": "https://pump.fun"
+    "name": "Openworth"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pumpfun/pumpfun-api.git",
+    "url": "https://github.com/snowdamiz/pumpfun-api.git",
     "directory": "packages/api-client"
   },
   "bugs": {
-    "url": "https://github.com/pumpfun/pumpfun-api/issues"
+    "url": "https://github.com/snowdamiz/pumpfun-api/issues"
   },
-  "homepage": "https://github.com/pumpfun/pumpfun-api/tree/main/packages/api-client#readme",
+  "homepage": "https://github.com/snowdamiz/pumpfun-api/tree/main/packages/api-client#readme",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -115,6 +113,6 @@
   "private": true,
   "funding": {
     "type": "github",
-    "url": "https://github.com/sponsors/pumpfun"
+    "url": "https://github.com/sponsors/openworth"
   }
 }
