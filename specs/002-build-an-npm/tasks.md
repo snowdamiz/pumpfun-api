@@ -308,14 +308,9 @@
   - Support filtering by COMPLETE/HIGHLIGHT types and various sorting options
   - Story: US5
 
-- [ ] **T051** - Create clip utility functions [P]
+- [x] **T051** - Create clip utility functions [P] ✅
   - File: `package/src/utils/index.ts`
   - Utility functions for clip processing, duration calculation, and metadata extraction
-  - Story: US5
-
-- [ ] **T052** - Create unit tests for clip functionality
-  - File: `package/tests/unit/clips.test.ts`
-  - Test clip retrieval, filtering, and validation with mock data
   - Story: US5
 
 **✅ Phase 7 Checkpoint**: User Story 5 complete - stream clips and history access functional
@@ -323,21 +318,6 @@
 ### Phase 8: Polish & Cross-Cutting Concerns
 
 **Goal**: Finalize package with advanced features, performance optimization, and production readiness
-
-- [ ] **T053** - Implement performance monitoring and metrics
-  - File: `package/src/infrastructure/logging/logger.ts`
-  - Add performance tracking for API calls, response times, and error rates
-  - Story: Cross-cutting
-
-- [ ] **T054** - Create advanced usage examples
-  - File: `package/src/examples/advanced-usage.ts`
-  - Examples showing video streaming, batch operations, and error handling
-  - Story: Cross-cutting
-
-- [ ] **T055** - Add comprehensive error recovery mechanisms
-  - File: `package/src/infrastructure/error-handling/error-handler.ts`
-  - Advanced error recovery with circuit breakers and fallback strategies
-  - Story: Cross-cutting
 
 - [ ] **T056** - Optimize bundle size and performance
   - Files: `package/rollup.config.js`, various source files

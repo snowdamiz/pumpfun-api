@@ -32,6 +32,7 @@ import * as configurationExamples from './configuration-examples';
 import * as livestreamExamples from './livestream-examples';
 import * as bestPracticesExamples from './best-practices-examples';
 import * as advancedFilteringExamples from './advanced-filtering-examples';
+import * as clipUtilitiesExamples from './clip-utilities-examples';
 
 // Import constants and types
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
@@ -80,6 +81,13 @@ export const searchLiveStreamsExample = livestreamExamples.searchLiveStreamsExam
 export const getStreamStatisticsExample = livestreamExamples.getStreamStatisticsExample;
 export const getStreamClipsExample = livestreamExamples.getStreamClipsExample;
 export const demonstrateClipFilteringT050 = livestreamExamples.demonstrateClipFilteringT050;
+
+// T051 Clip Utilities Examples
+export const demonstrateDurationUtilities = clipUtilitiesExamples.demonstrateDurationUtilities;
+export const demonstrateMetadataExtraction = clipUtilitiesExamples.demonstrateMetadataExtraction;
+export const demonstrateSortingFilteringUtilities = clipUtilitiesExamples.demonstrateSortingFilteringUtilities;
+export const demonstrateDataValidation = clipUtilitiesExamples.demonstrateDataValidation;
+export const runClipUtilitiesExamples = clipUtilitiesExamples.runClipUtilitiesExamples;
 
 // Advanced Filtering Examples (T043)
 export const demonstratePredefinedFilters = advancedFilteringExamples.demonstratePredefinedFilters;
@@ -142,6 +150,12 @@ export async function runAllBasicExamples() {
 
     // T050 clip filtering examples
     clipFilteringT050: null as any,
+
+    // T051 clip utilities examples
+    durationUtilities: null as any,
+    metadataExtraction: null as any,
+    sortingFiltering: null as any,
+    dataValidation: null as any,
 
     // Advanced filtering examples (T043)
     predefinedFilters: null as any,
@@ -239,6 +253,21 @@ export async function runAllBasicExamples() {
     results.clipFilteringT050 = await demonstrateClipFilteringT050();
     console.log();
 
+    // T051 clip utilities examples
+    console.log('🛠️ T051 CLIP UTILITIES EXAMPLES');
+    console.log('='.repeat(REPEAT_COUNT_60));
+    results.durationUtilities = await demonstrateDurationUtilities();
+    console.log();
+
+    results.metadataExtraction = await demonstrateMetadataExtraction();
+    console.log();
+
+    results.sortingFiltering = await demonstrateSortingFilteringUtilities();
+    console.log();
+
+    results.dataValidation = await demonstrateDataValidation();
+    console.log();
+
     // Advanced filtering examples (T043)
     console.log('🔍 ADVANCED FILTERING EXAMPLES (T043)');
     console.log('='.repeat(REPEAT_COUNT_60));
@@ -287,6 +316,10 @@ export async function runAllBasicExamples() {
     console.log('   • Complex multi-criteria filtering');
     console.log('   • Compound filter queries with AND/OR logic');
     console.log('   • Performance optimization and metrics');
+    console.log('   • T051 clip utilities (duration calculation, metadata extraction)');
+    console.log('   • Data validation and quality assessment');
+    console.log('   • Clip sorting and filtering utilities');
+    console.log('   • Comprehensive analysis reporting');
     console.log('   • Error handling and rate limiting');
     console.log('   • Statistics and state management');
     console.log('   • Configuration management and lifecycle');
@@ -337,6 +370,13 @@ export const examples = {
 
   // T050 clip filtering examples
   demonstrateClipFilteringT050,
+
+  // T051 clip utilities examples
+  demonstrateDurationUtilities,
+  demonstrateMetadataExtraction,
+  demonstrateSortingFilteringUtilities,
+  demonstrateDataValidation,
+  runClipUtilitiesExamples,
 
   // Main runner
   runAllBasicExamples,
@@ -424,8 +464,9 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
   console.log('   8. Stream statistics demo (test getStreamStatistics)');
   console.log('   9. Stream clips demo (test getStreamClips)');
   console.log('   10. T050 clip filtering demo (advanced filtering and sorting)');
-  console.log('   11. Advanced filtering demo (T043 - custom filters, compound queries)');
-  console.log('   12. All examples (comprehensive demo)');
+  console.log('   11. T051 clip utilities demo (duration calculation, metadata extraction)');
+  console.log('   12. Advanced filtering demo (T043 - custom filters, compound queries)');
+  console.log('   13. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -571,6 +612,19 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'clip-utilities':
+    case 'duration-utilities':
+    case 'clip-utils':
+      runClipUtilitiesExamples()
+        .then(() => {
+          console.log('\n✅ T051 clip utilities demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 T051 clip utilities demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'advanced':
     case 'filtering':
     case 'advanced-filtering':
@@ -608,7 +662,8 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   search        - Search live streams demo (searchLiveStreams)');
       console.log('   statistics    - Stream statistics demo (getStreamStatistics)');
       console.log('   clips         - Stream clips demo (getStreamClips)');
-      console.log('   clip filter   - Clip filtering demo (advanced filtering and sorting)');
+      console.log('   clip-filter   - Clip filtering demo (advanced filtering and sorting)');
+      console.log('   clip-utils    - Clip utilities demo (duration, metadata, validation)');
       console.log(
         '   advanced      - Advanced filtering demo (T043 - custom filters, compound queries)'
       );
