@@ -783,7 +783,7 @@ export default runClipUtilitiesExamples;
 /**
  * Check if this file is being run directly and execute the examples
  */
-if (import.meta.url.endsWith('clip-utilities-examples.ts')) {
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('clip-utilities-examples.ts')) {
   console.log('🚀 T051 Clip Utilities Examples for PumpFun API Client');
   console.log('='.repeat(60));
   console.log('');

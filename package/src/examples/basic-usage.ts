@@ -33,6 +33,7 @@ import * as livestreamExamples from './livestream-examples';
 import * as bestPracticesExamples from './best-practices-examples';
 import * as advancedFilteringExamples from './advanced-filtering-examples';
 import * as clipUtilitiesExamples from './clip-utilities-examples';
+import * as livekitExamples from './livekit-examples';
 
 // Import constants and types
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
@@ -89,6 +90,12 @@ export const demonstrateSortingFilteringUtilities = clipUtilitiesExamples.demons
 export const demonstrateDataValidation = clipUtilitiesExamples.demonstrateDataValidation;
 export const runClipUtilitiesExamples = clipUtilitiesExamples.runClipUtilitiesExamples;
 
+// LiveKit Integration Examples (T041)
+export const basicLiveKitConnection = livekitExamples.basicLiveKitConnection;
+export const liveKitConnectionWithCallbacks = livekitExamples.liveKitConnectionWithCallbacks;
+export const liveKitErrorHandling = livekitExamples.liveKitErrorHandling;
+export const advancedConnectionManagement = livekitExamples.advancedConnectionManagement;
+
 // Advanced Filtering Examples (T043)
 export const demonstratePredefinedFilters = advancedFilteringExamples.demonstratePredefinedFilters;
 export const demonstrateCustomFilters = advancedFilteringExamples.demonstrateCustomFilters;
@@ -101,6 +108,8 @@ export const runAdvancedFilteringExamples = advancedFilteringExamples.runAdvance
 // Best Practices Examples
 export const productionBestPractices = bestPracticesExamples.productionBestPractices;
 export const clientLifecycleManagement = bestPracticesExamples.clientLifecycleManagement;
+
+// LiveKit Integration Examples (T041) are now imported from livekit-examples.ts
 
 // ============================================================================
 // Comprehensive Example Runner
@@ -147,6 +156,12 @@ export async function runAllBasicExamples() {
     joinStream: null as any,
     searchStreams: null as any,
     streamStatistics: null as any,
+
+    // LiveKit integration examples (T041)
+    liveKitBasic: null as any,
+    liveKitCallbacks: null as any,
+    liveKitErrorHandling: null as any,
+    liveKitAdvanced: null as any,
 
     // T050 clip filtering examples
     clipFilteringT050: null as any,
@@ -247,6 +262,21 @@ export async function runAllBasicExamples() {
     results.streamStatistics = await getStreamStatisticsExample();
     console.log();
 
+    // LiveKit integration examples (T041)
+    console.log('🔴 LIVEKIT INTEGRATION EXAMPLES (T041)');
+    console.log('='.repeat(REPEAT_COUNT_60));
+    results.liveKitBasic = await livekitExamples.basicLiveKitConnection();
+    console.log();
+
+    results.liveKitCallbacks = await livekitExamples.liveKitConnectionWithCallbacks();
+    console.log();
+
+    results.liveKitErrorHandling = await livekitExamples.liveKitErrorHandling();
+    console.log();
+
+    results.liveKitAdvanced = await livekitExamples.advancedConnectionManagement();
+    console.log();
+
     // T050 clip filtering examples
     console.log('🎬 T050 CLIP FILTERING EXAMPLES');
     console.log('='.repeat(REPEAT_COUNT_60));
@@ -309,6 +339,10 @@ export async function runAllBasicExamples() {
     console.log('   • LiveKit video streaming connections');
     console.log('   • Comprehensive video stream analysis');
     console.log('   • Live stream joining functionality');
+    console.log('   • Built-in LiveKit WebRTC integration (T041)');
+    console.log('   • LiveKit connection management and error handling');
+    console.log('   • Audio/video controls and WebRTC statistics');
+    console.log('   • Multiple LiveKit connection management');
     console.log('   • Keyword search across streams');
     console.log('   • Aggregate stream statistics');
     console.log('   • Advanced filtering with custom criteria (T043)');
@@ -377,6 +411,9 @@ export const examples = {
   demonstrateSortingFilteringUtilities,
   demonstrateDataValidation,
   runClipUtilitiesExamples,
+
+  // LiveKit integration examples (T041) - imported from livekit-examples
+  ...livekitExamples,
 
   // Main runner
   runAllBasicExamples,
@@ -448,7 +485,7 @@ export function quickTest() {
 /**
  * Check if this file is being run directly and execute appropriate demo
  */
-if (import.meta.url.endsWith('basic-usage.ts')) {
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('basic-usage.ts')) {
   console.log('🚀 PumpFun API Client - Basic Usage Examples');
   console.log('='.repeat(REPEAT_COUNT_60));
   console.log('');
@@ -625,6 +662,20 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
         });
       break;
 
+    case 'livekit-integration':
+    case 'livekit-webRTC':
+    case 'webrtc':
+    case 'connect-live':
+      livekitExamples.basicLiveKitConnection()
+        .then(() => {
+          console.log('\n✅ LiveKit integration demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 LiveKit integration demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'advanced':
     case 'filtering':
     case 'advanced-filtering':
@@ -664,6 +715,7 @@ if (import.meta.url.endsWith('basic-usage.ts')) {
       console.log('   clips         - Stream clips demo (getStreamClips)');
       console.log('   clip-filter   - Clip filtering demo (advanced filtering and sorting)');
       console.log('   clip-utils    - Clip utilities demo (duration, metadata, validation)');
+      console.log('   livekit-integration - LiveKit WebRTC integration demo (T041)');
       console.log(
         '   advanced      - Advanced filtering demo (T043 - custom filters, compound queries)'
       );

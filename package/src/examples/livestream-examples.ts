@@ -1475,8 +1475,9 @@ export async function getStreamClipsExample() {
 
         // Display details about the clips
         if (allClips.length > 0) {
+          const clipTypes = new Set(allClips.map(clip => clip.clipType));
           console.log(
-            `      📋 Clip Types: ${[...new Set(allClips.map(clip => clip.clipType))].join(', ')}`
+            `      📋 Clip Types: ${Array.from(clipTypes).join(', ')}`
           );
 
           const totalDuration = allClips.reduce((sum, clip) => sum + (clip.duration || 0), 0);

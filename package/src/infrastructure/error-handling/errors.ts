@@ -684,6 +684,34 @@ export class ErrorUtils {
 // Re-export commonly used error types for convenience
 export { PumpFunError as BaseError };
 
+/**
+ * LiveKit integration errors
+ */
+export class LiveKitError extends PumpFunError {
+  constructor(options: {
+    message: string;
+    code: string;
+    details?: Record<string, unknown>;
+    originalError?: unknown;
+  }) {
+    super({
+      ...options,
+      statusCode: 0, // Custom errors don't have HTTP status codes
+      isRetryable: false, // LiveKit integration errors are typically not retryable
+    });
+  }
+
+  protected getSpecificResolution(): string[] {
+    return [
+      'Install livekit-client as a peer dependency: npm install livekit-client',
+      'Check if you are in a browser environment with WebRTC support',
+      'Verify that the stream is currently live and accessible',
+      'Check your network connection and firewall settings',
+      'Refer to LiveKit documentation: https://docs.livekit.io',
+    ];
+  }
+}
+
 // Legacy export for backward compatibility
 export class PumpFunAPIError extends PumpFunError {
   // No additional constructor needed - inherits from PumpFunError

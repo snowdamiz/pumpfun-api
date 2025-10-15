@@ -66,6 +66,7 @@ export type {
 
 // Export enums as values, not types
 export { LogLevel, StreamStatus, HTTPMethod } from './api.types';
+export { ConnectionState } from './domain.types';
 
 export type {
   ClientState,
@@ -75,6 +76,9 @@ export type {
   RateLimiterState,
   StreamFilters,
   StreamAnalytics,
+  LiveKitConnectionOptions,
+  LiveStreamConnection,
+  ConnectionConfig,
 } from './domain.types';
 
 export type { APIError } from './common.types';

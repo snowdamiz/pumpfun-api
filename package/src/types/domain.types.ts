@@ -181,3 +181,142 @@ export interface StreamQualityMetrics {
   /** Timestamp of measurement */
   measuredAt: number;
 }
+
+// ============================================================================
+// LiveKit Integration Types
+// ============================================================================
+
+/**
+ * Enumeration for WebRTC connection states
+ */
+export enum ConnectionState {
+  /** No active connection */
+  DISCONNECTED = 'DISCONNECTED',
+  /** Connection attempt in progress */
+  CONNECTING = 'CONNECTING',
+  /** Connection established and ready */
+  CONNECTED = 'CONNECTED',
+  /** Reconnection attempt in progress */
+  RECONNECTING = 'RECONNECTING',
+  /** Connection is being closed */
+  DISCONNECTING = 'DISCONNECTING',
+  /** Connection failed with error */
+  FAILED = 'FAILED',
+}
+
+/**
+ * TypeScript interface defining connection configuration including video/audio elements and event callbacks
+ */
+export interface LiveKitConnectionOptions {
+  /** Target video element for playback */
+  videoElement?: HTMLVideoElement | null;
+  /** Target audio element for playback */
+  audioElement?: HTMLAudioElement | null;
+  /** Auto-connect on initialization */
+  autoConnect?: boolean;
+  /** Auto-play media */
+  autoPlay?: boolean;
+  /** Start muted */
+  muted?: boolean;
+  /** Enable video track */
+  videoEnabled?: boolean;
+  /** Enable audio track */
+  audioEnabled?: boolean;
+  /** Video quality preference */
+  preferredQuality?: 'auto' | 'high' | 'medium' | 'low';
+  /** Maximum reconnection attempts */
+  maxReconnectAttempts?: number;
+  /** Delay between reconnections */
+  reconnectDelayMs?: number;
+  /** Connection success callback */
+  onConnected?: (connection: LiveStreamConnection) => void;
+  /** Connection closed callback */
+  onDisconnected?: (connection: LiveStreamConnection) => void;
+  /** Error callback */
+  onError?: (error: Error, connection: LiveStreamConnection) => void;
+  /** Reconnection attempt callback */
+  onReconnecting?: (connection: LiveStreamConnection) => void;
+  /** State change callback */
+  onStateChange?: (state: ConnectionState, connection: LiveStreamConnection) => void;
+}
+
+/**
+ * Managed WebRTC connection object returned by connectToLiveStream() method
+ */
+export interface LiveStreamConnection {
+  /** Unique connection identifier */
+  id: string;
+  /** Associated token mint */
+  mintId: string;
+  /** LiveKit room name */
+  roomName: string;
+  /** Current connection state */
+  state: ConnectionState;
+  /** Connection status */
+  isConnected: boolean;
+  /** Connection creation timestamp */
+  createdAt: number;
+  /** Last activity timestamp */
+  lastActivity: number;
+  /** Number of reconnections */
+  reconnectionCount: number;
+  /** Audio track */
+  audioTrack?: MediaStreamTrack | null;
+  /** Video track */
+  videoTrack?: MediaStreamTrack | null;
+  /** Combined media stream */
+  mediaStream?: MediaStream | null;
+
+  /**
+   * Close connection and cleanup
+   */
+  disconnect(): Promise<void>;
+
+  /**
+   * Attempt reconnection
+   */
+  reconnect(): Promise<void>;
+
+  /**
+   * Get WebRTC statistics
+   */
+  getStats(): Promise<RTCStatsReport>;
+
+  /**
+   * Mute audio track
+   */
+  muteAudio(): void;
+
+  /**
+   * Unmute audio track
+   */
+  unmuteAudio(): void;
+
+  /**
+   * Mute video track
+   */
+  muteVideo(): void;
+
+  /**
+   * Unmute video track
+   */
+  unmuteVideo(): void;
+}
+
+/**
+ * Default configuration for LiveKit connections
+ */
+export interface ConnectionConfig {
+  /** Default maximum reconnection attempts */
+  defaultMaxReconnectAttempts: number;
+  /** Default reconnection delay */
+  defaultReconnectDelayMs: number;
+  /** Connection timeout */
+  connectionTimeoutMs: number;
+  /** Connection heartbeat interval */
+  heartbeatIntervalMs: number;
+  /** Enable WebRTC statistics collection */
+  enableStatistics: boolean;
+  /** Enable debug logging for connections */
+  enableDebugLogging: boolean;
+}
