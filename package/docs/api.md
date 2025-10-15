@@ -9,6 +9,8 @@ This comprehensive API reference covers all public methods, types, and configura
   - [Configuration Methods](#configuration-methods)
   - [Live Streaming Methods](#live-streaming-methods)
   - [Video Stream Analysis](#video-stream-analysis)
+  - [LiveKit WebRTC Integration](#livekit-webrtc-integration)
+  - [LiveKitStreamManager](#livekitstreammanager)
   - [Search and Filtering](#search-and-filtering)
   - [Stream Clips](#stream-clips)
   - [Utility Methods](#utility-methods)
@@ -427,6 +429,285 @@ if (joinResult.success) {
 } else {
   console.log('Failed to join stream:', joinResult.message);
 }
+```
+
+---
+
+## LiveKit WebRTC Integration
+
+### connectToLiveStream()
+
+```typescript
+public async connectToLiveStream(
+  mintId: string,
+  options?: LiveKitConnectionOptions
+): Promise<LiveStreamConnection>
+```
+
+Establishes a WebRTC connection to a live stream using built-in LiveKit integration. This method provides a seamless way to connect to live video streams with minimal boilerplate code.
+
+**Parameters:**
+- `mintId`: The mint identifier of the token to connect to
+- `options` (optional): `LiveKitConnectionOptions` - Connection configuration options
+
+**Returns:** Promise resolving to `LiveStreamConnection` object with WebRTC connection management
+
+**Example:**
+```typescript
+// Basic LiveKit connection
+const connection = await client.connectToLiveStream('7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU', {
+  videoElement: document.getElementById('video') as HTMLVideoElement,
+  audioElement: document.getElementById('audio') as HTMLAudioElement,
+  autoPlay: true,
+  videoEnabled: true,
+  audioEnabled: true,
+  onConnected: (connection) => {
+    console.log('✅ LiveKit connection established!', {
+      connectionId: connection.id,
+      roomName: connection.roomName,
+      hasVideo: !!connection.videoTrack,
+      hasAudio: !!connection.audioTrack,
+    });
+  },
+  onError: (error, connection) => {
+    console.error('❌ LiveKit connection error:', error.message);
+  },
+  onDisconnected: (connection) => {
+    console.log('🔌 LiveKit connection disconnected');
+  }
+});
+
+// Control the stream programmatically
+await connection.muteAudio();
+await connection.unmuteAudio();
+await connection.muteVideo();
+await connection.unmuteVideo();
+
+// Get connection statistics
+const stats = await connection.getStats();
+console.log('📊 Connection stats:', stats);
+
+// Disconnect when done
+await connection.disconnect();
+```
+
+**Connection Options:**
+```typescript
+interface LiveKitConnectionOptions {
+  videoElement?: HTMLVideoElement;         // Video element to attach stream
+  audioElement?: HTMLAudioElement;         // Audio element to attach stream
+  autoPlay?: boolean;                     // Auto-play media (default: true)
+  videoEnabled?: boolean;                 // Enable video track (default: true)
+  audioEnabled?: boolean;                 // Enable audio track (default: true)
+  muted?: boolean;                        // Start muted (default: false)
+  autoConnect?: boolean;                  // Auto-connect (default: true)
+  preferredQuality?: string;              // Preferred video quality
+  maxReconnectAttempts?: number;          // Max reconnection attempts
+  reconnectDelayMs?: number;              // Delay between reconnection attempts
+
+  // Event callbacks
+  onConnected?: (connection: LiveStreamConnection) => void;
+  onDisconnected?: (connection: LiveStreamConnection) => void;
+  onError?: (error: Error, connection: LiveStreamConnection) => void;
+  onStateChange?: (state: ConnectionState, connection: LiveStreamConnection) => void;
+  onReconnecting?: (connection: LiveStreamConnection) => void;
+}
+```
+
+**Error Handling:**
+The method will throw a `LiveKitError` if:
+- LiveKit SDK is not installed (install with: `npm install @livekit/client`)
+- No active LiveKit stream is found for the mint ID
+- Network issues prevent connection
+- Invalid parameters are provided
+
+---
+
+## LiveKitStreamManager
+
+The `LiveKitStreamManager` class provides advanced WebRTC connection management for complex streaming scenarios.
+
+### Constructor
+
+```typescript
+constructor(
+  client: PumpFunAPIClient,
+  logger: Logger,
+  config?: Partial<ConnectionConfig>
+)
+```
+
+Creates a new LiveKitStreamManager instance for advanced connection management.
+
+**Parameters:**
+- `client`: PumpFunAPIClient instance
+- `logger`: Logger instance for debugging
+- `config` (optional): Connection configuration
+
+**Example:**
+```typescript
+import { PumpFunAPIClient, LiveKitStreamManager } from '@pumpfun/api-client';
+
+const client = new PumpFunAPIClient();
+const streamManager = new LiveKitStreamManager(
+  client,
+  client.getLogger(),
+  {
+    defaultMaxReconnectAttempts: 5,
+    defaultReconnectDelayMs: 2000,
+    connectionTimeoutMs: 10000,
+    heartbeatIntervalMs: 5000,
+    enableStatistics: true,
+    enableDebugLogging: true,
+  }
+);
+```
+
+### connect()
+
+```typescript
+async connect(
+  mintId: string,
+  options?: LiveKitConnectionOptions
+): Promise<LiveStreamConnection>
+```
+
+Establishes a WebRTC connection with advanced management features.
+
+**Example:**
+```typescript
+const connection = await streamManager.connect('mint123', {
+  videoElement: document.getElementById('video') as HTMLVideoElement,
+  autoPlay: true,
+  onConnected: (connection) => {
+    console.log('Advanced connection established');
+  }
+});
+```
+
+### disconnect()
+
+```typescript
+async disconnect(connectionIdOrMintId: string): Promise<void>
+```
+
+Disconnects a connection and cleans up resources.
+
+**Example:**
+```typescript
+// Disconnect by mint ID
+await streamManager.disconnect('mint123');
+
+// Disconnect by connection ID
+await streamManager.disconnect('conn-abc-123');
+```
+
+### reconnect()
+
+```typescript
+async reconnect(connectionIdOrMintId: string): Promise<void>
+```
+
+Manually reconnects an existing connection.
+
+**Example:**
+```typescript
+await streamManager.reconnect('mint123');
+```
+
+### getConnectionState()
+
+```typescript
+getConnectionState(connectionIdOrMintId: string): ConnectionState
+```
+
+Gets the current connection state.
+
+**Example:**
+```typescript
+const state = streamManager.getConnectionState('mint123');
+console.log('Connection state:', state); // 'CONNECTED', 'DISCONNECTED', etc.
+```
+
+### getActiveConnections()
+
+```typescript
+getActiveConnections(): LiveStreamConnection[]
+```
+
+Returns all currently active connections.
+
+**Example:**
+```typescript
+const activeConnections = streamManager.getActiveConnections();
+console.log(`Active connections: ${activeConnections.length}`);
+```
+
+### Media Control Methods
+
+```typescript
+async muteAudio(connectionIdOrMintId: string): Promise<void>
+async unmuteAudio(connectionIdOrMintId: string): Promise<void>
+async muteVideo(connectionIdOrMintId: string): Promise<void>
+async unmuteVideo(connectionIdOrMintId: string): Promise<void>
+```
+
+Control audio and video tracks for connections.
+
+**Example:**
+```typescript
+await streamManager.muteAudio('mint123');
+await streamManager.unmuteVideo('mint123');
+```
+
+### cleanup()
+
+```typescript
+async cleanup(): Promise<void>
+```
+
+Cleans up all connections and resources. Useful for application shutdown.
+
+**Example:**
+```typescript
+// Cleanup during application shutdown
+await streamManager.cleanup();
+```
+
+### Advanced Connection Management
+
+The LiveKitStreamManager provides features like:
+- **Automatic Reconnection**: Configurable retry logic with exponential backoff
+- **Connection Monitoring**: Heartbeat and health checks
+- **Multiple Connections**: Manage multiple simultaneous streams
+- **Resource Cleanup**: Automatic cleanup of failed connections
+- **Statistics**: WebRTC stats and performance monitoring
+- **Event Handling**: Comprehensive event callbacks
+
+**Example with Multiple Connections:**
+```typescript
+const connections = [];
+
+// Connect to multiple streams
+const streams = ['mint1', 'mint2', 'mint3'];
+for (const mintId of streams) {
+  const connection = await streamManager.connect(mintId, {
+    videoElement: document.getElementById(`video-${mintId}`),
+    autoPlay: true,
+  });
+  connections.push(connection);
+}
+
+// Monitor all connections
+setInterval(() => {
+  const active = streamManager.getActiveConnections();
+  console.log(`Active connections: ${active.length}`);
+}, 5000);
+
+// Cleanup when done
+setTimeout(async () => {
+  await streamManager.cleanup();
+}, 300000); // 5 minutes
 ```
 
 ---
@@ -1236,6 +1517,95 @@ interface StreamStatistics {
     100+: number;                  // Streams with 100+ participants
   };
   lastUpdated: string;             // Statistics timestamp
+}
+```
+
+### LiveKitConnectionOptions
+
+Configuration options for LiveKit WebRTC connections.
+
+```typescript
+interface LiveKitConnectionOptions {
+  videoElement?: HTMLVideoElement;         // Video element to attach stream
+  audioElement?: HTMLAudioElement;         // Audio element to attach stream
+  autoPlay?: boolean;                     // Auto-play media (default: true)
+  videoEnabled?: boolean;                 // Enable video track (default: true)
+  audioEnabled?: boolean;                 // Enable audio track (default: true)
+  muted?: boolean;                        // Start muted (default: false)
+  autoConnect?: boolean;                  // Auto-connect (default: true)
+  preferredQuality?: string;              // Preferred video quality
+  maxReconnectAttempts?: number;          // Max reconnection attempts
+  reconnectDelayMs?: number;              // Delay between reconnection attempts
+
+  // Event callbacks
+  onConnected?: (connection: LiveStreamConnection) => void;
+  onDisconnected?: (connection: LiveStreamConnection) => void;
+  onError?: (error: Error, connection: LiveStreamConnection) => void;
+  onStateChange?: (state: ConnectionState, connection: LiveStreamConnection) => void;
+  onReconnecting?: (connection: LiveStreamConnection) => void;
+}
+```
+
+### LiveStreamConnection
+
+Managed WebRTC connection object with lifecycle methods.
+
+```typescript
+interface LiveStreamConnection {
+  id: string;                        // Unique connection identifier
+  mintId: string;                    // Associated token mint
+  roomName: string;                  // LiveKit room identifier
+  state: ConnectionState;              // Current connection state
+  isConnected: boolean;              // Connection status
+  createdAt: number;                  // Connection creation timestamp
+  lastActivity: number;               // Last activity timestamp
+  reconnectionCount: number;          // Number of reconnection attempts
+
+  // Media tracks
+  videoTrack?: MediaStreamTrack;          // Video track if available
+  audioTrack?: MediaStreamTrack;          // Audio track if available
+  mediaStream?: MediaStream;           // Combined media stream
+
+  // Connection lifecycle methods
+  disconnect(): Promise<void>;              // Disconnect and cleanup
+  reconnect(): Promise<void>;              // Attempt reconnection
+  getStats(): Promise<RTCStatsReport>;      // Get WebRTC statistics
+
+  // Media control methods
+  muteAudio(): Promise<void>;              // Mute audio track
+  unmuteAudio(): Promise<void>;            // Unmute audio track
+  muteVideo(): Promise<void>;              // Mute video track
+  unmuteVideo(): Promise<void>;            // Unmute video track
+}
+```
+
+### ConnectionState
+
+Enumeration of possible connection states.
+
+```typescript
+enum ConnectionState {
+  DISCONNECTED = 'DISCONNECTED',
+  CONNECTING = 'CONNECTING',
+  CONNECTED = 'CONNECTED',
+  RECONNECTING = 'RECONNECTING',
+  DISCONNECTING = 'DISCONNECTING',
+  FAILED = 'FAILED',
+}
+```
+
+### ConnectionConfig
+
+Configuration for LiveKitStreamManager.
+
+```typescript
+interface ConnectionConfig {
+  defaultMaxReconnectAttempts: number;  // Default max reconnection attempts
+  defaultReconnectDelayMs: number;         // Default reconnection delay
+  connectionTimeoutMs: number;            // Connection timeout
+  heartbeatIntervalMs: number;            // Heartbeat interval
+  enableStatistics: boolean;               // Enable statistics collection
+  enableDebugLogging: boolean;             // Enable debug logging
 }
 ```
 

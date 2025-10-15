@@ -20,6 +20,18 @@ import {
   ValidationError
 } from '../../infrastructure/error-handling/errors';
 
+// Try to import LiveKit SDK - will be undefined if not installed
+let LiveKitRoom: any = null;
+let LiveKitRoomEvent: any = null;
+
+try {
+  const livekitModule = require('@livekit/client');
+  LiveKitRoom = livekitModule.Room;
+  LiveKitRoomEvent = livekitModule.RoomEvent;
+} catch (error) {
+  // LiveKit not available - will be handled gracefully
+}
+
 /**
  * Helper class that manages WebRTC connections and handles LiveKit integration automatically
  */
@@ -29,6 +41,7 @@ export class LiveKitStreamManager {
   private connectionConfig: ConnectionConfig;
   private connectionTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private heartbeatIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private liveKitRooms: Map<string, any> = new Map(); // Map to store actual LiveKit Room instances
 
   constructor(
     private client: any, // PumpFunAPIClient - using any to avoid circular dependency
@@ -70,6 +83,14 @@ export class LiveKitStreamManager {
       } : undefined,
     });
 
+    // Check if LiveKit SDK is available
+    if (!LiveKitRoom) {
+      throw new ValidationError({
+        message: 'LiveKit SDK not installed. Install with: npm install @livekit/client',
+        details: { mintId },
+      });
+    }
+
     // Validate input parameters
     this.validateConnectParameters(mintId, options);
 
@@ -97,8 +118,8 @@ export class LiveKitStreamManager {
         });
       }
 
-      // Create connection object
-      const connection = await this.createConnection(
+      // Create connection object with real LiveKit integration
+      const connection = await this.createRealLiveKitConnection(
         connectionId,
         mintId,
         connectionInfo,
@@ -187,7 +208,25 @@ export class LiveKitStreamManager {
       // Clear timeouts and intervals
       this.clearConnectionTimers(connection.id);
 
-      // Close WebRTC connection (simulated - in real implementation would close actual WebRTC tracks)
+      // Disconnect LiveKit room if it exists
+      const liveKitRoom = this.liveKitRooms.get(connection.id);
+      if (liveKitRoom) {
+        this.logger.debug('Disconnecting LiveKit room', {
+          connectionId: connection.id,
+          roomName: connection.roomName,
+        });
+
+        // Remove event listeners
+        liveKitRoom.removeAllListeners();
+
+        // Disconnect from room
+        await liveKitRoom.disconnect();
+
+        // Remove from rooms map
+        this.liveKitRooms.delete(connection.id);
+      }
+
+      // Close WebRTC connection
       if (connection.mediaStream) {
         connection.mediaStream.getTracks().forEach(track => {
           track.stop();
@@ -420,15 +459,37 @@ export class LiveKitStreamManager {
   }
 
   /**
-   * Create a new LiveKit connection object
+   * Create a new LiveKit connection object with real SDK integration
    */
-  private async createConnection(
+  private async createRealLiveKitConnection(
     connectionId: string,
     mintId: string,
     connectionInfo: any,
     options?: LiveKitConnectionOptions
   ): Promise<LiveStreamConnection> {
     const now = Date.now();
+
+    // Create LiveKit room
+    const room = new LiveKitRoom({
+      adaptiveStream: true,
+      dynacast: true,
+      videoCaptureDefaults: {
+        width: 1280,
+        height: 720,
+        frameRate: 30,
+      },
+      audioCaptureDefaults: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+
+    // Store the LiveKit room instance
+    this.liveKitRooms.set(connectionId, room);
+
+    // Set up event listeners
+    this.setupLiveKitEventListeners(room, connectionId, mintId, options);
 
     // Create connection object
     const connection: LiveStreamConnection = {
@@ -456,98 +517,318 @@ export class LiveKitStreamManager {
       unmuteVideo: async () => this.unmuteVideo(connectionId),
     };
 
-    // Simulate WebRTC connection setup
-    // In a real implementation, this would establish actual WebRTC connection
-    await this.simulateWebRTCConnection(connection, options);
+    // Connect to LiveKit room
+    await this.connectToLiveKitRoom(room, connectionInfo, connection, options);
 
     return connection;
   }
 
   /**
-   * Simulate WebRTC connection establishment
-   * In production, this would use actual LiveKit SDK
+   * Set up LiveKit room event listeners
    */
-  private async simulateWebRTCConnection(
+  private setupLiveKitEventListeners(
+    room: any,
+    connectionId: string,
+    mintId: string,
+    options?: LiveKitConnectionOptions
+  ): void {
+    // Room connected
+    room.on(LiveKitRoomEvent.Connected, () => {
+      this.logger.debug('LiveKit room connected', {
+        connectionId,
+        mintId,
+        roomName: room.name,
+      });
+
+      const connection = this.findConnection(connectionId);
+      if (connection) {
+        this.updateConnectionState(connection, ConnectionState.CONNECTED);
+        connection.isConnected = true;
+
+        // Extract tracks from room
+        this.extractMediaTracks(room, connection);
+
+        // Attach to DOM elements if provided
+        if (connection.mediaStream && options) {
+          this.attachMediaToElements(connection, options);
+        }
+
+        // Trigger success callback
+        if (options?.onConnected) {
+          try {
+            options.onConnected(connection);
+          } catch (error) {
+            this.logger.warn('Error in onConnected callback', {
+              connectionId,
+              error: (error as Error).message,
+            });
+          }
+        }
+      }
+    });
+
+    // Room disconnected
+    room.on(LiveKitRoomEvent.Disconnected, () => {
+      this.logger.debug('LiveKit room disconnected', {
+        connectionId,
+        mintId,
+      });
+
+      const connection = this.findConnection(connectionId);
+      if (connection) {
+        this.updateConnectionState(connection, ConnectionState.DISCONNECTED);
+        connection.isConnected = false;
+
+        // Trigger disconnect callback
+        if (options?.onDisconnected) {
+          try {
+            options.onDisconnected(connection);
+          } catch (error) {
+            this.logger.warn('Error in onDisconnected callback', {
+              connectionId,
+              error: (error as Error).message,
+            });
+          }
+        }
+      }
+    });
+
+    // Connection failed
+    room.on(LiveKitRoomEvent.ConnectionQualityChanged, (quality: any) => {
+      this.logger.debug('LiveKit connection quality changed', {
+        connectionId,
+        mintId,
+        quality,
+      });
+    });
+
+    // Track subscribed
+    room.on(LiveKitRoomEvent.TrackSubscribed, (track: any, _publication: any, participant: any) => {
+      this.logger.debug('LiveKit track subscribed', {
+        connectionId,
+        mintId,
+        trackKind: track.kind,
+        participantIdentity: participant?.identity,
+      });
+
+      const connection = this.findConnection(connectionId);
+      if (connection) {
+        this.updateConnectionTracks(connection, track, options);
+      }
+    });
+
+    // Track unsubscribed
+    room.on(LiveKitRoomEvent.TrackUnsubscribed, (track: any, _publication: any, participant: any) => {
+      this.logger.debug('LiveKit track unsubscribed', {
+        connectionId,
+        mintId,
+        trackKind: track.kind,
+        participantIdentity: participant?.identity,
+      });
+
+      const connection = this.findConnection(connectionId);
+      if (connection) {
+        this.removeTrackFromConnection(connection, track);
+      }
+    });
+
+    // Handle connection errors
+    room.on(LiveKitRoomEvent.SignalConnected, () => {
+      this.logger.debug('LiveKit signal connected', {
+        connectionId,
+        mintId,
+      });
+    });
+
+    room.on(LiveKitRoomEvent.MediaDevicesError, (error: any) => {
+      this.logger.error('LiveKit media devices error', {
+        connectionId,
+        mintId,
+        error: error.message,
+      });
+
+      const connection = this.findConnection(connectionId);
+      if (connection && options?.onError) {
+        try {
+          options.onError(error, connection);
+        } catch (callbackError) {
+          this.logger.warn('Error in onError callback', {
+            connectionId,
+            error: (callbackError as Error).message,
+          });
+        }
+      }
+    });
+  }
+
+  /**
+   * Connect to LiveKit room with token
+   */
+  private async connectToLiveKitRoom(
+    room: any,
+    connectionInfo: any,
     connection: LiveStreamConnection,
     options?: LiveKitConnectionOptions
   ): Promise<void> {
-    this.logger.debug('Simulating WebRTC connection setup', {
-      connectionId: connection.id,
-      mintId: connection.mintId,
-      roomName: connection.roomName,
-    });
+    try {
+      // Connect to the LiveKit room
+      await room.connect(connectionInfo.serverUrl, connectionInfo.accessToken, {
+        autoSubscribe: true,
+        adaptiveStream: true,
+      });
 
-    // Simulate connection delay
-    await this.delay(1000);
+      this.logger.debug('Connected to LiveKit room', {
+        connectionId: connection.id,
+        roomName: room.name,
+      });
 
-    // Update connection state to connected
-    this.updateConnectionState(connection, ConnectionState.CONNECTED);
-    connection.isConnected = true;
+    } catch (error: any) {
+      this.logger.error('Failed to connect to LiveKit room', {
+        connectionId: connection.id,
+        roomName: connectionInfo.roomName,
+        error: error.message,
+      });
 
-    // Simulate media tracks (in real implementation, these would come from WebRTC)
-    if (options?.videoEnabled !== false) {
-      connection.videoTrack = {
-        enabled: true,
-        kind: 'video',
-        id: `video-${connection.id}`,
-        label: 'Video Track',
-        muted: false,
-        readyState: 'live',
-        stop: () => {},
-        getSettings: () => ({}),
-        getCapabilities: () => ({}),
-        getConstraints: () => ({}),
-      } as MediaStreamTrack;
-    }
+      this.updateConnectionState(connection, ConnectionState.FAILED);
 
-    if (options?.audioEnabled !== false) {
-      connection.audioTrack = {
-        enabled: !options?.muted,
-        kind: 'audio',
-        id: `audio-${connection.id}`,
-        label: 'Audio Track',
-        muted: options?.muted || false,
-        readyState: 'live',
-        stop: () => {},
-        getSettings: () => ({}),
-        getCapabilities: () => ({}),
-        getConstraints: () => ({}),
-      } as MediaStreamTrack;
-    }
-
-    // Create media stream
-    const tracks: MediaStreamTrack[] = [];
-    if (connection.videoTrack) tracks.push(connection.videoTrack);
-    if (connection.audioTrack) tracks.push(connection.audioTrack);
-
-    if (tracks.length > 0) {
-      connection.mediaStream = new MediaStream(tracks);
-    }
-
-    // Attach to DOM elements if provided
-    if (connection.mediaStream) {
-      if (options?.videoElement) {
-        options.videoElement.srcObject = connection.mediaStream;
-        if (options?.autoPlay) {
-          options.videoElement.play().catch(error => {
-            this.logger.warn('Failed to auto-play video', {
-              connectionId: connection.id,
-              error: (error as Error).message,
-            });
+      if (options?.onError) {
+        try {
+          options.onError(error, connection);
+        } catch (callbackError) {
+          this.logger.warn('Error in onError callback', {
+            connectionId: connection.id,
+            error: (callbackError as Error).message,
           });
         }
       }
 
-      if (options?.audioElement) {
-        options.audioElement.srcObject = connection.mediaStream;
-        if (options?.autoPlay) {
-          options.audioElement.play().catch(error => {
-            this.logger.warn('Failed to auto-play audio', {
-              connectionId: connection.id,
-              error: (error as Error).message,
-            });
-          });
+      throw error;
+    }
+  }
+
+  /**
+   * Extract media tracks from LiveKit room
+   */
+  private extractMediaTracks(room: any, connection: LiveStreamConnection): void {
+    // Get all remote tracks
+    const remoteTracks: MediaStreamTrack[] = [];
+
+    room.remoteParticipants.forEach((participant: any) => {
+      participant.tracks.forEach((trackPublication: any) => {
+        if (trackPublication.track) {
+          remoteTracks.push(trackPublication.track.mediaStreamTrack);
+
+          // Store track references
+          if (trackPublication.track.kind === 'audio') {
+            connection.audioTrack = trackPublication.track.mediaStreamTrack;
+          } else if (trackPublication.track.kind === 'video') {
+            connection.videoTrack = trackPublication.track.mediaStreamTrack;
+          }
         }
+      });
+    });
+
+    // Create media stream if we have tracks
+    if (remoteTracks.length > 0) {
+      connection.mediaStream = new MediaStream(remoteTracks);
+    }
+
+    this.logger.debug('Extracted media tracks', {
+      connectionId: connection.id,
+      audioTracks: remoteTracks.filter(t => t.kind === 'audio').length,
+      videoTracks: remoteTracks.filter(t => t.kind === 'video').length,
+    });
+  }
+
+  /**
+   * Update connection tracks when new tracks are subscribed
+   */
+  private updateConnectionTracks(
+    connection: LiveStreamConnection,
+    track: any,
+    options?: LiveKitConnectionOptions
+  ): void {
+    if (track.kind === 'audio') {
+      connection.audioTrack = track.mediaStreamTrack;
+    } else if (track.kind === 'video') {
+      connection.videoTrack = track.mediaStreamTrack;
+    }
+
+    // Update media stream
+    const tracks: MediaStreamTrack[] = [];
+    if (connection.audioTrack) tracks.push(connection.audioTrack);
+    if (connection.videoTrack) tracks.push(connection.videoTrack);
+
+    if (tracks.length > 0) {
+      connection.mediaStream = new MediaStream(tracks);
+
+      // Attach to DOM elements if provided
+      if (options) {
+        this.attachMediaToElements(connection, options);
+      }
+    }
+
+    this.logger.debug('Updated connection tracks', {
+      connectionId: connection.id,
+      trackKind: track.kind,
+      totalTracks: tracks.length,
+    });
+  }
+
+  /**
+   * Remove track from connection
+   */
+  private removeTrackFromConnection(connection: LiveStreamConnection, track: any): void {
+    if (track.kind === 'audio' && connection.audioTrack === track.mediaStreamTrack) {
+      connection.audioTrack = null;
+    } else if (track.kind === 'video' && connection.videoTrack === track.mediaStreamTrack) {
+      connection.videoTrack = null;
+    }
+
+    // Recreate media stream
+    const tracks: MediaStreamTrack[] = [];
+    if (connection.audioTrack) tracks.push(connection.audioTrack);
+    if (connection.videoTrack) tracks.push(connection.videoTrack);
+
+    connection.mediaStream = tracks.length > 0 ? new MediaStream(tracks) : null;
+
+    this.logger.debug('Removed track from connection', {
+      connectionId: connection.id,
+      trackKind: track.kind,
+      remainingTracks: tracks.length,
+    });
+  }
+
+  /**
+   * Attach media stream to DOM elements
+   */
+  private attachMediaToElements(
+    connection: LiveStreamConnection,
+    options: LiveKitConnectionOptions
+  ): void {
+    if (!connection.mediaStream) return;
+
+    if (options.videoElement) {
+      options.videoElement.srcObject = connection.mediaStream;
+      if (options.autoPlay) {
+        options.videoElement.play().catch(error => {
+          this.logger.warn('Failed to auto-play video', {
+            connectionId: connection.id,
+            error: (error as Error).message,
+          });
+        });
+      }
+    }
+
+    if (options.audioElement) {
+      options.audioElement.srcObject = connection.mediaStream;
+      if (options.autoPlay) {
+        options.audioElement.play().catch(error => {
+          this.logger.warn('Failed to auto-play audio', {
+            connectionId: connection.id,
+            error: (error as Error).message,
+          });
+        });
       }
     }
   }
@@ -565,8 +846,22 @@ export class LiveKitStreamManager {
       });
     }
 
-    // In a real implementation, this would return actual WebRTC stats
-    // For now, return a mock stats report
+    // Get LiveKit room for stats
+    const liveKitRoom = this.liveKitRooms.get(connectionId);
+    if (liveKitRoom) {
+      try {
+        // Get stats from LiveKit room
+        const stats = await liveKitRoom.getStats();
+        return stats;
+      } catch (error) {
+        this.logger.warn('Failed to get LiveKit stats', {
+          connectionId,
+          error: (error as Error).message,
+        });
+      }
+    }
+
+    // Fallback: return empty stats report
     return {} as RTCStatsReport;
   }
 
@@ -737,6 +1032,7 @@ export class LiveKitStreamManager {
   async cleanup(): Promise<void> {
     this.logger.info('Cleaning up LiveKitStreamManager', {
       activeConnections: this.activeConnections.size,
+      liveKitRooms: this.liveKitRooms.size,
     });
 
     // Disconnect all active connections
@@ -751,6 +1047,30 @@ export class LiveKitStreamManager {
 
     await Promise.all(disconnectPromises);
 
+    // Disconnect all remaining LiveKit rooms
+    const roomDisconnectPromises = Array.from(this.liveKitRooms.entries()).map(
+      async ([connectionId, room]) => {
+        try {
+          this.logger.debug('Disconnecting LiveKit room during cleanup', {
+            connectionId,
+          });
+
+          // Remove all event listeners
+          room.removeAllListeners();
+
+          // Disconnect room
+          await room.disconnect();
+        } catch (error) {
+          this.logger.warn('Error disconnecting LiveKit room during cleanup', {
+            connectionId,
+            error: (error as Error).message,
+          });
+        }
+      }
+    );
+
+    await Promise.all(roomDisconnectPromises);
+
     // Clear all timers
     for (const timeout of this.connectionTimeouts.values()) {
       clearTimeout(timeout);
@@ -764,6 +1084,7 @@ export class LiveKitStreamManager {
     this.reconnectionAttempts.clear();
     this.connectionTimeouts.clear();
     this.heartbeatIntervals.clear();
+    this.liveKitRooms.clear();
 
     this.logger.info('LiveKitStreamManager cleanup completed');
   }

@@ -37,12 +37,11 @@ import {
   createClipAnalysisReport,
 } from '../utils';
 import {
-  EXAMPLE_STREAM_LIMIT,
   STREAM_INFO_LIMIT,
   MAX_STREAM_INFO_TEST,
   INDEX_OFFSET,
-  TO_FIXED_DECIMALS,
 } from './constants';
+
 
 /**
  * Example 1: Basic Clip Duration Utilities
@@ -248,16 +247,18 @@ export async function demonstrateMetadataExtraction() {
           // Test metadata extraction for a sample clip
           if (clips.length > 0) {
             const sampleClip = clips[0];
-            const metadata = extractClipMetadata(sampleClip);
+            if (sampleClip) {
+              const metadata = extractClipMetadata(sampleClip);
 
-            console.log(`   🔍 Sample Clip Metadata:`);
-            console.log(`      🆔 ID: ${metadata.id}`);
-            console.log(`      🎭 Type: ${metadata.clipType}`);
-            console.log(`      ⏱️  Duration: ${metadata.durationFormatted}`);
-            console.log(`      👁️ Views: ${metadata.viewCount.toLocaleString()}`);
-            console.log(`      🔗 URL: ${metadata.url ? 'Available' : 'Not Available'}`);
-            console.log(`      📅 Created: ${metadata.createdAt || 'Unknown'}`);
-            console.log(`      ✅ Complete Metadata: ${metadata.hasAllMetadata ? 'YES' : 'NO'}`);
+              console.log(`   🔍 Sample Clip Metadata:`);
+              console.log(`      🆔 ID: ${metadata.id}`);
+              console.log(`      🎭 Type: ${metadata.clipType}`);
+              console.log(`      ⏱️  Duration: ${metadata.durationFormatted}`);
+              console.log(`      👁️ Views: ${metadata.viewCount.toLocaleString()}`);
+              console.log(`      🔗 URL: ${metadata.url ? 'Available' : 'Not Available'}`);
+              console.log(`      📅 Created: ${metadata.createdAt || 'Unknown'}`);
+              console.log(`      ✅ Complete Metadata: ${metadata.hasAllMetadata ? 'YES' : 'NO'}`);
+            }
           }
 
           metadataTests.push({
@@ -265,7 +266,7 @@ export async function demonstrateMetadataExtraction() {
             name: coin.name,
             symbol: coin.symbol,
             statistics,
-            sampleMetadata: clips.length > 0 ? extractClipMetadata(clips[0]) : null,
+            sampleMetadata: clips.length > 0 && clips[0] ? extractClipMetadata(clips[0]) : null,
           });
         } else {
           console.log(`   ⚠️ No clips found for metadata extraction`);
@@ -429,15 +430,18 @@ export async function demonstrateSortingFilteringUtilities() {
           console.log(`   📋 Sample Results:`);
           if (sortedByDuration.length > 0) {
             const longest = sortedByDuration[0];
-            console.log(`      🕒 Longest: ${longest.duration}s - ${longest.clipType}`);
+            if (longest && longest.duration !== undefined) {
+              console.log(`      🕒 Longest: ${longest.duration}s - ${longest.clipType || 'Unknown'}`);
+            }
           }
-          if (sortedByViews.length > 0 && sortedByViews[0].view_count) {
+          if (sortedByViews.length > 0 && sortedByViews[0]?.view_count !== undefined) {
             const mostViewed = sortedByViews[0];
-            console.log(`      👁️ Most Viewed: ${mostViewed.view_count.toLocaleString()} views - ${mostViewed.clipType}`);
+            console.log(`      👁️ Most Viewed: ${mostViewed.view_count?.toLocaleString() || 'N/A'} views - ${mostViewed.clipType || 'Unknown'}`);
           }
-          if (sortedByDate.length > 0 && sortedByDate[0].created_at) {
+          if (sortedByDate.length > 0 && sortedByDate[0]?.created_at) {
             const newest = sortedByDate[0];
-            console.log(`      📅 Newest: ${new Date(newest.created_at).toLocaleDateString()} - ${newest.clipType}`);
+            const createdDate = newest.created_at ? new Date(newest.created_at) : null;
+            console.log(`      📅 Newest: ${createdDate?.toLocaleDateString() || 'Unknown date'} - ${newest.clipType || 'Unknown'}`);
           }
 
           sortingTests.push({

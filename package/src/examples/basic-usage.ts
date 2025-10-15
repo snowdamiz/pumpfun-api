@@ -716,9 +716,15 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
     case 'livekit-webRTC':
     case 'webrtc':
     case 'connect-live':
-      livekitExamples.basicLiveKitConnection()
+      livekitExamples.runAllLiveKitExamplesWithStreamManager()
         .then(() => {
-          console.log('\n✅ LiveKit integration demo completed');
+          console.log('\n✅ Complete LiveKit integration demo completed');
+          console.log('🎉 This demonstrates production-ready LiveKit functionality with:');
+          console.log('   • Real LiveKit SDK integration');
+          console.log('   • WebRTC connection management');
+          console.log('   • Advanced streaming scenarios');
+          console.log('   • Built-in LiveKit integration (T041)');
+          console.log('   • LiveKitStreamManager helper class (T042)');
         })
         .catch(err => {
           console.error('\n💥 LiveKit integration demo failed:', err);
@@ -730,12 +736,48 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
     case 'livestream-manager':
     case 'livestreammanager':
     case 't042':
-      livekitExamples.basicLiveKitStreamManagerUsage()
+      livekitExamples.runAllLiveKitExamplesWithStreamManager()
         .then(() => {
           console.log('\n✅ LiveKitStreamManager demo completed');
         })
         .catch(err => {
           console.error('\n💥 LiveKitStreamManager demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
+    case 'livekit-basic':
+    case 'webrtc-basic':
+      livekitExamples.basicLiveKitConnection()
+        .then(() => {
+          console.log('\n✅ Basic LiveKit connection demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Basic LiveKit connection demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
+    case 'livekit-callbacks':
+    case 'webrtc-callbacks':
+      livekitExamples.liveKitConnectionWithCallbacks()
+        .then(() => {
+          console.log('\n✅ LiveKit callbacks demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 LiveKit callbacks demo failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
+    case 'livekit-multi':
+    case 'webrtc-multi':
+      livekitExamples.advancedConnectionManagement()
+        .then(() => {
+          console.log('\n✅ Multiple LiveKit connections demo completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Multiple LiveKit connections demo failed:', err);
           process.exit(EXIT_FAILURE);
         });
       break;
@@ -779,8 +821,19 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
       console.log('   clips         - Stream clips demo (getStreamClips)');
       console.log('   clip-filter   - Clip filtering demo (advanced filtering and sorting)');
       console.log('   clip-utils    - Clip utilities demo (duration, metadata, validation)');
-      console.log('   livekit-integration - LiveKit WebRTC integration demo (T041)');
-      console.log('   stream-manager - LiveKitStreamManager demo (T042 - advanced connection management)');
+      console.log('');
+      console.log('🔴 LiveKit Integration Options (Production-Ready WebRTC):');
+      console.log('   livekit-integration - Complete LiveKit integration demo (T041 + T042)');
+      console.log('   livekit-basic  - Basic LiveKit connection demo');
+      console.log('   livekit-callbacks - LiveKit with event callbacks demo');
+      console.log('   livekit-multi  - Multiple LiveKit connections demo');
+      console.log('   stream-manager - LiveKitStreamManager advanced management demo');
+      console.log('   webrtc        - Alias for livekit-integration');
+      console.log('   webrtc-basic  - Alias for livekit-basic');
+      console.log('   webrtc-callbacks - Alias for livekit-callbacks');
+      console.log('   webrtc-multi  - Alias for livekit-multi');
+      console.log('');
+      console.log('🔍 Advanced Options:');
       console.log(
         '   advanced      - Advanced filtering demo (T043 - custom filters, compound queries)'
       );
@@ -788,6 +841,7 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');
       console.log('Example: node basic-usage.ts quick');
+      console.log('Example: node basic-usage.ts livekit-integration');
       console.log('');
       console.log('Video Analysis Options:');
       console.log('   analysis      - Video stream analysis demo');
