@@ -11,22 +11,11 @@
       "import": "./dist/index.esm.js",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "./utils": {
-      "import": "./dist/utils/index.esm.js",
-      "require": "./dist/utils/index.js",
-      "types": "./dist/utils/index.d.ts"
-    },
-    "./client": {
-      "import": "./dist/client/index.esm.js",
-      "require": "./dist/client/index.js",
-      "types": "./dist/client/index.d.ts"
     }
   },
   "files": [
     "dist",
-    "README.md",
-    "LICENSE"
+    "README.md"
   ],
   "scripts": {
     "build": "rollup -c && node scripts/fix-imports.js",
