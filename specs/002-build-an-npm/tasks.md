@@ -324,19 +324,9 @@
   - Optimize bundle size, tree-shaking, and runtime performance
   - Story: Cross-cutting
 
-- [ ] **T057** - Create troubleshooting documentation
-  - File: `package/docs/troubleshooting.md`
-  - Common issues, debugging guides, and problem resolution
-  - Story: Cross-cutting
-
 - [ ] **T058** - Create API reference documentation
   - File: `package/docs/api.md`
   - Comprehensive API documentation for all public methods and types
-  - Story: Cross-cutting
-
-- [ ] **T059** - Final integration testing and validation
-  - File: `package/tests/integration/full-suite.test.ts`
-  - End-to-end testing covering all user stories and edge cases
   - Story: Cross-cutting
 
 ---
