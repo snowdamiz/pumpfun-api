@@ -119,15 +119,43 @@ export interface StreamClip {
   id: string;
   /** Associated token mint */
   mintId: string;
-  /** Clip type */
+  /** Clip type - COMPLETE = full previous stream, HIGHLIGHT = short segment */
   clipType: 'COMPLETE' | 'HIGHLIGHT';
-  /** Clip duration in seconds (optional) */
-  duration?: number;
-  /** View count (optional) */
+  /** Clip duration in seconds */
+  duration: number;
+  /** View count (for HIGHLIGHT clips) */
   view_count?: number;
-  /** Creation timestamp (optional) */
-  created_at?: string;
-  /** Clip playback URL (optional) */
+  /** Creation timestamp */
+  created_at: string;
+  /** Room name from LiveKit */
+  roomName: string;
+  /** Session identifier */
+  sessionId: string;
+  /** Stream start time */
+  startTime: string;
+  /** Stream end time */
+  endTime: string;
+  /** HLS playlist URL (for COMPLETE clips) */
+  playlistUrl?: string;
+  /** Direct MP4 URL (for HIGHLIGHT clips) */
+  mp4Url?: string;
+  /** S3 key for MP4 file */
+  mp4S3Key?: string;
+  /** MP4 file size in bytes */
+  mp4SizeBytes?: number;
+  /** MP4 creation timestamp */
+  mp4CreatedAt?: string;
+  /** Thumbnail URL */
+  thumbnailUrl: string;
+  /** S3 key for thumbnail */
+  thumbnailS3Key?: string;
+  /** S3 key for playlist */
+  playlistS3Key?: string;
+  /** Whether clip is hidden */
+  hidden: boolean;
+  /** Address of user who created highlight (for HIGHLIGHT clips) */
+  highlightCreatorAddress?: string;
+  /** Legacy clip URL field (deprecated) */
   clip_url?: string;
 }
 
@@ -223,6 +251,42 @@ export interface GetStreamClipsParams {
   limit?: number;
   /** Type of clips to retrieve */
   clipType?: 'COMPLETE' | 'HIGHLIGHT';
+}
+
+/**
+ * Comprehensive stream history result with statistics
+ */
+export interface StreamHistoryResult {
+  /** Associated token mint */
+  mintId: string;
+  /** Previous complete streams */
+  previousStreams: StreamClip[];
+  /** Highlight segments */
+  highlights: StreamClip[];
+  /** All clips combined and sorted */
+  allClips: StreamClip[];
+  /** Number of previous streams */
+  totalPreviousStreams: number;
+  /** Number of highlights */
+  totalHighlights: number;
+  /** Total number of clips */
+  totalClips: number;
+  /** Total duration of all clips in seconds */
+  totalDuration: number;
+  /** Total views across all clips */
+  totalViews: number;
+  /** Average clip duration in seconds */
+  averageDuration: number;
+  /** When the history was retrieved */
+  retrievedAt: string;
+  /** Filters applied to the results */
+  filters: {
+    maxPreviousStreams?: number;
+    maxHighlights?: number;
+    daysBack?: number;
+    sortBy?: string;
+    sortOrder?: string;
+  };
 }
 
 /**

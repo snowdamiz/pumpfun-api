@@ -23,6 +23,7 @@ import {
   StreamSearchResult,
   StreamStatistics,
   StreamClip,
+  StreamHistoryResult,
   LiveKitConnectionOptions,
   LiveStreamConnection,
   ConnectionState,
@@ -766,6 +767,269 @@ export class PumpFunAPIClient {
   ): Promise<ClipFilterResult> {
     this.ensureInitialized();
     return this.streamFilters.getClipsWithUrls(mintId, params);
+  }
+
+  // ============================================================================
+  // Previous Streams Video Fetching Methods
+  // ============================================================================
+
+  /**
+   * Get previous stream videos (full completed streams)
+   *
+   * This method retrieves complete previous stream recordings that represent
+   * the full duration of past livestreams. These are essentially the VOD
+   * (Video on Demand) versions of completed streams.
+   *
+   * @param mintId - The mint identifier of the token to get previous streams for
+   * @param limit - Optional maximum number of previous streams to return (default: 10)
+   * @returns Promise<StreamClip[]> - Array of previous stream videos
+   * @throws {PumpFunError} When the request fails or parameters are invalid
+   *
+   * @example
+   * ```typescript
+   * // Get all previous streams for a token
+   * const previousStreams = await client.getPreviousStreams('mintId');
+   *
+   * // Get the 5 most recent previous streams
+   * const recentStreams = await client.getPreviousStreams('mintId', 5);
+   *
+   * // Each result contains:
+   * // - playlistUrl: HLS streaming URL for full video playback
+   * // - duration: Full stream duration in seconds (e.g., 1800 = 30 minutes)
+   * // - thumbnailUrl: Thumbnail image URL
+   * // - startTime: When the stream started
+   * // - endTime: When the stream ended
+   * ```
+   */
+  public async getPreviousStreams(
+    mintId: string,
+    limit: number = 10
+  ): Promise<StreamClip[]> {
+    this.ensureInitialized();
+
+    try {
+      const previousStreams = await this.liveStreamsService.getStreamClips(mintId, 'COMPLETE', limit);
+
+      this.logger.info('Retrieved previous streams', {
+        mintId,
+        count: previousStreams.length,
+        limit,
+        clipType: 'COMPLETE'
+      });
+
+      return previousStreams;
+    } catch (error) {
+      this.logger.error('Failed to get previous streams', {
+        mintId,
+        limit,
+        error: ErrorUtils.formatForLogging(error),
+      });
+
+      const pumpFunError = this.errorHandler.handleError(error, 'getPreviousStreams', {
+        mintId,
+        limit,
+      });
+
+      throw pumpFunError;
+    }
+  }
+
+  /**
+   * Get stream highlights (short highlight segments)
+   *
+   * This method retrieves short highlight segments that are automatically
+   * generated from stream content. These are typically 15-60 seconds long
+   * and represent the most engaging moments from streams.
+   *
+   * @param mintId - The mint identifier of the token to get highlights for
+   * @param limit - Optional maximum number of highlights to return (default: 20)
+   * @returns Promise<StreamClip[]> - Array of highlight clips
+   * @throws {PumpFunError} When the request fails or parameters are invalid
+   *
+   * @example
+   * ```typescript
+   * // Get all highlights for a token
+   * const highlights = await client.getStreamHighlights('mintId');
+   *
+   * // Get the 10 most recent highlights
+   * const recentHighlights = await client.getStreamHighlights('mintId', 10);
+   *
+   * // Each result contains:
+   * // - mp4Url: Direct MP4 download URL
+   * // - duration: Short clip duration in seconds (typically 15-60)
+   * // - view_count: Number of views for the highlight
+   * // - highlightCreatorAddress: User who created the highlight
+   * ```
+   */
+  public async getStreamHighlights(
+    mintId: string,
+    limit: number = 20
+  ): Promise<StreamClip[]> {
+    this.ensureInitialized();
+
+    try {
+      const highlights = await this.liveStreamsService.getStreamClips(mintId, 'HIGHLIGHT', limit);
+
+      this.logger.info('Retrieved stream highlights', {
+        mintId,
+        count: highlights.length,
+        limit,
+        clipType: 'HIGHLIGHT'
+      });
+
+      return highlights;
+    } catch (error) {
+      this.logger.error('Failed to get stream highlights', {
+        mintId,
+        limit,
+        error: ErrorUtils.formatForLogging(error),
+      });
+
+      const pumpFunError = this.errorHandler.handleError(error, 'getStreamHighlights', {
+        mintId,
+        limit,
+      });
+
+      throw pumpFunError;
+    }
+  }
+
+  /**
+   * Get comprehensive stream history including both previous streams and highlights
+   *
+   * This method provides a complete view of all available video content for a token,
+   * including full previous streams and highlight segments, sorted by creation date.
+   *
+   * @param mintId - The mint identifier of the token to get stream history for
+   * @param options - Optional configuration for history retrieval
+   * @returns Promise<StreamHistoryResult> - Complete stream history with metadata
+   * @throws {PumpFunError} When the request fails or parameters are invalid
+   *
+   * @example
+   * ```typescript
+   * // Get complete stream history
+   * const history = await client.getStreamHistory('mintId');
+   *
+   * console.log(`Found ${history.totalPreviousStreams} previous streams`);
+   * console.log(`Found ${history.totalHighlights} highlights`);
+   * console.log(`Total watch time: ${history.totalDuration} seconds`);
+   *
+   * // Get only recent content (last 7 days)
+   * const recentHistory = await client.getStreamHistory('mintId', {
+   *   daysBack: 7,
+   *   maxPreviousStreams: 5,
+   *   maxHighlights: 20
+   * });
+   * ```
+   */
+  public async getStreamHistory(
+    mintId: string,
+    options: {
+      maxPreviousStreams?: number;
+      maxHighlights?: number;
+      daysBack?: number;
+      sortBy?: 'created_at' | 'duration' | 'view_count';
+      sortOrder?: 'ASC' | 'DESC';
+    } = {}
+  ): Promise<StreamHistoryResult> {
+    this.ensureInitialized();
+
+    const {
+      maxPreviousStreams = 20,
+      maxHighlights = 50,
+      daysBack,
+      sortBy = 'created_at',
+      sortOrder = 'DESC'
+    } = options;
+
+    try {
+      // Fetch both types of clips in parallel
+      const [previousStreams, highlights] = await Promise.all([
+        this.getPreviousStreams(mintId, maxPreviousStreams),
+        this.getStreamHighlights(mintId, maxHighlights)
+      ]);
+
+      // Combine and filter by date if specified
+      let allClips = [...previousStreams, ...highlights];
+
+      if (daysBack) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+        const cutoffTimestamp = cutoffDate.toISOString();
+
+        allClips = allClips.filter(clip => clip.created_at >= cutoffTimestamp);
+      }
+
+      // Sort combined results
+      allClips.sort((a, b) => {
+        let aValue: any, bValue: any;
+
+        switch (sortBy) {
+          case 'duration':
+            aValue = a.duration;
+            bValue = b.duration;
+            break;
+          case 'view_count':
+            aValue = a.view_count || 0;
+            bValue = b.view_count || 0;
+            break;
+          case 'created_at':
+          default:
+            aValue = new Date(a.created_at).getTime();
+            bValue = new Date(b.created_at).getTime();
+            break;
+        }
+
+        if (sortOrder === 'ASC') {
+          return aValue - bValue;
+        } else {
+          return bValue - aValue;
+        }
+      });
+
+      // Calculate statistics
+      const totalDuration = allClips.reduce((sum, clip) => sum + clip.duration, 0);
+      const totalViews = allClips.reduce((sum, clip) => sum + (clip.view_count || 0), 0);
+      const averageDuration = allClips.length > 0 ? totalDuration / allClips.length : 0;
+
+      const result: StreamHistoryResult = {
+        mintId,
+        previousStreams,
+        highlights,
+        allClips,
+        totalPreviousStreams: previousStreams.length,
+        totalHighlights: highlights.length,
+        totalClips: allClips.length,
+        totalDuration,
+        totalViews,
+        averageDuration,
+        retrievedAt: new Date().toISOString(),
+        filters: options
+      };
+
+      this.logger.info('Retrieved comprehensive stream history', {
+        mintId,
+        totalPreviousStreams: result.totalPreviousStreams,
+        totalHighlights: result.totalHighlights,
+        totalDuration: result.totalDuration,
+        filters: options
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to get stream history', {
+        mintId,
+        options,
+        error: ErrorUtils.formatForLogging(error),
+      });
+
+      const pumpFunError = this.errorHandler.handleError(error, 'getStreamHistory', {
+        mintId,
+        options,
+      });
+
+      throw pumpFunError;
+    }
   }
 
   /**

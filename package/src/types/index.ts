@@ -26,6 +26,7 @@ export type {
   LiveKitConnectionInfo,
   LiveKitRegion,
   StreamClip,
+  StreamHistoryResult,
   APIResponse,
   ArrayResponse,
   Pagination,
