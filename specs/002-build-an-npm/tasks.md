@@ -266,7 +266,7 @@
   - Story: US3
   - Acceptance: Class handles all WebRTC setup automatically and provides connection lifecycle management
 
-- [ ] **T043** - Add LiveKit dependency management
+- [x] **T043** - Add LiveKit dependency management ✅
   - File: `package/package.json`
   - Add LiveKit as optional peer dependency with proper version management
   - Story: US3
