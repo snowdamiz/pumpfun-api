@@ -290,13 +290,13 @@
   - Story: US3
   - Acceptance: Return type provides methods for connection management and stream control
 
-- [ ] **T047** - Add LiveKit integration to main client exports
+- [x] **T047** - Add LiveKit integration to main client exports
   - File: `package/src/index.ts`
   - Export LiveKitStreamManager and related types for user access
   - Story: US3
   - Acceptance: All LiveKit-related classes and types are properly exported
 
-- [ ] **T048** - Create LiveKit integration examples
+- [x] **T048** - Create LiveKit integration examples
   - File: `package/src/examples/livekit-integration.ts`
   - Create examples showing both built-in integration and helper class approaches
   - Story: US3
@@ -307,12 +307,6 @@
   - Test connectToLiveStream method and LiveKitStreamManager with mocked WebRTC connections
   - Story: US3
   - Acceptance: All LiveKit integration scenarios tested with proper mocking of browser WebRTC APIs
-
-- [ ] **T050** - Add LiveKit integration documentation
-  - File: `package/docs/livekit-integration.md`
-  - Comprehensive documentation for built-in LiveKit functionality with examples
-  - Story: US3
-  - Acceptance: Documentation covers both integration approaches with complete working examples
 
 **✅ Phase 5 Checkpoint**: User Story 3 complete - video stream analysis and built-in LiveKit integration functional
 
