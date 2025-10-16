@@ -1,46 +1,59 @@
 /**
- * PumpFun API Client
+ * PumpFun API Client v2.0 - Simplified API
  *
- * A TypeScript client library for accessing PumpFun's streaming data API,
- * including live stream discovery, video stream analysis with LiveKit integration,
- * and comprehensive error handling.
+ * A TypeScript client library for accessing PumpFun's streaming data API.
+ * This simplified version consolidates 28+ methods down to 8 core methods
+ * focused on essential user needs.
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @author PumpFun Team
  */
 
-// Export all types
-export * from './types';
+// ============================================================================
+// Main Exports (15 items instead of 40+)
+// ============================================================================
 
-// Export main client
-export * from './client/PumpFunAPIClient';
+// Core client
+export { PumpFunClient } from './client/PumpFunClient';
 
-// Export services explicitly to avoid conflicts
-export { LiveStreamsService } from './services/live/live-streams.service';
-export { LiveStreamInfoService } from './services/live/stream-info.service';
-export { StreamFilters } from './services/live/stream-filters.service';
-export { LiveKitStreamManager } from './services/live/LiveKitStreamManager';
-export { BaseService } from './services/base/base.service';
+// Convenience factory
+export { createClient } from './factory';
 
-// Export infrastructure components explicitly to avoid conflicts
-export { HTTPClient, createHTTPClient, httpClient } from './infrastructure/http/http-client';
-export { Logger, createLogger, logger } from './infrastructure/logging/logger';
+// Core types
+export type {
+  FilterCriteria,
+  FilteredStreams,
+  ContentFilters,
+  StreamContent,
+  StreamOptions,
+  StreamConnection,
+  VideoQuality,
+  ConnectionState
+} from './types';
+
+// Domain types
+export type {
+  StreamClip,
+  LiveStreamInfo
+} from './types/api.types';
+
+// LiveStream type alias
+export type { LiveStream } from './types/stream.types';
+
+// Error handling
 export {
-  RateLimiter,
-  createRateLimiter,
-  createLiveStreamingRateLimiter,
-  rateLimiter,
-} from './infrastructure/rate-limiting/rate-limiter';
-export { ErrorHandler } from './infrastructure/error-handling/error-handler';
-export { ConfigurationManager } from './infrastructure/config/config-manager';
-export * from './infrastructure/error-handling/errors';
+  StreamError,
+  ConnectionError,
+  ValidationError
+} from './errors';
 
-// Export validation utilities
-export * from './validation';
-
-// Export constants
-export * from './constants';
+// Utilities
+export {
+  isValidMintId,
+  parseStreamUrl,
+  DEFAULT_STREAM_OPTIONS
+} from './utils';
 
 // Default export
-import { PumpFunAPIClient } from './client/PumpFunAPIClient';
-export default PumpFunAPIClient;
+import { PumpFunClient } from './client/PumpFunClient';
+export default PumpFunClient;

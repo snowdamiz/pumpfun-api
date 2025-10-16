@@ -1,25 +1,15 @@
 /**
  * Main types module exports
  *
- * Centralizes all type exports from the different type modules.
+ * Simplified types exports for the new API structure.
  */
 
-// Export all API-related types
-export * from './api.types';
+// Export simplified API types
+export * from './stream.types';
+export * from './content.types';
+export * from './connection.types';
 
-// Export all configuration-related types
-export * from './config.types';
-
-// Export all domain model types
-export * from './domain.types';
-
-// Export all common utility types
-export * from './common.types';
-
-// Export NUMERIC_CONSTANTS as value to avoid type/value issues
-export { NUMERIC_CONSTANTS } from './common.types';
-
-// Re-export commonly used types for convenience
+// Export core API types that are still needed
 export type {
   LiveCoin,
   LiveStreamInfo,
@@ -35,7 +25,21 @@ export type {
   StreamStatistics,
   JurisdictionResponse,
   JoinLiveStreamResponse,
+  StreamContentFilters,
+  StreamContentResult
 } from './api.types';
+
+// Export configuration-related types
+export * from './config.types';
+
+// Export domain model types
+export * from './domain.types';
+
+// Export common utility types
+export * from './common.types';
+
+// Export NUMERIC_CONSTANTS as value to avoid type/value issues
+export { NUMERIC_CONSTANTS } from './common.types';
 
 export type {
   ClientConfig,
@@ -44,7 +48,6 @@ export type {
   LoggerConfig,
   ValidatedConfig,
   ErrorHandlerConfig,
-  LiveStreamsServiceConfig,
   PerformanceMetrics,
   HTTPClientConfig,
 } from './config.types';
@@ -54,8 +57,7 @@ export type {
   LogEntry,
 } from './common.types';
 
-// Export enums as values, not types
-export { LogLevel, StreamStatus, HTTPMethod } from './api.types';
+// Export ConnectionState from domain.types
 export { ConnectionState } from './domain.types';
 
 export type {
@@ -64,9 +66,6 @@ export type {
   RateLimitState,
   RateLimitInfo,
   RateLimiterState,
-  StreamFilters,
-  LiveKitConnectionOptions,
-  LiveStreamConnection,
   ConnectionConfig,
 } from './domain.types';
 
@@ -79,16 +78,3 @@ export {
   LIVE_STREAMING_RATE_LIMIT_CONFIG,
   DEFAULT_LOGGER_CONFIG,
 } from './config.types';
-
-// Export advanced filtering types from stream-filters.service
-export type {
-  StreamFilterFunction,
-  AdvancedFilterCriteria,
-  AdvancedFilterResult,
-  CompoundFilterQuery,
-  FilterGroup,
-  ClipFilterCriteria,
-  ClipSortOptions,
-  ClipFilterParams,
-  ClipFilterResult,
-} from '../services/live/stream-filters.service';

@@ -1,12 +1,27 @@
 /**
- * Utilities exports for backward compatibility
- *
- * This file re-exports utilities from the new infrastructure structure
- * to maintain backward compatibility with existing imports.
+ * Utilities exports for simplified API
  */
 
-// Filter Builders
-export * from './filter-builders';
+// Simplified API utilities
+export * from './stream-helpers';
+export { mapToStreamError, createContextualError, StreamError, ConnectionError } from './error-mapping';
+export { isValidMintId, validateFilterCriteria, validateContentFilters } from './validation';
+
+// Export DEFAULT_STREAM_OPTIONS from client
+export { DEFAULT_STREAM_OPTIONS } from '../client/PumpFunClient';
+
+/**
+ * Parse stream URL to extract mint ID
+ */
+export function parseStreamUrl(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/');
+    return pathParts[pathParts.length - 1] || null;
+  } catch {
+    return null;
+  }
+}
 
 // HTTP Client
 export {
@@ -18,14 +33,6 @@ export {
 
 // Logger
 export { Logger, createLogger, logger } from '../infrastructure/logging/logger';
-
-// Rate Limiter
-export {
-  RateLimiter,
-  createRateLimiter,
-  createLiveStreamingRateLimiter,
-  rateLimiter,
-} from '../infrastructure/rate-limiting/rate-limiter';
 
 // Error Handler
 export { ErrorHandler } from '../infrastructure/error-handling/error-handler';
