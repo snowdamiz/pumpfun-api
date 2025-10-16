@@ -98,20 +98,6 @@ export interface RateLimiterState {
 }
 
 // ============================================================================
-// Event Handler Types
-// ============================================================================
-
-/**
- * Type for event handlers
- */
-export type EventHandler<T = any> = (data: T) => void;
-
-/**
- * Type for async event handlers
- */
-export type AsyncEventHandler<T = any> = (data: T) => Promise<void>;
-
-// ============================================================================
 // Stream Domain Types
 // ============================================================================
 
@@ -132,54 +118,6 @@ export interface StreamFilters {
   /** Filter by creation time range */
   createdAfter?: number;
   createdBefore?: number;
-}
-
-/**
- * Stream analytics data
- */
-export interface StreamAnalytics {
-  /** Stream ID */
-  streamId: number;
-  /** Token mint */
-  mintId: string;
-  /** Participant count over time */
-  participantHistory: Array<{
-    timestamp: number;
-    count: number;
-  }>;
-  /** Message frequency over time */
-  messageHistory: Array<{
-    timestamp: number;
-    count: number;
-  }>;
-  /** Peak participant count */
-  peakParticipants: number;
-  /** Average session duration */
-  averageSessionDuration: number;
-  /** Total messages sent */
-  totalMessages: number;
-}
-
-/**
- * Stream quality metrics
- */
-export interface StreamQualityMetrics {
-  /** Stream ID */
-  streamId: number;
-  /** Video quality score */
-  videoQuality: number;
-  /** Audio quality score */
-  audioQuality: number;
-  /** Latency in milliseconds */
-  latency: number;
-  /** Frame rate */
-  frameRate: number;
-  /** Bitrate */
-  bitrate: number;
-  /** Drop rate percentage */
-  dropRate: number;
-  /** Timestamp of measurement */
-  measuredAt: number;
 }
 
 // ============================================================================

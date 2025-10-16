@@ -27,9 +27,6 @@ export type {
   LiveKitRegion,
   StreamClip,
   StreamHistoryResult,
-  APIResponse,
-  ArrayResponse,
-  Pagination,
   GetLiveCoinsParams,
   GetStreamClipsParams,
   SearchLiveStreamsParams,
@@ -37,12 +34,7 @@ export type {
   VideoStreamAnalysis,
   StreamStatistics,
   JurisdictionResponse,
-  SolPriceResponse,
   JoinLiveStreamResponse,
-  StreamParticipant,
-  StreamQualityMetrics,
-  LiveStreamSession,
-  StreamRecording,
 } from './api.types';
 
 export type {
@@ -60,9 +52,6 @@ export type {
 export type {
   LogContext,
   LogEntry,
-  EventHandler,
-  AsyncEventHandler,
-  DeepPartial,
 } from './common.types';
 
 // Export enums as values, not types
@@ -76,7 +65,6 @@ export type {
   RateLimitInfo,
   RateLimiterState,
   StreamFilters,
-  StreamAnalytics,
   LiveKitConnectionOptions,
   LiveStreamConnection,
   ConnectionConfig,

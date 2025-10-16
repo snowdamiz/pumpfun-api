@@ -14,6 +14,7 @@ import {
   RateLimitState,
   LiveCoin,
   GetLiveCoinsParams,
+  StreamOptions,
   LiveStreamInfo,
   LiveKitConnectionInfo,
   ValidatedConfig,
@@ -27,6 +28,7 @@ import {
   LiveKitConnectionOptions,
   LiveStreamConnection,
   ConnectionState,
+  JurisdictionResponse
 } from '../types';
 import {
   AdvancedFilterCriteria,
@@ -38,9 +40,6 @@ import {
   StreamFilters,
 } from '../services/live/stream-filters.service';
 
-interface JurisdictionResponse {
-  valid: boolean;
-}
 import { HTTPClient } from '../infrastructure/http/http-client';
 import { Logger } from '../infrastructure/logging/logger';
 import { RateLimiter } from '../infrastructure/rate-limiting/rate-limiter';
@@ -163,7 +162,7 @@ export class PumpFunAPIClient {
     this.streamFilters = new StreamFilters(
       this.logger,
       this.errorHandler,
-      (params?: GetLiveCoinsParams) => this.liveStreamsService.getLiveCoins(params),
+      (options?: StreamOptions) => this.liveStreamsService.getLiveStreams(options),
       (mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number) =>
         this.liveStreamsService.getStreamClips(mintId, clipType, limit)
     );
@@ -197,69 +196,46 @@ export class PumpFunAPIClient {
    */
 
   /**
-   * Get currently live streaming coins
+   * Get live streams with comprehensive filtering options
+   *
+   * This is the primary method for retrieving live streams, supporting all
+   * filtering and sorting options that were previously spread across multiple methods.
+   *
+   * @param options - Optional filtering and sorting parameters
+   * @returns Promise<LiveCoin[]> - Array of live streams matching the criteria
+   *
+   * @example
+   * ```typescript
+   * // Get all live streams
+   * const streams = await client.getLiveStreams();
+   *
+   * // Get active streams with minimum participants
+   * const activeStreams = await client.getLiveStreams({
+   *   minParticipants: 5,
+   *   limit: 20
+   * });
+   *
+   * // Get top streams by participant count
+   * const topStreams = await client.getLiveStreams({
+   *   sortBy: 'participants',
+   *   sortOrder: 'desc',
+   *   limit: 10
+   * });
+   *
+   * // Get only streams with titles
+   * const titledStreams = await client.getLiveStreams({
+   *   includeTitledOnly: true,
+   *   limit: 15
+   * });
+   * ```
    */
-  public async getLiveCoins(params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
+  public async getLiveStreams(options?: StreamOptions): Promise<LiveCoin[]> {
     this.ensureInitialized();
-    return this.liveStreamsService.getLiveCoins(params);
+    return this.liveStreamsService.getLiveStreams(options);
   }
 
-  /**
-   * Get active streams with minimum participants
-   */
-  public async getActiveStreams(
-    minParticipants: number = 1,
-    params?: GetLiveCoinsParams
-  ): Promise<LiveCoin[]> {
-    this.ensureInitialized();
-    return this.liveStreamsService.getActiveStreams(minParticipants, params);
-  }
-
-  /**
-   * Get top live streams by participant count
-   */
-  public async getTopLiveStreams(
-    limit: number = 10,
-    params?: GetLiveCoinsParams
-  ): Promise<LiveCoin[]> {
-    this.ensureInitialized();
-    return this.liveStreamsService.getTopLiveStreams(limit, params);
-  }
-
-  /**
-   * Get top active streams (combination of active and top)
-   */
-  public async getTopActiveStreams(
-    limit: number = 10,
-    minParticipants: number = 1
-  ): Promise<LiveCoin[]> {
-    this.ensureInitialized();
-    return this.liveStreamsService.getTopActiveStreams(limit, minParticipants);
-  }
-
-  /**
-   * Get streams with meaningful titles
-   */
-  public async getTitledStreams(
-    limit: number = 10,
-    params?: GetLiveCoinsParams
-  ): Promise<LiveCoin[]> {
-    this.ensureInitialized();
-    return this.liveStreamsService.getTitledStreams(limit, params);
-  }
-
-  /**
-   * Get titled active streams
-   */
-  public async getTitledActiveStreams(
-    limit: number = 10,
-    minParticipants: number = 1,
-    params?: GetLiveCoinsParams
-  ): Promise<LiveCoin[]> {
-    this.ensureInitialized();
-    return this.liveStreamsService.getTitledActiveStreams(limit, minParticipants, params);
-  }
-
+  
+  
   /**
    * Search live streams by keyword across multiple fields
    *

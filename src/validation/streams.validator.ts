@@ -19,9 +19,9 @@ export class LiveStreamsValidator {
   }
 
   /**
-   * Validate getLiveCoins parameters
+   * Validate getLiveStreams parameters
    */
-  validateGetLiveCoinsParams(params: Required<GetLiveCoinsParams>): void {
+  validateGetLiveStreamsParams(params: Required<GetLiveCoinsParams>): void {
     const errors: string[] = [];
 
     // Validate offset
@@ -59,9 +59,9 @@ export class LiveStreamsValidator {
 
     if (errors.length > 0) {
       throw new ConfigurationError({
-        message: `getLiveCoins parameter validation failed:\n${errors.map((error, index) => `  ${index + 1}. ${error}`).join('\n')}`,
+        message: `getLiveStreams parameter validation failed:\n${errors.map((error, index) => `  ${index + 1}. ${error}`).join('\n')}`,
         details: {
-          operation: 'getLiveCoins',
+          operation: 'getLiveStreams',
           providedParams: params,
           validationErrors: errors,
         },

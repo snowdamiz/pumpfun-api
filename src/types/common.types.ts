@@ -102,61 +102,6 @@ export enum LogLevel {
   CRITICAL = 'CRITICAL',
 }
 
-/**
- * Enumeration for HTTP methods
- */
-export enum HTTPMethod {
-  GET = 'GET',
-  POST = 'POST',
-  PUT = 'PUT',
-  DELETE = 'DELETE',
-  PATCH = 'PATCH',
-  HEAD = 'HEAD',
-  OPTIONS = 'OPTIONS',
-}
-
-/**
- * Enumeration for stream states
- */
-export enum StreamStatus {
-  STARTING = 'STARTING',
-  LIVE = 'LIVE',
-  ENDING = 'ENDING',
-  ENDED = 'ENDED',
-  ERROR = 'ERROR',
-}
-
-// ============================================================================
-// Utility Types
-// ============================================================================
-
-/**
- * Make all properties in T optional recursively
- */
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
-
-/**
- * Omit certain properties from T
- */
-export type OmitProperties<T, K extends keyof T> = Omit<T, K>;
-
-/**
- * Pick certain properties from T
- */
-export type PickProperties<T, K extends keyof T> = Pick<T, K>;
-
-/**
- * Type for event handlers
- */
-export type EventHandler<T = any> = (data: T) => void;
-
-/**
- * Type for async event handlers
- */
-export type AsyncEventHandler<T = any> = (data: T) => Promise<void>;
-
 // ============================================================================
 // Constants
 // ============================================================================

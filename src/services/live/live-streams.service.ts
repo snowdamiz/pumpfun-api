@@ -8,6 +8,7 @@
 import {
   LiveCoin,
   GetLiveCoinsParams,
+  StreamOptions,
   LiveStreamInfo,
   LiveKitConnectionInfo,
   LiveStreamsServiceConfig,
@@ -56,46 +57,73 @@ export class LiveStreamsService {
     this.validator = new LiveStreamsValidator(logger);
     this.requestHandler = new LiveStreamsRequestHandler(config, httpClient, logger);
     this.streamInfoService = new LiveStreamInfoService(config, logger);
-    this.streamFilters = new StreamFilters(logger, errorHandler, (params?: GetLiveCoinsParams) =>
-      this.getLiveCoins(params)
+    this.streamFilters = new StreamFilters(
+      logger,
+      errorHandler,
+      (options?: StreamOptions) => this.getLiveStreams(options),
+      (mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number) =>
+        this.getStreamClips(mintId, clipType, limit)
     );
   }
 
   /**
-   * Get currently live streaming coins
+   * Get live streams with comprehensive filtering options
+   *
+   * This is the primary method for retrieving live streams, supporting all
+   * filtering and sorting options that were previously spread across multiple methods.
+   *
+   * @param options - Optional filtering and sorting parameters
+   * @returns Promise<LiveCoin[]> - Array of live streams matching the criteria
    */
-  async getLiveCoins(params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
-    // Set default parameter values
-    const defaultParams: Required<GetLiveCoinsParams> = {
-      offset: 0,
+  async getLiveStreams(options?: StreamOptions): Promise<LiveCoin[]> {
+    // Set default options
+    const defaultOptions: Required<StreamOptions> = {
+      minParticipants: 0,
       limit: 10,
-      sort: 'currently_live',
-      order: 'DESC',
+      includeTitledOnly: false,
+      sortBy: 'default',
+      sortOrder: 'desc',
       includeNsfw: false,
+      offset: 0,
     };
 
-    // Merge provided params with defaults
-    const mergedParams = { ...defaultParams, ...params };
+    // Merge provided options with defaults
+    const mergedOptions = { ...defaultOptions, ...options };
 
-    // Validate parameters
-    this.validator.validateGetLiveCoinsParams(mergedParams);
+    // Convert to GetLiveCoinsParams for the underlying API
+    const apiParams: GetLiveCoinsParams = {
+      offset: mergedOptions.offset,
+      limit: mergedOptions.limit,
+      includeNsfw: mergedOptions.includeNsfw,
+      sort: mergedOptions.sortBy === 'participants' ? 'participants' : 'currently_live',
+      order: mergedOptions.sortOrder.toUpperCase() as 'ASC' | 'DESC',
+    };
 
     try {
-      this.logger.info('Fetching live streaming coins...', {
+      this.logger.info('Fetching live streams with options...', {
         endpoint: '/coins/currently-live',
-        params: mergedParams,
+        options: mergedOptions,
+        apiParams,
         baseURL: this.config.baseURL,
       });
+
+      // Make direct API call for base streams
+      const requiredParams: Required<GetLiveCoinsParams> = {
+        offset: apiParams.offset ?? 0,
+        limit: apiParams.limit ?? 10,
+        sort: apiParams.sort ?? 'currently_live',
+        order: apiParams.order ?? 'DESC',
+        includeNsfw: apiParams.includeNsfw ?? false,
+      };
+
+      const queryString = this.requestHandler.buildQueryString(requiredParams);
+      const endpoint = `/coins/currently-live${queryString}`;
 
       // Apply rate limiting before making the request
       await this.rateLimiter.waitForRequest();
 
-      // Build query string
-      const queryString = this.requestHandler.buildQueryString(mergedParams);
-      const endpoint = `/coins/currently-live${queryString}`;
-
       // Enhanced request with specific error handling for API failures
-      const response = await this.requestHandler.executeLiveCoinsRequest(endpoint, mergedParams);
+      const response = await this.requestHandler.executeLiveCoinsRequest(endpoint, requiredParams);
 
       // Update statistics
       this.state.requestCount++;
@@ -105,31 +133,33 @@ export class LiveStreamsService {
       this.rateLimiter.recordRequest();
 
       // Validate response data with enhanced error handling
-      const liveCoins = this.validator.validateLiveCoinsResponseWithFallback(
-        response,
-        mergedParams
-      );
+      let streams = this.validator.validateLiveCoinsResponseWithFallback(response, requiredParams);
 
-      this.logger.info('Successfully fetched live streaming coins', {
-        count: liveCoins.length,
-        params: mergedParams,
-        hasMore: liveCoins.length === mergedParams.limit,
+      // Apply client-side filtering
+      streams = this.applyStreamFilters(streams, mergedOptions);
+
+      // Apply client-side sorting if needed
+      if (mergedOptions.sortBy === 'participants') {
+        streams = this.applyStreamSorting(streams, mergedOptions.sortOrder);
+      }
+
+      this.logger.info('Successfully fetched live streams', {
+        count: streams.length,
+        options: mergedOptions,
         responseTime: Date.now() - this.state.lastRequestTime,
       });
 
-      return liveCoins;
+      return streams;
     } catch (error) {
       this.state.errorCount++;
-      const pumpFunError = this.errorHandler.handleError(error, 'getLiveCoins', {
-        endpoint: '/coins/currently-live',
-        params: mergedParams,
-        baseURL: this.config.baseURL,
+      const pumpFunError = this.errorHandler.handleError(error, 'getLiveStreams', {
+        options: mergedOptions,
         requestTime: new Date().toISOString(),
       });
 
-      this.logger.error('Failed to fetch live streaming coins', {
+      this.logger.error('Failed to fetch live streams', {
         error: pumpFunError.toJSON(),
-        params: mergedParams,
+        options: mergedOptions,
         resolution: pumpFunError.getResolution(),
         errorCategory: pumpFunError.details?.errorCategory,
       });
@@ -138,62 +168,56 @@ export class LiveStreamsService {
     }
   }
 
+  
   /**
-   * Get active streams with minimum participants
+   * Apply client-side filters to streams
    */
-  async getActiveStreams(
-    minParticipants: number = 1,
-    params?: GetLiveCoinsParams
-  ): Promise<LiveCoin[]> {
-    return this.streamFilters.getActiveStreams(minParticipants, params);
+  private applyStreamFilters(streams: LiveCoin[], options: Required<StreamOptions>): LiveCoin[] {
+    let filteredStreams = [...streams];
+
+    // Filter by minimum participants
+    if (options.minParticipants > 0) {
+      filteredStreams = filteredStreams.filter(stream =>
+        stream.num_participants >= options.minParticipants
+      );
+    }
+
+    // Filter by titled streams only
+    if (options.includeTitledOnly) {
+      filteredStreams = filteredStreams.filter(stream =>
+        stream.livestream_title &&
+        stream.livestream_title.trim().length > 0
+      );
+    }
+
+    return filteredStreams;
   }
 
   /**
-   * Get top live streams by participant count
+   * Apply client-side sorting to streams
    */
-  async getTopLiveStreams(limit: number = 10, params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
-    return this.streamFilters.getTopLiveStreams(limit, params);
+  private applyStreamSorting(streams: LiveCoin[], sortOrder: 'asc' | 'desc'): LiveCoin[] {
+    return [...streams].sort((a, b) => {
+      const comparison = a.num_participants - b.num_participants;
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
   }
 
-  /**
-   * Get top active streams (combination of active and top)
-   */
-  async getTopActiveStreams(limit: number = 10, minParticipants: number = 1): Promise<LiveCoin[]> {
-    return this.streamFilters.getTopActiveStreams(limit, minParticipants);
-  }
-
-  /**
-   * Get streams with meaningful titles
-   */
-  async getTitledStreams(limit: number = 10, params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
-    return this.streamFilters.getTitledStreams(limit, params);
-  }
-
-  /**
-   * Get titled active streams
-   */
-  async getTitledActiveStreams(
-    limit: number = 10,
-    minParticipants: number = 1,
-    params?: GetLiveCoinsParams
-  ): Promise<LiveCoin[]> {
-    return this.streamFilters.getTitledActiveStreams(limit, minParticipants, params);
-  }
-
+  
   /**
    * Apply advanced filtering with custom criteria
    */
   async applyAdvancedFilters(
     criteria: AdvancedFilterCriteria,
-    params?: GetLiveCoinsParams
+    options?: StreamOptions
   ): Promise<AdvancedFilterResult> {
     this.logger.info('Applying advanced filters via LiveStreamsService', {
       criteriaSummary: this.summarizeCriteria(criteria),
-      params,
+      options,
     });
 
     try {
-      return await this.streamFilters.applyAdvancedFilters(criteria, params);
+      return await this.streamFilters.applyAdvancedFilters(criteria, options);
     } catch (error) {
       this.logger.error('Failed to apply advanced filters via LiveStreamsService', {
         criteria,
@@ -208,16 +232,16 @@ export class LiveStreamsService {
    */
   async applyCompoundFilter(
     query: CompoundFilterQuery,
-    params?: GetLiveCoinsParams
+    options?: StreamOptions
   ): Promise<AdvancedFilterResult> {
     this.logger.info('Applying compound filter query via LiveStreamsService', {
       groupCount: query.groups.length,
       groupOperator: query.groupOperator,
-      params,
+      options,
     });
 
     try {
-      return await this.streamFilters.applyCompoundFilter(query, params);
+      return await this.streamFilters.applyCompoundFilter(query, options);
     } catch (error) {
       this.logger.error('Failed to apply compound filter via LiveStreamsService', {
         query,
@@ -609,11 +633,9 @@ export class LiveStreamsService {
     try {
       // Fetch live streaming data with a reasonable limit to calculate statistics
       // Using a higher limit to get comprehensive data for statistics
-      const liveCoins = await this.getLiveCoins({
+      const liveCoins = await this.getLiveStreams({
         limit: 100, // Get up to 100 live streams for statistics
         includeNsfw: false, // Exclude NSFW from general statistics
-        sort: 'currently_live',
-        order: 'DESC',
       });
 
       // Calculate basic statistics

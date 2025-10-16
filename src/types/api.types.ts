@@ -160,50 +160,6 @@ export interface StreamClip {
 }
 
 // ============================================================================
-// Response Wrappers
-// ============================================================================
-
-/**
- * Standard wrapper for API responses
- */
-export interface APIResponse<T> {
-  /** Request success status */
-  success: boolean;
-  /** Response data (optional) */
-  data?: T;
-  /** Error information (optional) */
-  error?: APIError;
-  /** Response timestamp */
-  timestamp: string;
-  /** Response headers (optional) */
-  headers?: Record<string, string>;
-}
-
-/**
- * Wrapper for array responses with pagination
- */
-export interface ArrayResponse<T> extends APIResponse<T[]> {
-  /** Pagination information (optional) */
-  pagination?: Pagination;
-}
-
-/**
- * Pagination metadata
- */
-export interface Pagination {
-  /** Items per page */
-  limit: number;
-  /** Items skipped */
-  offset: number;
-  /** Total items */
-  total: number;
-  /** More items available */
-  hasMore: boolean;
-  /** Current page number (optional) */
-  page?: number;
-}
-
-// ============================================================================
 // API Response Types
 // ============================================================================
 
@@ -212,15 +168,7 @@ export interface Pagination {
  */
 export interface JurisdictionResponse {
   /** Whether the jurisdiction is valid */
-  is_valid: boolean;
-}
-
-/**
- * Response from SOL price endpoint
- */
-export interface SolPriceResponse {
-  /** Current SOL price in USD */
-  sol_price: number;
+  valid: boolean;
 }
 
 // ============================================================================
@@ -228,7 +176,7 @@ export interface SolPriceResponse {
 // ============================================================================
 
 /**
- * Parameters for getLiveCoins request
+ * Parameters for legacy getLiveCoins request (deprecated - use StreamOptions)
  */
 export interface GetLiveCoinsParams {
   /** Number of items to skip */
@@ -241,6 +189,26 @@ export interface GetLiveCoinsParams {
   order?: 'ASC' | 'DESC';
   /** Include NSFW content */
   includeNsfw?: boolean;
+}
+
+/**
+ * Options for consolidated getLiveStreams request
+ */
+export interface StreamOptions {
+  /** Minimum number of participants required */
+  minParticipants?: number;
+  /** Maximum number of streams to return */
+  limit?: number;
+  /** Include only streams with meaningful titles */
+  includeTitledOnly?: boolean;
+  /** Sort streams by specific criteria */
+  sortBy?: 'participants' | 'default';
+  /** Sort order for results */
+  sortOrder?: 'asc' | 'desc';
+  /** Include NSFW content */
+  includeNsfw?: boolean;
+  /** Number of items to skip (for pagination) */
+  offset?: number;
 }
 
 /**
@@ -463,103 +431,4 @@ export interface JoinLiveStreamResponse {
     code: string;
     details: string;
   };
-}
-
-// ============================================================================
-// Enhanced Video Stream Types
-// ============================================================================
-
-/**
- * Enhanced stream participant information
- */
-export interface StreamParticipant {
-  /** Participant unique identifier */
-  id: string;
-  /** Participant display name */
-  displayName?: string;
-  /** Whether participant is audio muted */
-  isAudioMuted: boolean;
-  /** Whether participant is video muted */
-  isVideoMuted: boolean;
-  /** Whether participant is screen sharing */
-  isScreenSharing: boolean;
-  /** Participant join timestamp */
-  joinedAt: string;
-  /** Participant role in stream */
-  role: 'host' | 'moderator' | 'speaker' | 'listener';
-}
-
-/**
- * Stream quality metrics
- */
-export interface StreamQualityMetrics {
-  /** Current video bitrate (kbps) */
-  videoBitrate: number;
-  /** Current audio bitrate (kbps) */
-  audioBitrate: number;
-  /** Video resolution */
-  resolution: {
-    width: number;
-    height: number;
-  };
-  /** Frame rate (fps) */
-  frameRate: number;
-  /** Packet loss percentage */
-  packetLoss: number;
-  /** Round trip time (ms) */
-  roundTripTime: number;
-  /** Connection quality score */
-  connectionQuality: 'excellent' | 'good' | 'fair' | 'poor';
-}
-
-/**
- * Live stream session information
- */
-export interface LiveStreamSession {
-  /** Session unique identifier */
-  sessionId: string;
-  /** Associated stream identifier */
-  streamId: number;
-  /** Session start timestamp */
-  startedAt: string;
-  /** Session end timestamp (if ended) */
-  endedAt?: string;
-  /** Session duration in seconds */
-  duration: number;
-  /** Peak participant count */
-  peakParticipants: number;
-  /** Total messages sent */
-  totalMessages: number;
-  /** Average quality metrics */
-  averageQuality: StreamQualityMetrics;
-  /** Session status */
-  status: StreamStatus;
-}
-
-/**
- * Stream recording information
- */
-export interface StreamRecording {
-  /** Recording unique identifier */
-  id: string;
-  /** Associated stream identifier */
-  streamId: number;
-  /** Recording start timestamp */
-  startedAt: string;
-  /** Recording duration in seconds */
-  duration: number;
-  /** Recording file URL */
-  recordingUrl: string;
-  /** Recording file size in bytes */
-  fileSize: number;
-  /** Recording format */
-  format: 'mp4' | 'webm' | 'mkv';
-  /** Recording quality */
-  quality: 'high' | 'medium' | 'low';
-  /** Whether recording includes audio */
-  hasAudio: boolean;
-  /** Whether recording includes video */
-  hasVideo: boolean;
-  /** Recording thumbnail URL */
-  thumbnailUrl?: string;
 }

@@ -7,7 +7,7 @@
 
 import {
   LiveCoin,
-  GetLiveCoinsParams,
+  StreamOptions,
   SearchLiveStreamsParams,
   StreamSearchResult,
   StreamClip,
@@ -204,283 +204,33 @@ export class StreamFilters {
   constructor(
     private logger: Logger,
     private errorHandler: ErrorHandler,
-    private getLiveCoinsFn: (params?: GetLiveCoinsParams) => Promise<LiveCoin[]>,
+    private getLiveStreamsFn: (options?: StreamOptions) => Promise<LiveCoin[]>,
     private getStreamClipsFn?: (mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number) => Promise<StreamClip[]>
   ) {
     // Required for parameter properties
   }
 
-  /**
-   * Get active streams with minimum participants
-   */
-  async getActiveStreams(
-    minParticipants: number = 1,
-    params?: GetLiveCoinsParams
-  ): Promise<LiveCoin[]> {
-    // Validate minParticipants parameter
-    this.validateMinParticipants(minParticipants);
-
-    this.logger.info('Fetching active streams', {
-      minParticipants,
-      params,
-      endpoint: 'getLiveCoins -> filter',
-    });
-
-    try {
-      const allLiveStreams = await this.getLiveCoinsFn({
-        limit: 100, // Fetch more items to account for filtering
-        ...params, // User params should be used as-is
-      });
-
-      // Filter streams with minimum participants and currently live
-      const activeStreams = this.filterByParticipantsAndLive(allLiveStreams, minParticipants);
-
-      // Sort by participant count (highest first)
-      this.sortByParticipants(activeStreams);
-
-      const stats = this.calculateParticipantStats(activeStreams);
-
-      this.logger.info('Successfully filtered active streams', {
-        minParticipants,
-        totalStreams: allLiveStreams.length,
-        activeStreams: activeStreams.length,
-        filtered: allLiveStreams.length - activeStreams.length,
-        participantStats: stats,
-      });
-
-      return activeStreams;
-    } catch (error) {
-      const pumpFunError = this.errorHandler.handleError(error, 'getActiveStreams', {
-        minParticipants,
-        params,
-        suggestions: this.getActiveStreamsErrorSuggestion(minParticipants, params),
-      });
-
-      this.logger.error('Failed to fetch active streams', {
-        error: pumpFunError.toJSON(),
-        minParticipants,
-        params,
-      });
-
-      throw pumpFunError;
-    }
-  }
-
-  /**
-   * Get top live streams by participant count
-   */
-  async getTopLiveStreams(limit: number = 10, params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
-    this.validateLimit(limit);
-
-    this.logger.info('Fetching top live streams', {
-      limit,
-      params,
-    });
-
-    try {
-      const liveStreams = await this.getLiveCoinsFn({
-        limit: Math.max(limit, 20), // Fetch extra to account for filtering
-        ...params, // User params should be used as-is
-      });
-
-      // Filter by currently live while preserving original API response order
-      const topStreams = liveStreams.filter(stream => stream.is_currently_live).slice(0, limit);
-
-      this.logger.info('Successfully fetched top live streams', {
-        requested: limit,
-        returned: topStreams.length,
-        totalFetched: liveStreams.length,
-        topParticipants: topStreams[0]?.num_participants ?? 0,
-      });
-
-      return topStreams;
-    } catch (error) {
-      const pumpFunError = this.errorHandler.handleError(error, 'getTopLiveStreams', {
-        limit,
-        params,
-        suggestions: [
-          'Check if there are any currently live streams using getLiveCoins()',
-          'Consider increasing the search parameters',
-          'Verify the API server is accessible',
-        ],
-      });
-
-      this.logger.error('Failed to fetch top live streams', {
-        error: pumpFunError.toJSON(),
-        limit,
-        params,
-      });
-
-      throw pumpFunError;
-    }
-  }
-
-  /**
-   * Get top active streams (combination of active and top)
-   */
-  async getTopActiveStreams(limit: number = 10, minParticipants: number = 1): Promise<LiveCoin[]> {
-    this.logger.info('Fetching top active streams', {
-      limit,
-      minParticipants,
-    });
-
-    try {
-      const activeStreams = await this.getActiveStreams(minParticipants, {
-        limit: Math.max(limit, 20),
-      });
-
-      // Return top N streams
-      const topActiveStreams = activeStreams.slice(0, limit);
-
-      this.logger.info('Successfully fetched top active streams', {
-        requested: limit,
-        minParticipants,
-        returned: topActiveStreams.length,
-        totalActive: activeStreams.length,
-      });
-
-      return topActiveStreams;
-    } catch (error) {
-      const pumpFunError = this.errorHandler.handleError(error, 'getTopActiveStreams', {
-        limit,
-        minParticipants,
-      });
-
-      this.logger.error('Failed to fetch top active streams', {
-        error: pumpFunError.toJSON(),
-        limit,
-        minParticipants,
-      });
-
-      throw pumpFunError;
-    }
-  }
-
-  /**
-   * Get streams with meaningful titles
-   */
-  async getTitledStreams(limit: number = 10, params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
-    this.validateLimit(limit);
-
-    this.logger.info('Fetching titled streams', {
-      limit,
-      params,
-    });
-
-    try {
-      const liveStreams = await this.getLiveCoinsFn({
-        limit: Math.max(limit, 50), // Fetch extra to account for filtering
-        ...params, // User params should be used as-is
-      });
-
-      // Filter streams with meaningful titles
-      const titledStreams = this.filterByTitle(liveStreams);
-
-      // Apply limit while preserving original API order
-      const topTitledStreams = titledStreams.slice(0, limit);
-
-      this.logger.info('Successfully fetched titled streams', {
-        requested: limit,
-        returned: topTitledStreams.length,
-        totalFetched: liveStreams.length,
-        totalTitled: titledStreams.length,
-      });
-
-      return topTitledStreams;
-    } catch (error) {
-      const pumpFunError = this.errorHandler.handleError(error, 'getTitledStreams', {
-        limit,
-        params,
-        suggestions: [
-          'Check if there are any currently live streams using getLiveCoins()',
-          'Consider using getActiveStreams() for streams with participants',
-          'Verify the API server is accessible',
-        ],
-      });
-
-      this.logger.error('Failed to fetch titled streams', {
-        error: pumpFunError.toJSON(),
-        limit,
-        params,
-      });
-
-      throw pumpFunError;
-    }
-  }
-
-  /**
-   * Get titled active streams
-   */
-  async getTitledActiveStreams(
-    limit: number = 10,
-    minParticipants: number = 1,
-    params?: GetLiveCoinsParams
-  ): Promise<LiveCoin[]> {
-    this.logger.info('Fetching titled active streams', {
-      limit,
-      minParticipants,
-      params,
-    });
-
-    try {
-      const activeStreams = await this.getActiveStreams(minParticipants, {
-        limit: Math.max(limit, 50),
-        ...params,
-      });
-
-      // Filter streams with meaningful titles
-      const titledActiveStreams = this.filterByTitle(activeStreams);
-
-      // Return top N streams
-      const topTitledActiveStreams = titledActiveStreams.slice(0, limit);
-
-      this.logger.info('Successfully fetched titled active streams', {
-        requested: limit,
-        minParticipants,
-        returned: topTitledActiveStreams.length,
-        totalActive: activeStreams.length,
-        totalTitledActive: titledActiveStreams.length,
-      });
-
-      return topTitledActiveStreams;
-    } catch (error) {
-      const pumpFunError = this.errorHandler.handleError(error, 'getTitledActiveStreams', {
-        limit,
-        minParticipants,
-        params,
-      });
-
-      this.logger.error('Failed to fetch titled active streams', {
-        error: pumpFunError.toJSON(),
-        limit,
-        minParticipants,
-        params,
-      });
-
-      throw pumpFunError;
-    }
-  }
-
+  
   /**
    * Apply advanced filtering with custom criteria
    */
   async applyAdvancedFilters(
     criteria: AdvancedFilterCriteria,
-    params?: GetLiveCoinsParams
+    options?: StreamOptions
   ): Promise<AdvancedFilterResult> {
     const startTime = Date.now();
 
     this.logger.info('Applying advanced filters', {
       criteriaSummary: this.summarizeCriteria(criteria),
-      params,
+      options,
     });
 
     try {
       // Fetch streams for filtering
-      const liveStreams = await this.getLiveCoinsFn({
+      const liveStreams = await this.getLiveStreamsFn({
         limit: 100, // Fetch more for comprehensive filtering (API max limit)
         includeNsfw: false,
-        ...params,
+        ...options,
       });
 
       // Apply advanced filtering
@@ -510,7 +260,7 @@ export class StreamFilters {
     } catch (error) {
       const pumpFunError = this.errorHandler.handleError(error, 'applyAdvancedFilters', {
         criteria,
-        params,
+        options,
         suggestions: [
           'Check if the filter criteria are valid',
           'Verify the API server is accessible',
@@ -521,7 +271,7 @@ export class StreamFilters {
       this.logger.error('Failed to apply advanced filters', {
         error: pumpFunError.toJSON(),
         criteria,
-        params,
+        options,
       });
 
       throw pumpFunError;
@@ -533,22 +283,22 @@ export class StreamFilters {
    */
   async applyCompoundFilter(
     query: CompoundFilterQuery,
-    params?: GetLiveCoinsParams
+    options?: StreamOptions
   ): Promise<AdvancedFilterResult> {
     const startTime = Date.now();
 
     this.logger.info('Applying compound filter query', {
       groupCount: query.groups.length,
       groupOperator: query.groupOperator || 'AND',
-      params,
+      options,
     });
 
     try {
       // Fetch streams for filtering
-      const liveStreams = await this.getLiveCoinsFn({
+      const liveStreams = await this.getLiveStreamsFn({
         limit: 100, // API max limit
         includeNsfw: false,
-        ...params,
+        ...options,
       });
 
       // Apply compound filtering
@@ -580,7 +330,7 @@ export class StreamFilters {
     } catch (error) {
       const pumpFunError = this.errorHandler.handleError(error, 'applyCompoundFilter', {
         query,
-        params,
+        options,
         suggestions: [
           'Check if the compound query structure is valid',
           'Verify individual filter criteria are correct',
@@ -591,7 +341,7 @@ export class StreamFilters {
       this.logger.error('Failed to apply compound filter', {
         error: pumpFunError.toJSON(),
         query,
-        params,
+        options,
       });
 
       throw pumpFunError;
@@ -736,7 +486,7 @@ export class StreamFilters {
 
     try {
       // Fetch streams for search
-      const liveStreams = await this.getLiveCoinsFn({
+      const liveStreams = await this.getLiveStreamsFn({
         limit: Math.max(params.limit ?? 20, 100), // Fetch more for better search results
         includeNsfw: params.includeNsfw ?? false,
       });
@@ -1056,104 +806,7 @@ export class StreamFilters {
     });
   }
 
-  /**
-   * Private helper methods
-   */
-  private validateMinParticipants(minParticipants: number): void {
-    if (typeof minParticipants !== 'number' || isNaN(minParticipants)) {
-      throw new ConfigurationError({
-        message: `Invalid minParticipants: ${minParticipants}. Must be a valid number.`,
-      });
-    }
-
-    if (minParticipants < 0) {
-      throw new ConfigurationError({
-        message: `Invalid minParticipants: ${minParticipants}. Must be a non-negative number.`,
-      });
-    }
-  }
-
-  private validateLimit(limit: number): void {
-    if (typeof limit !== 'number' || isNaN(limit)) {
-      throw new ConfigurationError({
-        message: `Invalid limit: ${limit}. Must be a valid number.`,
-      });
-    }
-
-    if (limit < 1) {
-      throw new ConfigurationError({
-        message: `Invalid limit: ${limit}. Must be at least 1.`,
-      });
-    }
-  }
-
-  private filterByParticipantsAndLive(streams: LiveCoin[], minParticipants: number): LiveCoin[] {
-    return streams.filter(stream => {
-      const participants = stream.num_participants ?? 0;
-      return stream.is_currently_live && participants >= minParticipants;
-    });
-  }
-
-  private sortByParticipants(streams: LiveCoin[]): void {
-    streams.sort((a, b) => {
-      const aParticipants = a.num_participants ?? 0;
-      const bParticipants = b.num_participants ?? 0;
-      return bParticipants - aParticipants;
-    });
-  }
-
-  private filterByTitle(streams: LiveCoin[]): LiveCoin[] {
-    return streams.filter(stream => {
-      const title = stream.livestream_title;
-      return title && title.trim().length > 0 && !title.match(/^(Stream|Live|Broadcast)\s*\d*$/i);
-    });
-  }
-
-  private calculateParticipantStats(streams: LiveCoin[]): {
-    totalParticipants: number;
-    averageParticipants: number;
-    maxParticipants: number;
-    minParticipants: number;
-  } {
-    const participantCounts = streams.map(stream => stream.num_participants ?? 0);
-
-    return {
-      totalParticipants: participantCounts.reduce((sum, count) => sum + count, 0),
-      averageParticipants:
-        participantCounts.length > 0
-          ? participantCounts.reduce((sum, count) => sum + count, 0) / participantCounts.length
-          : 0,
-      maxParticipants: participantCounts.length > 0 ? Math.max(...participantCounts) : 0,
-      minParticipants: participantCounts.length > 0 ? Math.min(...participantCounts) : 0,
-    };
-  }
-
-  private getActiveStreamsErrorSuggestion(
-    minParticipants: number,
-    params?: GetLiveCoinsParams
-  ): string[] {
-    const suggestions: string[] = [
-      `Consider lowering the minParticipants threshold (current: ${minParticipants})`,
-      'Check if there are any live streams currently available',
-      'Verify the API server is accessible',
-    ];
-
-    if (minParticipants > 1) {
-      suggestions.push('Try with minParticipants=1 to see all available streams');
-      suggestions.push(
-        'Use getLiveCoins() directly if you need all live streams without filtering'
-      );
-    }
-
-    if (params?.limit && params.limit < 50) {
-      suggestions.push(
-        'Consider using a larger limit parameter to fetch more streams for filtering'
-      );
-    }
-
-    return suggestions;
-  }
-
+  
   /**
    * Search-related private helper methods
    */
@@ -1408,7 +1061,7 @@ export class StreamFilters {
   private getSearchErrorSuggestions(params: SearchLiveStreamsParams): string[] {
     const suggestions: string[] = [
       'Try using different keywords or search terms',
-      'Check if there are any live streams currently available using getLiveCoins()',
+      'Check if there are any live streams currently available using getLiveStreams()',
       'Verify the API server is accessible',
       'Consider broadening your search criteria',
     ];

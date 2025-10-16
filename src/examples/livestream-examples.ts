@@ -14,37 +14,20 @@ import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
 import {
   LogLevel,
   LiveStreamInfo,
-  LiveKitConnectionInfo,
-  VideoStreamAnalysis,
   JoinLiveStreamResponse,
 } from '../types';
 import {
-  EXAMPLE_STREAM_LIMIT,
-  MIN_PARTICIPANTS,
-  ACTIVE_STREAMS_LIMIT,
-  LIVE_COINS_LIMIT,
-  ACTIVE_STREAMS_LIMIT_SMALL,
-  TOP_STREAMS_LIMIT,
-  TOP_ACTIVE_PARTICIPANTS,
-  MIN_ACTIVE_PARTICIPANTS,
-  TITLED_ACTIVE_PARTICIPANTS,
-  MIN_TITLED_PARTICIPANTS,
   STREAM_INFO_LIMIT,
   MAX_STREAM_INFO_TEST,
-  DESCRIPTION_PREVIEW_LENGTH,
-  SUBSTRING_START,
-  TO_FIXED_DECIMALS,
-  TIMESTAMP_MULTIPLIER,
   INDEX_OFFSET,
-  BASE_DELAY,
-  MAX_RETRIES_PRODUCTION,
 } from './constants';
 
+
 /**
- * Example 9: Get currently live streaming coins
+ * Example 9a: Get live streams with filtering options (NEW API)
  */
-export async function getLiveCoinsExample() {
-  console.log('=== Get Live Coins Example ===');
+export async function getLiveStreamsExample() {
+  console.log('=== Get Live Streams Example (New API) ===');
 
   const client = new PumpFunAPIClient({
     loggerConfig: {
@@ -55,233 +38,78 @@ export async function getLiveCoinsExample() {
   });
 
   try {
-    console.log('🔍 Fetching currently live streaming coins...');
+    console.log('🔍 Demonstrating new getLiveStreams API with various options...\n');
 
-    const liveCoins = await client.getLiveCoins({
-      limit: EXAMPLE_STREAM_LIMIT,
-      includeNsfw: false,
+    // Test 1: Basic live streams
+    console.log('1️⃣ Getting basic live streams...');
+    const basicStreams = await client.getLiveStreams({
+      limit: 5
     });
+    console.log(`✅ Found ${basicStreams.length} basic live streams`);
 
-    console.log(`✅ Found ${liveCoins.length} live streaming coins:\n`);
-
-    liveCoins.forEach((coin, index) => {
-      console.log(`${index + INDEX_OFFSET}. ${coin.name} (${coin.symbol})`);
-      console.log(`   📺 Stream: ${coin.livestream_title ?? 'No Title'}`);
-      console.log(`   👥 Participants: ${coin.num_participants}`);
-      console.log(`   💬 Chat Messages: ${coin.reply_count}`);
-      console.log(`   💰 Market Cap: $${coin.usd_market_cap?.toFixed(TO_FIXED_DECIMALS) ?? 'N/A'}`);
-      console.log(`   🖼️  Thumbnail: ${coin.thumbnail ?? 'No thumbnail'}`);
-      console.log(`   🔗 Mint: ${coin.mint}`);
-      console.log('');
+    // Test 2: Active streams with minimum participants
+    console.log('\n2️⃣ Getting active streams (min 5 participants)...');
+    const activeStreams = await client.getLiveStreams({
+      minParticipants: 5,
+      limit: 5
     });
+    console.log(`✅ Found ${activeStreams.length} active streams with 5+ participants`);
 
-    return { client, liveCoins };
-  } catch (error) {
-    console.error('❌ Error fetching live coins:', error);
-    throw error;
-  }
-}
-
-/**
- * Example 10: Get active streams with minimum participants
- */
-export async function getActiveStreamsExample() {
-  console.log('=== Get Active Streams Example ===');
-
-  const client = new PumpFunAPIClient({
-    loggerConfig: {
-      level: LogLevel.DEBUG,
-      enableConsole: true,
-      enableColors: true,
-    },
-  });
-
-  try {
-    console.log('🔍 Fetching active streams with at least 1 participant...');
-
-    const activeStreams = await client.getActiveStreams(
-      MIN_PARTICIPANTS, // minimum participants
-      { limit: ACTIVE_STREAMS_LIMIT }
-    );
-
-    console.log(`✅ Found ${activeStreams.length} active streams:\n`);
-
-    activeStreams.forEach((stream, index) => {
-      console.log(`${index + INDEX_OFFSET}. ${stream.name} (${stream.symbol})`);
-      console.log(`   👥 Active Participants: ${stream.num_participants}`);
-      console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
-      console.log(`   📺 Stream Title: "${stream.livestream_title ?? 'No Title'}"`);
-      console.log(
-        `   💎 Market Cap: $${stream.usd_market_cap?.toFixed(TO_FIXED_DECIMALS) ?? 'N/A'}`
-      );
-      console.log('');
+    // Test 3: Top streams by participants
+    console.log('\n3️⃣ Getting top streams by participants...');
+    const topStreams = await client.getLiveStreams({
+      sortBy: 'participants',
+      sortOrder: 'desc',
+      limit: 5
     });
+    console.log(`✅ Found ${topStreams.length} top streams by participants`);
 
-    return { client, activeStreams };
-  } catch (error) {
-    console.error('❌ Error fetching active streams:', error);
-    throw error;
-  }
-}
-
-/**
- * Example 11: Get top live streams by participant count
- */
-export async function getTopLiveStreamsExample() {
-  console.log('=== Get Top Live Streams Example ===');
-
-  const client = new PumpFunAPIClient();
-
-  try {
-    console.log(`🏆 Fetching top ${EXAMPLE_STREAM_LIMIT} live streams by participant count...`);
-
-    const topStreams = await client.getTopLiveStreams(EXAMPLE_STREAM_LIMIT);
-
-    console.log(`✅ Top ${EXAMPLE_STREAM_LIMIT} Live Streams:\n`);
-
-    topStreams.forEach((stream, index) => {
-      console.log(`${index + INDEX_OFFSET}. ${stream.name} (${stream.symbol})`);
-      console.log(`   👥 Participants: ${stream.num_participants}`);
-      console.log(`   💬 Chat Activity: ${stream.reply_count} messages`);
-      console.log(`   📺 Title: "${stream.livestream_title ?? 'No Title'}"`);
-      console.log(
-        `   💎 Market Cap: $${stream.usd_market_cap?.toFixed(TO_FIXED_DECIMALS) ?? 'N/A'}`
-      );
-      console.log(
-        `   🕒 Created: ${new Date(stream.created_timestamp * TIMESTAMP_MULTIPLIER).toLocaleString()}`
-      );
-      console.log('');
+    // Test 4: Titled streams only
+    console.log('\n4️⃣ Getting titled streams only...');
+    const titledStreams = await client.getLiveStreams({
+      includeTitledOnly: true,
+      limit: 5
     });
+    console.log(`✅ Found ${titledStreams.length} titled streams`);
 
-    return { client, topStreams };
-  } catch (error) {
-    console.error('❌ Error fetching top live streams:', error);
-    throw error;
-  }
-}
+    // Display results
+    console.log('\n📊 Results Summary:');
+    console.log(`   Basic streams: ${basicStreams.length}`);
+    console.log(`   Active streams (5+ participants): ${activeStreams.length}`);
+    console.log(`   Top streams: ${topStreams.length}`);
+    console.log(`   Titled streams: ${titledStreams.length}`);
 
-/**
- * Example 12: Get titled streams (streams with meaningful titles)
- */
-export async function getTitledStreamsExample() {
-  console.log('=== Get Titled Streams Example ===');
-
-  const client = new PumpFunAPIClient({
-    loggerConfig: {
-      level: LogLevel.INFO,
-      enableConsole: true,
-      enableTimestamps: true,
-    },
-  });
-
-  try {
-    console.log('📝 Fetching streams with meaningful titles...');
-
-    const titledStreams = await client.getTitledStreams(EXAMPLE_STREAM_LIMIT);
-
-    console.log(`✅ Found ${titledStreams.length} titled streams:\n`);
-
-    titledStreams.forEach((stream, index) => {
-      console.log(`${index + INDEX_OFFSET}. ${stream.name} (${stream.symbol})`);
-      console.log(`   📺 Title: "${stream.livestream_title}"`);
-      console.log(`   👥 Participants: ${stream.num_participants}`);
-      console.log(`   💬 Messages: ${stream.reply_count}`);
-      console.log(
-        `   📝 Description: ${stream.description.substring(SUBSTRING_START, DESCRIPTION_PREVIEW_LENGTH)}...`
-      );
-      console.log('');
-    });
-
-    return { client, titledStreams };
-  } catch (error) {
-    console.error('❌ Error fetching titled streams:', error);
-    throw error;
-  }
-}
-
-/**
- * Example 13: Get comprehensive live stream data
- */
-export async function getComprehensiveLiveDataExample() {
-  console.log('=== Comprehensive Live Data Example ===');
-
-  const client = new PumpFunAPIClient({
-    timeout: 15000,
-    retryConfig: {
-      maxRetries: MAX_RETRIES_PRODUCTION,
-      baseDelay: BASE_DELAY,
-    },
-    loggerConfig: {
-      level: LogLevel.DEBUG,
-      enableConsole: true,
-      enableColors: true,
-    },
-  });
-
-  try {
-    console.log('📊 Gathering comprehensive live stream data...');
-
-    // Get basic live coins
-    const liveCoins = await client.getLiveCoins({ limit: LIVE_COINS_LIMIT });
-    console.log(`📡 Found ${liveCoins.length} live coins`);
-
-    // Get active streams
-    const activeStreams = await client.getActiveStreams(MIN_PARTICIPANTS, {
-      limit: ACTIVE_STREAMS_LIMIT_SMALL,
-    });
-    console.log(`🔥 Found ${activeStreams.length} active streams`);
-
-    // Get top streams
-    const topStreams = await client.getTopLiveStreams(TOP_STREAMS_LIMIT);
-    console.log(`🏆 Top ${topStreams.length} streams by participants`);
-
-    // Get titled streams
-    const titledStreams = await client.getTitledStreams(EXAMPLE_STREAM_LIMIT);
-    console.log(`📝 Found ${titledStreams.length} titled streams`);
-
-    // Get top active streams
-    const topActiveStreams = await client.getTopActiveStreams(
-      TOP_ACTIVE_PARTICIPANTS,
-      MIN_ACTIVE_PARTICIPANTS
-    );
-    console.log(`⭐ Top ${topActiveStreams.length} active streams`);
-
-    // Get titled active streams
-    const titledActiveStreams = await client.getTitledActiveStreams(
-      TITLED_ACTIVE_PARTICIPANTS,
-      MIN_TITLED_PARTICIPANTS
-    );
-    console.log(`🎯 Found ${titledActiveStreams.length} titled active streams`);
-
-    console.log('\n📈 Summary Statistics:');
-    console.log(`   Total Live Coins: ${liveCoins.length}`);
-    console.log(`   Active Streams: ${activeStreams.length}`);
-    console.log(`   Titled Streams: ${titledStreams.length}`);
-    console.log(`   Top Active Streams: ${topActiveStreams.length}`);
-
-    if (liveCoins.length > 0) {
-      const totalParticipants = liveCoins.reduce((sum, coin) => sum + coin.num_participants, 0);
-      const avgParticipants = Math.round(totalParticipants / liveCoins.length);
-      const totalMessages = liveCoins.reduce((sum, coin) => sum + coin.reply_count, 0);
-
-      console.log(`   Total Participants: ${totalParticipants}`);
-      console.log(`   Average Participants: ${avgParticipants}`);
-      console.log(`   Total Chat Messages: ${totalMessages}`);
+    // Show top streams with details
+    if (topStreams.length > 0) {
+      console.log('\n🏆 Top Streams by Participants:');
+      topStreams.forEach((stream, index) => {
+        console.log(`${index + INDEX_OFFSET}. ${stream.name} (${stream.symbol})`);
+        console.log(`   👥 Participants: ${stream.num_participants}`);
+        console.log(`   📺 Title: "${stream.livestream_title ?? 'No Title'}"`);
+        console.log(`   💰 Market Cap: $${stream.usd_market_cap?.toLocaleString()}`);
+        console.log('');
+      });
     }
+
+    console.log('🎯 New getLiveStreams API Features:');
+    console.log('   ✅ Consolidated filtering (minParticipants, includeTitledOnly)');
+    console.log('   ✅ Multiple sorting options (participants, default)');
+    console.log('   ✅ Sort order control (asc, desc)');
+    console.log('   ✅ Pagination support (limit, offset)');
+    console.log('   ✅ NSFW filtering');
+    console.log('   ✅ Backward compatibility maintained');
 
     return {
       client,
-      data: {
-        liveCoins,
+      results: {
+        basicStreams,
         activeStreams,
         topStreams,
-        titledStreams,
-        topActiveStreams,
-        titledActiveStreams,
-      },
+        titledStreams
+      }
     };
   } catch (error) {
-    console.error('❌ Error gathering comprehensive data:', error);
+    console.error('❌ Error testing getLiveStreams API:', error);
     throw error;
   }
 }
@@ -303,7 +131,7 @@ export async function getStreamInfoExample() {
   try {
     // First get some live coins to test with
     console.log('🔍 Getting live coins to test stream info...');
-    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test stream info');
@@ -389,7 +217,7 @@ export async function checkCreatorApprovalExample() {
   try {
     // First get some live coins to test with
     console.log('🔍 Getting live coins to test creator approval...');
-    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test creator approval');
@@ -465,320 +293,6 @@ export async function checkCreatorApprovalExample() {
 }
 
 /**
- * Example 16: Get LiveKit connection information for video streaming
- */
-export async function getLiveKitConnectionInfoExample() {
-  console.log('=== Get LiveKit Connection Info Example ===');
-
-  const client = new PumpFunAPIClient({
-    timeout: 15000,
-    loggerConfig: {
-      level: LogLevel.INFO,
-      enableConsole: true,
-      enableColors: true,
-    },
-  });
-
-  try {
-    // First get some live coins to test with
-    console.log('🔍 Getting live coins to test LiveKit connections...');
-    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
-
-    if (liveCoins.length === 0) {
-      console.log('⚠️ No live coins found to test LiveKit connections');
-      return { client, connections: [] };
-    }
-
-    console.log(
-      `🎥 Testing LiveKit connection info for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
-    );
-
-    const connections: Array<{
-      mint: string;
-      name: string;
-      symbol: string;
-      connectionInfo: LiveKitConnectionInfo | null;
-    }> = [];
-
-    for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
-      const coin = liveCoins[i];
-      if (!coin) {
-        console.log(`${i + INDEX_OFFSET}. ⚠️ Skipping undefined coin data`);
-        continue;
-      }
-
-      console.log(
-        `${i + INDEX_OFFSET}. Getting LiveKit connection for: ${coin.name} (${coin.symbol})`
-      );
-      console.log(`   🔗 Mint: ${coin.mint}`);
-      console.log(`   👥 Live Participants: ${coin.num_participants}`);
-
-      try {
-        const connectionInfo = await client.getLiveKitConnectionInfo(coin.mint);
-
-        if (connectionInfo) {
-          console.log(`   ✅ LiveKit Connection Found:`);
-          console.log(`      🏠 Room Name: ${connectionInfo.roomName}`);
-          console.log(`      🔗 WebSocket URL: ${connectionInfo.websocketUrl}`);
-          console.log(`      🌐 Primary Server: ${connectionInfo.primaryServer}`);
-          console.log(`      📡 Stream ID: ${connectionInfo.streamId}`);
-          console.log(
-            `      🔐 Requires Auth: ${connectionInfo.requiresAuthentication ? 'YES' : 'NO'}`
-          );
-          console.log(`      🌍 Available Regions: ${connectionInfo.regions.length}`);
-
-          // Display available regions
-          console.log(`      📍 Region Options:`);
-          connectionInfo.regions.forEach((region, index) => {
-            console.log(`         ${index + 1}. ${region.region} (Distance: ${region.distance})`);
-            console.log(`            URL: ${region.url}`);
-          });
-
-          console.log(`      🎬 Ready for LiveKit video streaming integration`);
-        } else {
-          console.log(`   ⚠️ No active LiveKit connection available`);
-          console.log(`      💡 This might mean:`);
-          console.log(`         • Stream is not currently active`);
-          console.log(`         • Creator is not approved for streaming`);
-          console.log(`         • Video streaming not enabled for this token`);
-        }
-
-        connections.push({
-          mint: coin.mint,
-          name: coin.name,
-          symbol: coin.symbol,
-          connectionInfo,
-        });
-      } catch (error) {
-        console.log(
-          `   ❌ Error getting LiveKit connection: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        connections.push({
-          mint: coin.mint,
-          name: coin.name,
-          symbol: coin.symbol,
-          connectionInfo: null,
-        });
-      }
-
-      console.log('');
-    }
-
-    // Summary
-    const successfulConnections = connections.filter(c => c.connectionInfo !== null).length;
-    console.log(`📊 LiveKit Connection Summary:`);
-    console.log(`   Total Tested: ${connections.length}`);
-    console.log(`   Successful: ${successfulConnections}`);
-    console.log(`   Failed: ${connections.length - successfulConnections}`);
-    console.log(
-      `   Success Rate: ${((successfulConnections / connections.length) * 100).toFixed(1)}%`
-    );
-
-    if (successfulConnections > 0) {
-      console.log(`\n🎥 Video Streaming Integration Guide:`);
-      console.log(`   1. Use the WebSocket URL to connect to LiveKit server`);
-      console.log(`   2. Join the room using the provided room name`);
-      console.log(`   3. Handle authentication if required`);
-      console.log(`   4. Select optimal region based on user location`);
-      console.log(`   5. Implement WebRTC for video/audio streaming`);
-
-      // Show example integration code
-      console.log(`\n💻 Integration Example:`);
-      console.log(`   import LiveKit from 'livekit-client';`);
-      console.log(`   `);
-      console.log(`   // Connect to LiveKit room`);
-      console.log(`   const room = new LiveKit.Room();`);
-      console.log(`   await room.connect(connectionInfo.websocketUrl, connectionInfo.roomName);`);
-      console.log(`   `);
-      console.log(`   // Handle video tracks`);
-      console.log(`   room.on('trackSubscribed', (track, participant) => {`);
-      console.log(`     if (track.kind === 'video') {`);
-      console.log(`       // Attach video element`);
-      console.log(`       document.getElementById('video').srcObject = new MediaStream([track]);`);
-      console.log(`     }`);
-      console.log(`   });`);
-    }
-
-    return { client, connections };
-  } catch (error) {
-    console.error('❌ Error in LiveKit connection example:', error);
-    throw error;
-  }
-}
-
-/**
- * Example 17: Get comprehensive video stream analysis
- *
- * This example demonstrates the new getVideoStreamAnalysis method that combines
- * all video stream related information into a single comprehensive analysis.
- */
-export async function getVideoStreamAnalysisExample() {
-  console.log('=== Video Stream Analysis Example ===');
-
-  const client = new PumpFunAPIClient({
-    timeout: 15000,
-    loggerConfig: {
-      level: LogLevel.INFO,
-      enableConsole: true,
-      enableColors: true,
-    },
-  });
-
-  try {
-    // First get some live coins to test with
-    console.log('🔍 Getting live coins to test video stream analysis...');
-    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
-
-    if (liveCoins.length === 0) {
-      console.log('⚠️ No live coins found to test video stream analysis');
-      return { client, analyses: [] };
-    }
-
-    console.log(
-      `🎬 Testing comprehensive video stream analysis for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
-    );
-
-    const analyses: Array<{
-      mint: string;
-      name: string;
-      symbol: string;
-      analysis: VideoStreamAnalysis;
-    }> = [];
-
-    for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
-      const coin = liveCoins[i];
-      if (!coin) {
-        console.log(`${i + INDEX_OFFSET}. ⚠️ Skipping undefined coin data`);
-        continue;
-      }
-
-      console.log(`${i + INDEX_OFFSET}. Analyzing video stream for: ${coin.name} (${coin.symbol})`);
-      console.log(`   🔗 Mint: ${coin.mint}`);
-      console.log(`   👥 Live Participants: ${coin.num_participants}`);
-      console.log(`   📺 Stream Title: "${coin.livestream_title ?? 'No Title'}"`);
-
-      try {
-        const analysis = await client.getVideoStreamAnalysis(coin.mint);
-
-        console.log(`   ✅ Video Stream Analysis Complete:`);
-        console.log(`      🔴 Active Stream: ${analysis.hasActiveStream ? 'YES' : 'NO'}`);
-        console.log(`      ✅ Creator Approved: ${analysis.isApprovedCreator ? 'YES' : 'NO'}`);
-
-        if (analysis.streamInfo) {
-          console.log(`      📺 Stream Details:`);
-          console.log(`         • Stream ID: ${analysis.streamInfo.id}`);
-          console.log(`         • Title: "${analysis.streamInfo.title ?? 'No Title'}"`);
-          console.log(`         • Mode: ${analysis.streamInfo.mode}`);
-          console.log(
-            `         • Participants: ${analysis.streamInfo.numParticipants}/${analysis.streamInfo.maxParticipants}`
-          );
-          console.log(`         • Live Status: ${analysis.streamInfo.isLive ? 'LIVE' : 'OFFLINE'}`);
-          console.log(`         • Quality Score: ${analysis.streamInfo.downrankScore}/100`);
-        }
-
-        if (analysis.liveKitConnection) {
-          console.log(`      🎥 LiveKit Connection:`);
-          console.log(`         • Room: ${analysis.liveKitConnection.roomName}`);
-          console.log(`         • WebSocket: ${analysis.liveKitConnection.websocketUrl}`);
-          console.log(`         • Regions: ${analysis.liveKitConnection.regions.length} available`);
-          console.log(
-            `         • Auth Required: ${analysis.liveKitConnection.requiresAuthentication ? 'YES' : 'NO'}`
-          );
-
-          // Show best region
-          const bestRegion = analysis.liveKitConnection.regions[0];
-          if (bestRegion) {
-            console.log(
-              `         • Best Region: ${bestRegion.region} (Distance: ${bestRegion.distance})`
-            );
-          }
-        }
-
-        // Analysis Summary
-        console.log(`      📊 Analysis Summary:`);
-        if (analysis.hasActiveStream && analysis.isApprovedCreator) {
-          console.log(`         🟢 READY for video streaming - All checks passed`);
-        } else if (analysis.hasActiveStream && !analysis.isApprovedCreator) {
-          console.log(`         🟡 Stream active but creator not approved`);
-        } else if (!analysis.hasActiveStream && analysis.isApprovedCreator) {
-          console.log(`         🟡 Creator approved but no active stream`);
-        } else {
-          console.log(`         🔴 Not ready for video streaming`);
-        }
-
-        console.log(`      ⏰ Analyzed at: ${new Date(analysis.analyzedAt).toLocaleString()}`);
-
-        analyses.push({
-          mint: coin.mint,
-          name: coin.name,
-          symbol: coin.symbol,
-          analysis,
-        });
-      } catch (error) {
-        console.log(
-          `   ❌ Error analyzing video stream: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        // Don't add failed analyses to the array
-      }
-
-      console.log('');
-    }
-
-    // Summary Statistics
-    console.log(`📊 Video Stream Analysis Summary:`);
-    console.log(`   Total Analyzed: ${analyses.length}`);
-
-    if (analyses.length > 0) {
-      const activeStreams = analyses.filter(a => a.analysis.hasActiveStream).length;
-      const approvedCreators = analyses.filter(a => a.analysis.isApprovedCreator).length;
-      const withLiveKitConnection = analyses.filter(
-        a => a.analysis.liveKitConnection !== null
-      ).length;
-      const readyForStreaming = analyses.filter(
-        a => a.analysis.hasActiveStream && a.analysis.isApprovedCreator
-      ).length;
-
-      console.log(
-        `   Active Streams: ${activeStreams} (${((activeStreams / analyses.length) * 100).toFixed(1)}%)`
-      );
-      console.log(
-        `   Approved Creators: ${approvedCreators} (${((approvedCreators / analyses.length) * 100).toFixed(1)}%)`
-      );
-      console.log(
-        `   LiveKit Connections: ${withLiveKitConnection} (${((withLiveKitConnection / analyses.length) * 100).toFixed(1)}%)`
-      );
-      console.log(
-        `   Ready for Streaming: ${readyForStreaming} (${((readyForStreaming / analyses.length) * 100).toFixed(1)}%)`
-      );
-
-      if (readyForStreaming > 0) {
-        console.log(`\n🎥 Ready for Video Streaming:`);
-        analyses
-          .filter(a => a.analysis.hasActiveStream && a.analysis.isApprovedCreator)
-          .forEach((item, index) => {
-            console.log(`   ${index + 1}. ${item.name} (${item.symbol})`);
-            console.log(`      • Mint: ${item.mint}`);
-            console.log(`      • Room: ${item.analysis.liveKitConnection?.roomName ?? 'N/A'}`);
-            console.log(`      • Participants: ${item.analysis.streamInfo?.numParticipants ?? 0}`);
-          });
-
-        console.log(`\n💡 Integration Tips:`);
-        console.log(`   1. Use getVideoStreamAnalysis() for comprehensive stream status`);
-        console.log(`   2. Check hasActiveStream && isApprovedCreator before connecting`);
-        console.log(`   3. Use LiveKit connection info for WebRTC video streaming`);
-        console.log(`   4. Monitor analysis.analyzedAt for freshness of data`);
-        console.log(`   5. Handle cases where components may be null/undefined`);
-      }
-    }
-
-    return { client, analyses };
-  } catch (error) {
-    console.error('❌ Error in video stream analysis example:', error);
-    throw error;
-  }
-}
-
-/**
  * Example 18: Join a live stream
  *
  * This example demonstrates the new joinLiveStream method that attempts to join
@@ -799,7 +313,7 @@ export async function joinLiveStreamExample() {
   try {
     // First get some live coins to test with
     console.log('🔍 Getting live coins to test joining streams...');
-    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test joining streams');
@@ -1422,7 +936,7 @@ export async function getStreamClipsExample() {
   try {
     // First get some live coins to test with
     console.log('🔍 Getting live coins to test stream clips...');
-    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test stream clips');
@@ -1642,289 +1156,6 @@ export async function getStreamClipsExample() {
       }
     }
 
-    throw error;
-  }
-}
-
-/**
- * Example 22: Advanced Clip Filtering and Sorting (T050)
- *
- * This example demonstrates the new T050 functionality for advanced clip filtering
- * and sorting with type filtering, duration ranges, view count filtering, and custom criteria.
- */
-export async function demonstrateClipFilteringT050() {
-  console.log('=== T050: Advanced Clip Filtering and Sorting Example ===');
-
-  const client = new PumpFunAPIClient({
-    timeout: 15000,
-    loggerConfig: {
-      level: LogLevel.INFO,
-      enableConsole: true,
-      enableColors: true,
-    },
-  });
-
-  try {
-    // First get some live coins to test with
-    console.log('🔍 Getting live coins to test advanced clip filtering...');
-    const liveCoins = await client.getLiveCoins({ limit: STREAM_INFO_LIMIT });
-
-    if (liveCoins.length === 0) {
-      console.log('⚠️ No live coins found to test clip filtering');
-      return { client, filterTests: [] };
-    }
-
-    console.log(
-      `🎬 Testing T050 clip filtering for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
-    );
-
-    const filterTests: Array<{
-      mint: string;
-      name: string;
-      symbol: string;
-      tests: {
-        testName: string;
-        result: any;
-        error?: string;
-      }[];
-    }> = [];
-
-    for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
-      const coin = liveCoins[i];
-      if (!coin) {
-        console.log(`${i + INDEX_OFFSET}. ⚠️ Skipping undefined coin data`);
-        continue;
-      }
-
-      console.log(`${i + INDEX_OFFSET}. Testing T050 filtering for: ${coin.name} (${coin.symbol})`);
-      console.log(`   🔗 Mint: ${coin.mint}`);
-      console.log(`   👥 Live Participants: ${coin.num_participants}`);
-
-      const tests: { testName: string; result: any; error?: string }[] = [];
-
-      try {
-        // Test 1: Get complete clips only with new T050 method
-        console.log(`   🎬 Testing getCompleteClips...`);
-        const completeClips = await client.getCompleteClips(coin.mint, {
-          limit: 5,
-          sortBy: 'created_at',
-          sortOrder: 'DESC'
-        });
-        tests.push({ testName: 'getCompleteClips', result: completeClips });
-        console.log(`      ✅ Found ${completeClips.clips.length} complete clips (${completeClips.metrics.processingTimeMs}ms)`);
-
-        // Test 2: Get highlight clips only
-        console.log(`   🌟 Testing getHighlightClips...`);
-        const highlightClips = await client.getHighlightClips(coin.mint, {
-          limit: 5,
-          sortBy: 'view_count',
-          sortOrder: 'DESC'
-        });
-        tests.push({ testName: 'getHighlightClips', result: highlightClips });
-        console.log(`      ✅ Found ${highlightClips.clips.length} highlight clips (${highlightClips.metrics.processingTimeMs}ms)`);
-
-        // Test 3: Get clips sorted by duration
-        console.log(`   ⏱️ Testing getClipsByDuration...`);
-        const clipsByDuration = await client.getClipsByDuration(coin.mint, 'DESC', {
-          limit: 5,
-          minDuration: 10
-        });
-        tests.push({ testName: 'getClipsByDuration', result: clipsByDuration });
-        console.log(`      ✅ Found ${clipsByDuration.clips.length} clips by duration (${clipsByDuration.metrics.processingTimeMs}ms)`);
-
-        // Test 4: Get clips sorted by view count
-        console.log(`   👀 Testing getClipsByViewCount...`);
-        const clipsByViewCount = await client.getClipsByViewCount(coin.mint, 'DESC', {
-          limit: 5,
-          minViewCount: 10
-        });
-        tests.push({ testName: 'getClipsByViewCount', result: clipsByViewCount });
-        console.log(`      ✅ Found ${clipsByViewCount.clips.length} clips by view count (${clipsByViewCount.metrics.processingTimeMs}ms)`);
-
-        // Test 5: Get clips by duration range
-        console.log(`   📏 Testing getClipsByDurationRange...`);
-        const clipsByDurationRange = await client.getClipsByDurationRange(coin.mint, 15, 300, {
-          limit: 5,
-          sortBy: 'duration',
-          sortOrder: 'ASC'
-        });
-        tests.push({ testName: 'getClipsByDurationRange', result: clipsByDurationRange });
-        console.log(`      ✅ Found ${clipsByDurationRange.clips.length} clips in duration range (${clipsByDurationRange.metrics.processingTimeMs}ms)`);
-
-        // Test 6: Get clips by view count range
-        console.log(`   📊 Testing getClipsByViewCountRange...`);
-        const clipsByViewRange = await client.getClipsByViewCountRange(coin.mint, 50, 5000, {
-          limit: 5,
-          sortBy: 'view_count',
-          sortOrder: 'DESC'
-        });
-        tests.push({ testName: 'getClipsByViewCountRange', result: clipsByViewRange });
-        console.log(`      ✅ Found ${clipsByViewRange.clips.length} clips in view count range (${clipsByViewRange.metrics.processingTimeMs}ms)`);
-
-        // Test 7: Get clips with URLs available
-        console.log(`   🔗 Testing getClipsWithUrls...`);
-        const clipsWithUrls = await client.getClipsWithUrls(coin.mint, {
-          limit: 5,
-          clipType: 'COMPLETE',
-          sortBy: 'view_count',
-          sortOrder: 'DESC'
-        });
-        tests.push({ testName: 'getClipsWithUrls', result: clipsWithUrls });
-        console.log(`      ✅ Found ${clipsWithUrls.clips.length} clips with URLs (${clipsWithUrls.metrics.processingTimeMs}ms)`);
-
-        // Test 8: Advanced filtering with multiple criteria
-        console.log(`   🎯 Testing filterStreamClips (advanced criteria)...`);
-        const advancedFiltered = await client.filterStreamClips(coin.mint, {
-          clipType: 'HIGHLIGHT',
-          minDuration: 10,
-          maxDuration: 180,
-          minViewCount: 20,
-          hasUrl: true,
-          sortBy: 'view_count',
-          sortOrder: 'DESC',
-          limit: 3
-        });
-        tests.push({ testName: 'filterStreamClips (Advanced)', result: advancedFiltered });
-        console.log(`      ✅ Advanced filter: ${advancedFiltered.clips.length} clips (${advancedFiltered.metrics.processingTimeMs}ms)`);
-        console.log(`         📊 Total before filter: ${advancedFiltered.totalBeforeFilter}`);
-        console.log(`         🚫 Filtered out: ${advancedFiltered.filteredOut}`);
-        console.log(`         🔧 Filters applied: ${advancedFiltered.metrics.filtersApplied}`);
-
-        filterTests.push({
-          mint: coin.mint,
-          name: coin.name,
-          symbol: coin.symbol,
-          tests
-        });
-
-      } catch (error) {
-        console.log(`   ❌ Error in T050 filtering: ${error instanceof Error ? error.message : 'Unknown error'}`);
-
-        // Add error entry for all tests
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        tests.push(
-          { testName: 'getCompleteClips', result: null, error: errorMsg },
-          { testName: 'getHighlightClips', result: null, error: errorMsg },
-          { testName: 'getClipsByDuration', result: null, error: errorMsg },
-          { testName: 'getClipsByViewCount', result: null, error: errorMsg },
-          { testName: 'getClipsByDurationRange', result: null, error: errorMsg },
-          { testName: 'getClipsByViewCountRange', result: null, error: errorMsg },
-          { testName: 'getClipsWithUrls', result: null, error: errorMsg },
-          { testName: 'filterStreamClips (Advanced)', result: null, error: errorMsg }
-        );
-
-        filterTests.push({
-          mint: coin.mint,
-          name: coin.name,
-          symbol: coin.symbol,
-          tests
-        });
-      }
-
-      console.log('');
-    }
-
-    // T050 Summary Statistics
-    console.log(`📊 T050 Clip Filtering Summary:`);
-    console.log(`   Total Tested: ${filterTests.length}`);
-
-    if (filterTests.length > 0) {
-      const allTests = filterTests.flatMap(ft => ft.tests);
-      const successfulTests = allTests.filter(t => !t.error && t.result);
-      const failedTests = allTests.filter(t => t.error);
-
-      console.log(`   Total Tests Run: ${allTests.length}`);
-      console.log(`   Successful: ${successfulTests.length}`);
-      console.log(`   Failed: ${failedTests.length}`);
-
-      if (successfulTests.length > 0) {
-        // Count by test type
-        const testCounts = new Map<string, number>();
-        successfulTests.forEach(test => {
-          const current = testCounts.get(test.testName) || 0;
-          testCounts.set(test.testName, current + 1);
-        });
-
-        console.log(`\n📈 Success by Test Type:`);
-        testCounts.forEach((count, testName) => {
-          console.log(`   ${testName}: ${count} successful`);
-        });
-
-        // Performance metrics
-        const avgProcessingTime = successfulTests.reduce((sum, test) => {
-          return sum + (test.result.metrics?.processingTimeMs || 0);
-        }, 0) / successfulTests.length;
-
-        console.log(`\n⚡ Performance Metrics:`);
-        console.log(`   Average Processing Time: ${avgProcessingTime.toFixed(2)}ms`);
-
-        if (avgProcessingTime < 100) {
-          console.log(`   ✅ Excellent performance (< 100ms)`);
-        } else if (avgProcessingTime < 500) {
-          console.log(`   ✅ Good performance (< 500ms)`);
-        } else {
-          console.log(`   ⚠️ Moderate performance (${avgProcessingTime.toFixed(2)}ms)`);
-        }
-      }
-
-      // Show some successful results
-      const successfulResults = successfulTests.slice(0, 3);
-      if (successfulResults.length > 0) {
-        console.log(`\n🎉 Successful T050 Operations:`);
-        successfulResults.forEach((test, index) => {
-          console.log(`   ${index + 1}. ${test.testName} - Found ${test.result.clips?.length || 0} clips`);
-        });
-      }
-    }
-
-    console.log('\n🎯 T050 Clip Filtering Usage Examples:');
-    console.log('   // Get complete clips sorted by creation date');
-    console.log('   const completeClips = await client.getCompleteClips(mintId, {');
-    console.log('     limit: 10,');
-    console.log('     sortBy: "created_at",');
-    console.log('     sortOrder: "DESC"');
-    console.log('   });');
-    console.log('');
-    console.log('   // Get highlight clips sorted by view count');
-    console.log('   const highlights = await client.getHighlightClips(mintId, {');
-    console.log('     limit: 5,');
-    console.log('     sortBy: "view_count",');
-    console.log('     sortOrder: "DESC"');
-    console.log('   });');
-    console.log('');
-    console.log('   // Get clips within duration range');
-    console.log('   const durationClips = await client.getClipsByDurationRange(mintId, 30, 300, {');
-    console.log('     limit: 10,');
-    console.log('     sortBy: "duration",');
-    console.log('     sortOrder: "ASC"');
-    console.log('   });');
-    console.log('');
-    console.log('   // Advanced filtering with multiple criteria');
-    console.log('   const filteredClips = await client.filterStreamClips(mintId, {');
-    console.log('     clipType: "HIGHLIGHT",');
-    console.log('     minDuration: 15,');
-    console.log('     maxViewCount: 1000,');
-    console.log('     hasUrl: true,');
-    console.log('     sortBy: "view_count",');
-    console.log('     sortOrder: "DESC",');
-    console.log('     limit: 5');
-    console.log('   });');
-    console.log('');
-    console.log('💡 T050 Features (NEW):');
-    console.log('   ✅ Clip type filtering (COMPLETE/HIGHLIGHT)');
-    console.log('   ✅ Duration range filtering');
-    console.log('   ✅ View count range filtering');
-    console.log('   ✅ Date range filtering');
-    console.log('   ✅ URL availability filtering');
-    console.log('   ✅ Multiple sorting options (duration, view_count, created_at, clip_type)');
-    console.log('   ✅ Advanced composite filtering');
-    console.log('   ✅ Performance metrics tracking');
-    console.log('   ✅ Comprehensive error handling');
-    console.log('   ✅ TypeScript type safety');
-
-    return { client, filterTests };
-  } catch (error) {
-    console.error('❌ Error in T050 clip filtering example:', error);
     throw error;
   }
 }

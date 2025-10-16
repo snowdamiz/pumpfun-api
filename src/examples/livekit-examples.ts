@@ -26,7 +26,7 @@ export async function basicLiveKitConnection() {
 
   try {
     // Get live coins first to find a stream
-    const liveCoins = await client.getLiveCoins({ limit: 10 });
+    const liveCoins = await client.getLiveStreams({ limit: 10 });
 
     if (liveCoins.length === 0) {
       console.log('No live streams available');
@@ -62,7 +62,7 @@ export async function liveKitConnectionWithCallbacks() {
 
   try {
     // Get live coins
-    const liveCoins = await client.getLiveCoins({ limit: 10 });
+    const liveCoins = await client.getLiveStreams({ limit: 10 });
 
     if (liveCoins.length === 0) {
       console.log('No live streams available');
@@ -188,7 +188,7 @@ export async function liveKitErrorHandling() {
 
   // Try connecting to a real stream without LiveKit installed (graceful handling)
   try {
-    const liveCoins = await client.getLiveCoins({ limit: 1 });
+    const liveCoins = await client.getLiveStreams({ limit: 1 });
     if (liveCoins.length > 0) {
       await client.connectToLiveStream(liveCoins[0]!.mint);
     }
@@ -206,7 +206,7 @@ export async function advancedConnectionManagement() {
   const client = new PumpFunAPIClient();
 
   try {
-    const liveCoins = await client.getLiveCoins({ limit: 3 });
+    const liveCoins = await client.getLiveStreams({ limit: 3 });
 
     if (liveCoins.length === 0) {
       console.log('No live streams available');
@@ -350,7 +350,7 @@ export async function basicLiveKitStreamManagerUsage() {
     console.log('='.repeat(50));
 
     // Get live coins first to find a stream
-    const liveCoins = await client.getLiveCoins({ limit: 5 });
+    const liveCoins = await client.getLiveStreams({ limit: 5 });
 
     if (liveCoins.length === 0) {
       console.log('No live streams available');
@@ -407,7 +407,7 @@ export async function liveKitStreamManagerWithConfig() {
     console.log('🔴 LiveKitStreamManager - Advanced Configuration Example');
     console.log('='.repeat(60));
 
-    const liveCoins = await client.getLiveCoins({ limit: 3 });
+    const liveCoins = await client.getLiveStreams({ limit: 3 });
 
     if (liveCoins.length === 0) {
       console.log('No live streams available');
@@ -509,7 +509,7 @@ export async function liveKitStreamManagerMultipleConnections() {
     console.log('🔴 LiveKitStreamManager - Multiple Connections Example');
     console.log('='.repeat(60));
 
-    const liveCoins = await client.getLiveCoins({ limit: 5 });
+    const liveCoins = await client.getLiveStreams({ limit: 5 });
 
     if (liveCoins.length === 0) {
       console.log('No live streams available');
@@ -601,7 +601,7 @@ export async function liveKitStreamManagerReconnection() {
     console.log('🔴 LiveKitStreamManager - Reconnection Example');
     console.log('='.repeat(50));
 
-    const liveCoins = await client.getLiveCoins({ limit: 3 });
+    const liveCoins = await client.getLiveStreams({ limit: 3 });
 
     if (liveCoins.length === 0) {
       console.log('No live streams available');
@@ -723,7 +723,7 @@ export async function liveKitStreamManagerErrorHandling() {
 
     // Test 5: Connection with invalid options
     console.log('\n🧪 Test 5: Connection with invalid options');
-    const liveCoins = await client.getLiveCoins({ limit: 1 });
+    const liveCoins = await client.getLiveStreams({ limit: 1 });
 
     if (liveCoins.length > 0) {
       try {
@@ -753,7 +753,7 @@ export async function liveKitStreamManagerLifecycle() {
     console.log('🔴 LiveKitStreamManager - Lifecycle Management Example');
     console.log('='.repeat(60));
 
-    const liveCoins = await client.getLiveCoins({ limit: 3 });
+    const liveCoins = await client.getLiveStreams({ limit: 3 });
 
     if (liveCoins.length === 0) {
       console.log('No live streams available');
