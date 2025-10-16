@@ -440,7 +440,7 @@ if (joinResult.success) {
 ```typescript
 public async connectToLiveStream(
   mintId: string,
-  options?: LiveKitConnectionOptions
+  options: LiveKitConnectionOptions = {}
 ): Promise<LiveStreamConnection>
 ```
 
