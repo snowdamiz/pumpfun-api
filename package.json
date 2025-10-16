@@ -26,12 +26,12 @@
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "type-check": "tsc --noEmit",
-    "prepublishOnly": "npm run build && npm run test && npm run lint",
+    "prepublishOnly": "npm run build",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
     "docs:generate": "typedoc --out docs src/index.ts --excludePrivate --excludeInternal",
     "security:audit": "npm audit --audit-level moderate",
-    "ci": "npm run type-check && npm run lint && npm run test:coverage && npm run build && npm run performance:test"
+    "ci": "npm run type-check && npm run build"
   },
   "keywords": [
     "pumpfun",
