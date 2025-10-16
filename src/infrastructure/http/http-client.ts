@@ -4,9 +4,9 @@ import {
   RateLimitConfig,
   PerformanceMetrics,
   HTTPClientConfig,
-  APIError as APIErrorInterface,
   DEFAULT_RETRY_CONFIG,
   DEFAULT_RATE_LIMIT_CONFIG,
+  APIError,
 } from '../../types';
 
 // Extend AxiosRequestConfig to include metadata
@@ -20,7 +20,6 @@ declare module 'axios' {
 
 // Type alias for backward compatibility
 type ClientRateLimitConfig = RateLimitConfig;
-type APIErrorData = Omit<APIErrorInterface, 'message'> & { message: string };
 
 const DEFAULT_CONFIG: Partial<AxiosRequestConfig> = {
   timeout: 10000, // 10 seconds
@@ -422,51 +421,6 @@ export class HTTPClient {
   }
 }
 
-export class APIError extends Error implements APIErrorInterface {
-  public readonly code: string;
-  public readonly statusCode: number;
-  public readonly details?: Record<string, any>;
-  public readonly timestamp: string;
-  public readonly isRetryable: boolean;
-  public readonly originalError?: any;
-
-  constructor(data: APIErrorData) {
-    super(data.message);
-    this.name = 'APIError';
-    this.code = data.code;
-    this.statusCode = data.statusCode;
-    this.details = data.details;
-    this.timestamp = data.timestamp;
-    this.isRetryable = data.isRetryable;
-    this.originalError = data.originalError;
-
-    // Maintains proper stack trace for where our error was thrown (only available on V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, APIError);
-    }
-  }
-
-  toJSON(): Record<string, any> {
-    return {
-      name: this.name,
-      code: this.code,
-      message: this.message,
-      statusCode: this.statusCode,
-      details: this.details,
-      timestamp: this.timestamp,
-      isRetryable: this.isRetryable,
-      stack: this.stack,
-    };
-  }
-
-  static retryable(data: Omit<APIErrorData, 'isRetryable'> & { message: string }): APIError {
-    return new APIError({ ...data, isRetryable: true });
-  }
-
-  static nonRetryable(data: Omit<APIErrorData, 'isRetryable'> & { message: string }): APIError {
-    return new APIError({ ...data, isRetryable: false });
-  }
-}
 
 export function createHTTPClient(config?: HTTPClientConfig): HTTPClient {
   return new HTTPClient(config);

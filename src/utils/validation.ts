@@ -1,5 +1,12 @@
 import { FilterCriteria, ContentFilters } from '../types';
 
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
 export function isValidMintId(mintId: string): boolean {
   return typeof mintId === 'string' && mintId.length > 0 && /^[a-zA-Z0-9]+$/.test(mintId);
 }
@@ -139,9 +146,5 @@ export function validateContentFilters(filters: ContentFilters): void {
   }
 }
 
-export class ValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ValidationError';
-  }
-}
+export { ValidationError };
+

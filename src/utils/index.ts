@@ -11,8 +11,10 @@ export {
   HTTPClient,
   createHTTPClient,
   httpClient,
-  APIError,
 } from '../infrastructure/http/http-client';
+
+// Export APIError from consolidated types
+export { APIError } from '../types';
 
 export function parseStreamUrl(url: string): string | null {
   try {
