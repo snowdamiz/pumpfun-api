@@ -238,53 +238,6 @@ export class ErrorHandler {
     return typeof responseObj.status === 'number';
   }
 
-  /**
-   * Error categorization for logging and metrics
-   */
-  categorizeError(error: unknown, _operation: string): string {
-    // Network connectivity issues
-    if (this.isNetworkError(error)) {
-      return 'NETWORK';
-    }
-
-    // Timeout issues
-    if (this.isTimeoutError(error)) {
-      return 'TIMEOUT';
-    }
-
-    // Configuration issues
-    if (this.isConfigurationError(error)) {
-      return 'CONFIGURATION';
-    }
-
-    // API response validation issues
-    if (this.isAPIValidationError(error)) {
-      return 'VALIDATION';
-    }
-
-    // Rate limiting
-    if (this.isRateLimitExceededError(error)) {
-      return 'RATE_LIMIT';
-    }
-
-    // HTTP status errors
-    if (this.isHTTPError(error)) {
-      const errorObj = error as Record<string, unknown>;
-      const responseObj = errorObj.response as Record<string, unknown>;
-      const status = responseObj?.status as number;
-      if (status >= 400 && status < 500) {
-        return 'CLIENT_ERROR';
-      } else if (status >= 500) {
-        return 'SERVER_ERROR';
-      }
-    }
-
-    return 'UNKNOWN';
-  }
-
-  /**
-   * Specific error handlers
-   */
   private handleNetworkError(
     error: unknown,
     operation: string,
@@ -518,9 +471,6 @@ export class ErrorHandler {
     return rateLimitError;
   }
 
-  /**
-   * Error recovery suggestion generators
-   */
   private getNetworkErrorRecovery(error: any, operation: string): string[] {
     const suggestions = [
       'Check your internet connection',

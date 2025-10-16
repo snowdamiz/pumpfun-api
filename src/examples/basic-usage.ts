@@ -11,11 +11,15 @@
  *   quick    - Quick functionality test (default)
  *   basic    - Basic initialization demo
  *   live     - Live streams API demo (with real API calls)
+ *   unified  - Unified filtering examples (NEW advanced filtering)
+ *   livekit  - LiveKit integration tests (validates refactoring)
  *   all      - Run all basic examples
  *
  * Examples:
  *   npx tsx src/examples/basic-usage.ts quick
  *   npx tsx src/examples/basic-usage.ts live
+ *   npx tsx src/examples/basic-usage.ts unified
+ *   npx tsx src/examples/basic-usage.ts livekit
  *   npx tsx src/examples/basic-usage.ts all
  *
  * @version 1.0.0
@@ -29,6 +33,7 @@ import * as errorHandlingExamples from './error-handling-examples';
 import * as livestreamExamples from './livestream-examples';
 import * as bestPracticesExamples from './best-practices-examples';
 import * as unifiedFilteringExamples from './unified-filtering-examples';
+import * as livekitIntegrationTest from './livekit-integration-test';
 
 // Import constants and types
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
@@ -80,6 +85,11 @@ export const customFilterExamples = unifiedFilteringExamples.customFilterExample
 export const performanceExamples = unifiedFilteringExamples.performanceExamples;
 export const migrationExamples = unifiedFilteringExamples.migrationExamples;
 export const runUnifiedFilteringExamples = unifiedFilteringExamples.runUnifiedFilteringExamples;
+
+// LiveKit Integration Tests (NEW - validates refactoring)
+export const testLiveKitStreamManagerIntegration = livekitIntegrationTest.testLiveKitStreamManagerIntegration;
+export const testConnectToLiveStreamIntegration = livekitIntegrationTest.testConnectToLiveStreamIntegration;
+export const runLiveKitIntegrationTests = livekitIntegrationTest.runLiveKitIntegrationTests;
 
 // ============================================================================
 // Basic Example Runner
@@ -308,7 +318,9 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
   console.log('   1. Quick test (verifies basic functionality)');
   console.log('   2. Basic initialization demo');
   console.log('   3. Live streams demo (with API calls)');
-  console.log('   4. All examples (comprehensive demo)');
+  console.log('   4. Unified filtering examples (NEW advanced filtering)');
+  console.log('   5. LiveKit integration tests (validates refactoring)');
+  console.log('   6. All examples (comprehensive demo)');
   console.log('');
 
   // Get command line arguments
@@ -401,6 +413,28 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
         });
       break;
 
+    case 'unified':
+      runUnifiedFilteringExamples()
+        .then(() => {
+          console.log('\n✅ Unified filtering examples completed');
+        })
+        .catch(err => {
+          console.error('\n💥 Unified filtering examples failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
+    case 'livekit':
+      runLiveKitIntegrationTests()
+        .then(() => {
+          console.log('\n✅ LiveKit integration tests completed');
+        })
+        .catch(err => {
+          console.error('\n💥 LiveKit integration tests failed:', err);
+          process.exit(EXIT_FAILURE);
+        });
+      break;
+
     case 'all':
       runAllBasicExamples()
         .then(() => {
@@ -418,6 +452,8 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
       console.log('   basic         - Basic initialization demo');
       console.log('   live          - Live streams API demo');
       console.log('   streams       - Live streams API demo with filtering');
+      console.log('   unified       - Unified filtering examples (NEW advanced filtering)');
+      console.log('   livekit       - LiveKit integration tests (validates refactoring)');
       console.log('   approval      - Creator approval demo');
       console.log('   join          - Join live stream demo');
       console.log('   search        - Search live streams demo');
@@ -427,6 +463,8 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
       console.log('');
       console.log('Usage: node basic-usage.ts [demo-type]');
       console.log('Example: node basic-usage.ts quick');
+      console.log('Example: node basic-usage.ts livekit');
+      console.log('Example: node basic-usage.ts unified');
       console.log('Example: node basic-usage.ts streams');
       process.exit(EXIT_FAILURE);
   }

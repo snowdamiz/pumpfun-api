@@ -54,6 +54,7 @@ import {
 import { ConfigurationManager } from '../infrastructure/config/config-manager';
 import { ErrorHandler } from '../infrastructure/error-handling/error-handler';
 import { LiveStreamsService } from '../services/live/live-streams.service';
+import { LiveKitStreamManager } from '../services/live/LiveKitStreamManager';
 
 /**
  * Main API client class for PumpFun streaming data
@@ -67,6 +68,7 @@ export class PumpFunAPIClient {
   private errorHandler!: ErrorHandler;
   private liveStreamsService!: LiveStreamsService;
   private streamFilters!: StreamFilters;
+  private liveKitStreamManager!: LiveKitStreamManager;
 
   /** Runtime state tracking */
   private state!: ClientState;
@@ -163,6 +165,12 @@ export class PumpFunAPIClient {
       (options?: StreamOptions) => this.liveStreamsService.fetchBaseLiveStreams(options),
       (mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number) =>
         this.liveStreamsService.getStreamClips(mintId, clipType, limit)
+    );
+
+    // Initialize LiveKit stream manager
+    this.liveKitStreamManager = new LiveKitStreamManager(
+      this,
+      this.logger
     );
 
     this.logger.debug('All components initialized successfully');
@@ -464,12 +472,10 @@ export class PumpFunAPIClient {
   }
 
   /**
-   * Connect to a live stream using built-in LiveKit integration
+   * Connect to a live stream using LiveKit integration
    *
-   * This method provides seamless WebRTC connection to live streams by automatically
-   * handling the API → LiveKit connection process. It fetches stream information,
-   * validates stream availability, obtains LiveKit connection details, and establishes
-   * a WebRTC connection within 5 seconds.
+   * This method provides seamless WebRTC connection to live streams by delegating
+   * to the LiveKitStreamManager for advanced connection lifecycle management.
    *
    * @param mintId - The mint identifier of the token to connect to
    * @param options - Optional connection configuration including video/audio elements and callbacks
@@ -501,12 +507,12 @@ export class PumpFunAPIClient {
     this.ensureInitialized();
 
     const startTime = Date.now();
-    const connectionId = this.generateConnectionId();
 
     this.logger.info('Starting LiveKit connection process', {
       mintId,
-      connectionId,
       options: {
+        hasVideoElement: !!options.videoElement,
+        hasAudioElement: !!options.audioElement,
         autoConnect: options.autoConnect,
         autoPlay: options.autoPlay,
         videoEnabled: options.videoEnabled,
@@ -516,34 +522,15 @@ export class PumpFunAPIClient {
     });
 
     try {
-      // Check if LiveKit is available
-      const liveKitClient = await this.getLiveKitClient();
-      if (!liveKitClient) {
-        throw new LiveKitError({
-          code: 'LIVEKIT_NOT_AVAILABLE',
-          message: 'LiveKit is not available. Please install livekit-client as a peer dependency.',
-          details: {
-            mintId,
-            connectionId,
-            resolution: 'Install livekit-client: npm install livekit-client',
-            documentation: 'https://docs.livekit.io',
-          },
-        });
-      }
-
       // Step 1: Get video stream analysis to validate stream availability
-      this.logger.debug('Validating stream availability', { mintId, connectionId });
+      this.logger.debug('Validating stream availability', { mintId });
       const streamAnalysis = await this.getVideoStreamAnalysis(mintId);
 
       if (!streamAnalysis.hasActiveStream || !streamAnalysis.streamInfo) {
         throw new LiveKitError({
           code: 'STREAM_NOT_LIVE',
           message: `Stream for mint ${mintId} is not currently live`,
-          details: {
-            mintId,
-            connectionId,
-            streamAnalysis,
-          },
+          details: { mintId, streamAnalysis },
         });
       }
 
@@ -551,11 +538,7 @@ export class PumpFunAPIClient {
         throw new LiveKitError({
           code: 'CREATOR_NOT_APPROVED',
           message: `Creator for mint ${mintId} is not approved for streaming`,
-          details: {
-            mintId,
-            connectionId,
-            streamAnalysis,
-          },
+          details: { mintId, streamAnalysis },
         });
       }
 
@@ -563,45 +546,22 @@ export class PumpFunAPIClient {
         throw new LiveKitError({
           code: 'NO_LIVEKIT_CONNECTION',
           message: `No LiveKit connection information available for mint ${mintId}`,
-          details: {
-            mintId,
-            connectionId,
-            streamAnalysis,
-          },
+          details: { mintId, streamAnalysis },
         });
       }
 
-      // Step 2: Create LiveKit connection object
-      this.logger.debug('Creating LiveKit connection object', {
+      // Step 2: Delegate to LiveKitStreamManager for connection establishment
+      this.logger.debug('Delegating to LiveKitStreamManager', {
         mintId,
-        connectionId,
         roomName: streamAnalysis.liveKitConnection.roomName,
       });
 
-      const connection = await this.createLiveStreamConnection(
-        connectionId,
-        mintId,
-        streamAnalysis.liveKitConnection,
-        options
-      );
-
-      // Step 3: Establish WebRTC connection
-      this.logger.debug('Establishing WebRTC connection', {
-        mintId,
-        connectionId,
-        serverUrl: streamAnalysis.liveKitConnection.primaryServer,
-      });
-
-      await this.establishWebRTCConnection(
-        connection,
-        streamAnalysis.liveKitConnection,
-        options
-      );
+      const connection = await this.liveKitStreamManager.connect(mintId, options);
 
       const connectionTime = Date.now() - startTime;
       this.logger.info('LiveKit connection established successfully', {
         mintId,
-        connectionId,
+        connectionId: connection.id,
         connectionTime,
         state: connection.state,
         isConnected: connection.isConnected,
@@ -611,7 +571,7 @@ export class PumpFunAPIClient {
       if (connectionTime > 5000) {
         this.logger.warn('Connection exceeded 5-second target', {
           mintId,
-          connectionId,
+          connectionId: connection.id,
           connectionTime,
           target: 5000,
         });
@@ -623,14 +583,12 @@ export class PumpFunAPIClient {
       const connectionTime = Date.now() - startTime;
       this.logger.error('LiveKit connection failed', {
         mintId,
-        connectionId,
         connectionTime,
         error: ErrorUtils.formatForLogging(error),
       });
 
       const pumpFunError = this.errorHandler.handleError(error, 'connectToLiveStream', {
         mintId,
-        connectionId,
         connectionTime,
         options,
       });
@@ -1454,6 +1412,9 @@ export class PumpFunAPIClient {
     });
 
     try {
+      // Cleanup LiveKit connections first
+      this.shutdownLiveKitComponents();
+
       // Mark as uninitialized
       this.isInitialized = false;
       this.state.isInitialized = false;
@@ -1839,452 +1800,108 @@ export class PumpFunAPIClient {
   }
 
   // ============================================================================
-  // LiveKit Integration Helper Methods
+  // Connection Management Methods - Delegate to LiveKitStreamManager
   // ============================================================================
 
   /**
-   * Generate a unique connection ID
+   * Get connection state for a live stream
+   *
+   * @param connectionIdOrMintId - Connection ID or mint ID
+   * @returns ConnectionState - Current connection state
    */
-  private generateConnectionId(): string {
-    return `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  public getLiveStreamConnectionState(connectionIdOrMintId: string): ConnectionState {
+    this.ensureInitialized();
+    return this.liveKitStreamManager.getConnectionState(connectionIdOrMintId);
   }
 
   /**
-   * Get LiveKit client if available, return null if not installed
+   * Get all active LiveKit connections
+   *
+   * @returns LiveStreamConnection[] - Array of active connections
    */
-  private async getLiveKitClient(): Promise<any | null> {
-    try {
-      // Check if we're in a Node.js environment
-      if (typeof window === 'undefined') {
-        // Node.js environment - try to import livekit-client
-        try {
-          const liveKitClient = await import('livekit-client');
-          return liveKitClient;
-        } catch (importError) {
-          // Fallback to require if import fails
-          try {
-            return require('livekit-client');
-          } catch (requireError) {
-            // Both failed - LiveKit not available
-            this.logger.debug('LiveKit client not available via import/require', {
-              error: requireError instanceof Error ? requireError.message : 'Unknown error',
-              resolution: 'Install livekit-client as a peer dependency',
-            });
-            return null;
-          }
-        }
-      } else {
-        // Browser environment - use global or dynamic import
-        if ((window as any).LiveKit) {
-          return (window as any).LiveKit;
-        }
-        // Return mock if not available
-        return null;
-      }
-    } catch (error) {
-      this.logger.debug('LiveKit client not available', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        resolution: 'Install livekit-client as a peer dependency',
-      });
-      return null;
-    }
-  }
-
-  
-  /**
-   * Create a LiveStreamConnection object
-   */
-  private async createLiveStreamConnection(
-    connectionId: string,
-    mintId: string,
-    liveKitConnectionInfo: LiveKitConnectionInfo,
-    options: LiveKitConnectionOptions
-  ): Promise<LiveStreamConnection> {
-    const now = Date.now();
-
-    // Create connection object with internal state
-    let internalState: ConnectionState = ConnectionState.DISCONNECTED;
-    let room: any = null;
-    let audioTrack: MediaStreamTrack | null = null;
-    let videoTrack: MediaStreamTrack | null = null;
-    let mediaStream: MediaStream | null = null;
-    let reconnectionCount = 0;
-
-    // Store reference to this client for logger access
-    const client = this;
-
-    const connection: LiveStreamConnection = {
-      id: connectionId,
-      mintId,
-      roomName: liveKitConnectionInfo.roomName,
-      get state() { return internalState; },
-      set state(newState: ConnectionState) { internalState = newState; },
-      get isConnected() { return internalState === ConnectionState.CONNECTED; },
-      createdAt: now,
-      get lastActivity() { return now; }, // Simplified for now
-      set lastActivity(_newTime: number) { /* no-op for now */ },
-      get reconnectionCount() { return reconnectionCount; },
-      set reconnectionCount(count: number) { reconnectionCount = count; },
-      get audioTrack() { return audioTrack; },
-      set audioTrack(track: MediaStreamTrack | null) { audioTrack = track; },
-      get videoTrack() { return videoTrack; },
-      set videoTrack(track: MediaStreamTrack | null) { videoTrack = track; },
-      get mediaStream() { return mediaStream; },
-      set mediaStream(stream: MediaStream | null) { mediaStream = stream; },
-
-      async disconnect(): Promise<void> {
-        client.logger.debug('Disconnecting LiveKit connection', {
-          connectionId,
-          mintId,
-          roomName: liveKitConnectionInfo.roomName,
-        });
-
-        try {
-          if (room) {
-            await room.disconnect();
-            room = null;
-          }
-
-          internalState = ConnectionState.DISCONNECTED;
-          audioTrack = null;
-          videoTrack = null;
-          mediaStream = null;
-
-          client.logger.info('LiveKit connection disconnected successfully', {
-            connectionId,
-            mintId,
-          });
-
-          if (options.onDisconnected) {
-            options.onDisconnected(connection);
-          }
-        } catch (error) {
-          client.logger.error('Error during LiveKit disconnection', {
-            connectionId,
-            mintId,
-            error: ErrorUtils.formatForLogging(error),
-          });
-          throw error;
-        }
-      },
-
-      async reconnect(): Promise<void> {
-        client.logger.info('Attempting LiveKit reconnection', {
-          connectionId,
-          mintId,
-          reconnectionCount: reconnectionCount + 1,
-        });
-
-        if (reconnectionCount >= (options.maxReconnectAttempts || 5)) {
-          throw new LiveKitError({
-            code: 'MAX_RECONNECT_ATTEMPTS',
-            message: 'Maximum reconnection attempts exceeded',
-            details: {
-              connectionId,
-              mintId,
-              reconnectionCount,
-              maxAttempts: options.maxReconnectAttempts || 5,
-            },
-          });
-        }
-
-        try {
-          reconnectionCount++;
-          internalState = ConnectionState.RECONNECTING;
-
-          if (options.onReconnecting) {
-            options.onReconnecting(connection);
-          }
-
-          // Disconnect first if room exists
-          if (room) {
-            await room.disconnect();
-            room = null;
-          }
-
-          // Re-establish connection
-          await client.establishWebRTCConnection(connection, liveKitConnectionInfo, options);
-
-          internalState = ConnectionState.CONNECTED;
-          reconnectionCount = 0; // Reset on successful reconnection
-
-          client.logger.info('LiveKit reconnection successful', {
-            connectionId,
-            mintId,
-          });
-
-        } catch (error) {
-          internalState = ConnectionState.FAILED;
-          client.logger.error('LiveKit reconnection failed', {
-            connectionId,
-            mintId,
-            reconnectionCount,
-            error: ErrorUtils.formatForLogging(error),
-          });
-
-          if (options.onError) {
-            options.onError(error as Error, connection);
-          }
-          throw error;
-        }
-      },
-
-      async getStats(): Promise<RTCStatsReport> {
-        if (!room) {
-          throw new LiveKitError({
-            code: 'CONNECTION_NOT_ESTABLISHED',
-            message: 'Connection not established for stats collection',
-            details: { connectionId, mintId },
-          });
-        }
-
-        try {
-          return await room.getStats();
-        } catch (error) {
-          client.logger.error('Failed to get WebRTC stats', {
-            connectionId,
-            mintId,
-            error: ErrorUtils.formatForLogging(error),
-          });
-          throw error;
-        }
-      },
-
-      muteAudio(): void {
-        if (audioTrack) {
-          audioTrack.enabled = false;
-          client.logger.debug('Audio muted', { connectionId, mintId });
-        }
-      },
-
-      unmuteAudio(): void {
-        if (audioTrack) {
-          audioTrack.enabled = true;
-          client.logger.debug('Audio unmuted', { connectionId, mintId });
-        }
-      },
-
-      muteVideo(): void {
-        if (videoTrack) {
-          videoTrack.enabled = false;
-          client.logger.debug('Video muted', { connectionId, mintId });
-        }
-      },
-
-      unmuteVideo(): void {
-        if (videoTrack) {
-          videoTrack.enabled = true;
-          client.logger.debug('Video unmuted', { connectionId, mintId });
-        }
-      },
-    };
-
-    return connection;
+  public getActiveLiveConnections(): LiveStreamConnection[] {
+    this.ensureInitialized();
+    return this.liveKitStreamManager.getActiveConnections();
   }
 
   /**
-   * Establish WebRTC connection using LiveKit
+   * Disconnect from a live stream
+   *
+   * @param connectionIdOrMintId - Connection ID or mint ID
    */
-  private async establishWebRTCConnection(
-    connection: LiveStreamConnection,
-    liveKitConnectionInfo: LiveKitConnectionInfo,
-    options: LiveKitConnectionOptions
-  ): Promise<void> {
-    try {
-      // Get LiveKit client
-      const liveKitClient = await this.getLiveKitClient();
-      if (!liveKitClient) {
-        // Use mock client if livekit-client is not available
-        throw new LiveKitError({
-          code: 'LIVEKIT_NOT_AVAILABLE',
-          message: 'LiveKit client is not available. Please install livekit-client as a peer dependency.',
-          details: {
-            resolution: 'Install livekit-client: npm install livekit-client',
-            documentation: 'https://docs.livekit.io',
-          },
-        });
-      }
-
-      // Create connection token (in a real implementation, this would come from the API)
-      // For now, we'll create a mock token for demonstration
-      const token = await this.generateLiveKitToken(liveKitConnectionInfo);
-
-      // Connect to LiveKit room
-      const room = new liveKitClient.Room();
-
-      // Configure room options
-      const connectOptions = {
-        autoSubscribe: true,
-        adaptiveStream: true,
-        dynacast: true,
-      };
-
-      // Connect to the room
-      await room.connect(liveKitConnectionInfo.primaryServer, token, connectOptions);
-
-      // Wait for connection to be established
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new LiveKitError({
-            code: 'CONNECTION_TIMEOUT',
-            message: 'WebRTC connection establishment timed out',
-            details: {
-              connectionId: connection.id,
-              mintId: connection.mintId,
-              timeout: 10000,
-            },
-          }));
-        }, 10000);
-
-        room.on(liveKitClient.RoomEvent.Connected, () => {
-          clearTimeout(timeout);
-          resolve();
-        });
-
-        room.on(liveKitClient.RoomEvent.Disconnected, () => {
-          clearTimeout(timeout);
-          reject(new LiveKitError({
-            code: 'CONNECTION_LOST',
-            message: 'WebRTC connection lost during establishment',
-            details: {
-              connectionId: connection.id,
-              mintId: connection.mintId,
-            },
-          }));
-        });
-      });
-
-      // Handle tracks
-      room.on(liveKitClient.RoomEvent.TrackSubscribed, (track: any, participant: any, _publication: any) => {
-        this.logger.debug('Track subscribed', {
-          connectionId: connection.id,
-          mintId: connection.mintId,
-          trackKind: track.kind,
-          participantName: participant.name,
-        });
-
-        if (track.kind === 'audio' && options.audioEnabled !== false) {
-          let audioElement = options.audioElement;
-          if (!audioElement && typeof document !== 'undefined') {
-            audioElement = document.createElement('audio');
-          }
-          if (audioElement) {
-            track.attach(audioElement);
-            // Update connection object's audio track reference
-            connection.audioTrack = track.mediaStreamTrack;
-            if (audioElement.srcObject instanceof MediaStream) {
-              connection.mediaStream = audioElement.srcObject;
-            }
-          } else {
-            // In Node.js environment, just store the track reference
-            connection.audioTrack = track.mediaStreamTrack;
-          }
-        }
-
-        if (track.kind === 'video' && options.videoEnabled !== false) {
-          let videoElement = options.videoElement;
-          if (!videoElement && typeof document !== 'undefined') {
-            videoElement = document.createElement('video');
-            if (options.autoPlay !== false) {
-              videoElement.autoplay = true;
-            }
-            if (options.muted) {
-              videoElement.muted = true;
-            }
-          }
-          if (videoElement) {
-            track.attach(videoElement);
-            // Update connection object's video track reference
-            connection.videoTrack = track.mediaStreamTrack;
-            if (videoElement.srcObject instanceof MediaStream) {
-              connection.mediaStream = videoElement.srcObject;
-            }
-          } else {
-            // In Node.js environment, just store the track reference
-            connection.videoTrack = track.mediaStreamTrack;
-          }
-        }
-      });
-
-      // Update connection state
-      connection.state = ConnectionState.CONNECTED;
-      (connection as any).room = room; // Store room reference for cleanup
-
-      this.logger.info('WebRTC connection established successfully', {
-        connectionId: connection.id,
-        mintId: connection.mintId,
-        roomName: liveKitConnectionInfo.roomName,
-      });
-
-      // Trigger connected callback
-      if (options.onConnected) {
-        options.onConnected(connection);
-      }
-
-    } catch (error) {
-      connection.state = ConnectionState.FAILED;
-      this.logger.error('Failed to establish WebRTC connection', {
-        connectionId: connection.id,
-        mintId: connection.mintId,
-        error: ErrorUtils.formatForLogging(error),
-      });
-
-      if (options.onError) {
-        options.onError(error as Error, connection);
-      }
-      throw error;
-    }
+  public async disconnectLiveStream(connectionIdOrMintId: string): Promise<void> {
+    this.ensureInitialized();
+    return this.liveKitStreamManager.disconnect(connectionIdOrMintId);
   }
 
   /**
-   * Generate LiveKit token for room access
-   * In a production environment, this should be obtained from a secure backend service
+   * Reconnect to a live stream
+   *
+   * @param connectionIdOrMintId - Connection ID or mint ID
    */
-  private async generateLiveKitToken(liveKitConnectionInfo: LiveKitConnectionInfo): Promise<string> {
-    // This is a simplified token generation for demonstration
-    // In production, tokens should be generated by a secure backend service
+  public async reconnectLiveStream(connectionIdOrMintId: string): Promise<void> {
+    this.ensureInitialized();
+    return this.liveKitStreamManager.reconnect(connectionIdOrMintId);
+  }
 
-    try {
-      // Try to get token from API first
-      const response = await this.httpClient.post<{ token: string }>(
-        '/livekit/generate-token',
-        {
-          roomName: liveKitConnectionInfo.roomName,
-          participantName: `user_${Date.now()}`,
-          mintId: liveKitConnectionInfo.mintId,
-        }
-      );
+  /**
+   * Mute audio track for a connection
+   *
+   * @param connectionIdOrMintId - Connection ID or mint ID
+   */
+  public async muteLiveStreamAudio(connectionIdOrMintId: string): Promise<void> {
+    this.ensureInitialized();
+    return this.liveKitStreamManager.muteAudio(connectionIdOrMintId);
+  }
 
-      if (response?.token) {
-        return response.token;
-      }
-    } catch (error) {
-      this.logger.debug('Failed to get token from API, using fallback method', {
-        roomName: liveKitConnectionInfo.roomName,
-        error: ErrorUtils.formatForLogging(error),
+  /**
+   * Unmute audio track for a connection
+   *
+   * @param connectionIdOrMintId - Connection ID or mint ID
+   */
+  public async unmuteLiveStreamAudio(connectionIdOrMintId: string): Promise<void> {
+    this.ensureInitialized();
+    return this.liveKitStreamManager.unmuteAudio(connectionIdOrMintId);
+  }
+
+  /**
+   * Mute video track for a connection
+   *
+   * @param connectionIdOrMintId - Connection ID or mint ID
+   */
+  public async muteLiveStreamVideo(connectionIdOrMintId: string): Promise<void> {
+    this.ensureInitialized();
+    return this.liveKitStreamManager.muteVideo(connectionIdOrMintId);
+  }
+
+  /**
+   * Unmute video track for a connection
+   *
+   * @param connectionIdOrMintId - Connection ID or mint ID
+   */
+  public async unmuteLiveStreamVideo(connectionIdOrMintId: string): Promise<void> {
+    this.ensureInitialized();
+    return this.liveKitStreamManager.unmuteVideo(connectionIdOrMintId);
+  }
+
+  /**
+   * Cleanup all LiveKit connections
+   */
+  public async cleanupLiveKitConnections(): Promise<void> {
+    this.ensureInitialized();
+    return this.liveKitStreamManager.cleanup();
+  }
+
+  /**
+   * Add shutdown cleanup for LiveKit connections
+   */
+  protected shutdownLiveKitComponents(): void {
+    if (this.liveKitStreamManager) {
+      this.liveKitStreamManager.cleanup().catch(error => {
+        this.logger.warn('Error during LiveKit manager cleanup during shutdown', {
+          error: ErrorUtils.formatForLogging(error),
+        });
       });
     }
-
-    // Fallback: generate a simple token (NOT SECURE FOR PRODUCTION)
-    // This should be replaced with proper JWT token generation
-    const payload = {
-      iss: 'pumpfun-api',
-      sub: `user_${Date.now()}`,
-      room: liveKitConnectionInfo.roomName,
-      name: `User ${Date.now()}`,
-      exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiry
-      iat: Math.floor(Date.now() / 1000),
-    };
-
-    // In production, this should use a proper JWT library and secret key
-    const tokenHeader = {
-      alg: 'HS256',
-      typ: 'JWT',
-    };
-
-    const tokenPayload = btoa(JSON.stringify(tokenHeader)) + '.' + btoa(JSON.stringify(payload));
-    const signature = btoa('mock_signature'); // This should be HMAC-SHA256 in production
-
-    return tokenPayload + '.' + signature;
   }
 }

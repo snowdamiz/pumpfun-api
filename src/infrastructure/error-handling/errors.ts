@@ -39,20 +39,6 @@ export abstract class PumpFunError extends Error {
   }
 
   /**
-   * Get the error code for programmatic handling
-   */
-  getErrorCode(): string {
-    return this.code;
-  }
-
-  /**
-   * Get the error message
-   */
-  getMessage(): string {
-    return this.message;
-  }
-
-  /**
    * Check if this error can be retried
    */
   canRetry(): boolean {

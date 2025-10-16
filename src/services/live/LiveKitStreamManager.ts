@@ -447,7 +447,7 @@ export class LiveKitStreamManager {
 
     // If not found, try to find by connection ID
     if (!connection) {
-      for (const conn of this.activeConnections.values()) {
+      for (const conn of Array.from(this.activeConnections.values())) {
         if (conn.id === connectionIdOrMintId) {
           connection = conn;
           break;
@@ -1072,10 +1072,10 @@ export class LiveKitStreamManager {
     await Promise.all(roomDisconnectPromises);
 
     // Clear all timers
-    for (const timeout of this.connectionTimeouts.values()) {
+    for (const timeout of Array.from(this.connectionTimeouts.values())) {
       clearTimeout(timeout);
     }
-    for (const interval of this.heartbeatIntervals.values()) {
+    for (const interval of Array.from(this.heartbeatIntervals.values())) {
       clearInterval(interval);
     }
 
