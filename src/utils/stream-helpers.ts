@@ -1,13 +1,5 @@
-/**
- * Stream processing and helper utilities
- */
+import { FilterCriteria, LiveCoin } from '../types';
 
-import { FilterCriteria } from '../types';
-import { LiveCoin } from '../types/api.types';
-
-/**
- * Process streams based on filter criteria
- */
 export function processStreamFilters(streams: LiveCoin[], criteria: FilterCriteria): LiveCoin[] {
   let filtered = [...streams];
 
@@ -136,9 +128,6 @@ export function processStreamFilters(streams: LiveCoin[], criteria: FilterCriter
   return filtered;
 }
 
-/**
- * Get applied filter names for logging/metrics
- */
 export function getAppliedFilterNames(criteria: FilterCriteria): string[] {
   const filters: string[] = [];
 
@@ -167,9 +156,6 @@ export function getAppliedFilterNames(criteria: FilterCriteria): string[] {
   return filters;
 }
 
-/**
- * Convert filter criteria to summary object for logging
- */
 export function summarizeFilterCriteria(criteria: FilterCriteria): Record<string, any> {
   const summary: Record<string, any> = {};
 

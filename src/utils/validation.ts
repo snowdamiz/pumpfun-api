@@ -1,19 +1,9 @@
-/**
- * Input validation utilities for simplified API
- */
-
 import { FilterCriteria, ContentFilters } from '../types';
 
-/**
- * Validates if a mint ID is in correct format
- */
 export function isValidMintId(mintId: string): boolean {
   return typeof mintId === 'string' && mintId.length > 0 && /^[a-zA-Z0-9]+$/.test(mintId);
 }
 
-/**
- * Validates filter criteria for stream filtering
- */
 export function validateFilterCriteria(criteria: FilterCriteria): void {
   if (criteria.minParticipants !== undefined && criteria.minParticipants < 0) {
     throw new ValidationError('minParticipants must be non-negative');
@@ -82,9 +72,6 @@ export function validateFilterCriteria(criteria: FilterCriteria): void {
   }
 }
 
-/**
- * Validates content filters for content retrieval
- */
 export function validateContentFilters(filters: ContentFilters): void {
   if (filters.limit !== undefined && filters.limit <= 0) {
     throw new ValidationError('limit must be positive');
@@ -152,9 +139,6 @@ export function validateContentFilters(filters: ContentFilters): void {
   }
 }
 
-/**
- * Custom validation error class
- */
 export class ValidationError extends Error {
   constructor(message: string) {
     super(message);

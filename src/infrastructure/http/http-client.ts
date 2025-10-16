@@ -1,10 +1,3 @@
-/**
- * Enhanced HTTP Client Utility for PumpFun API npm Package
- *
- * Provides a robust HTTP client with retry logic, timeout handling,
- * rate limiting, and enhanced error handling for API operations.
- */
-
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import {
   RetryConfig,
@@ -29,9 +22,6 @@ declare module 'axios' {
 type ClientRateLimitConfig = RateLimitConfig;
 type APIErrorData = Omit<APIErrorInterface, 'message'> & { message: string };
 
-/**
- * Default configuration for HTTP requests
- */
 const DEFAULT_CONFIG: Partial<AxiosRequestConfig> = {
   timeout: 10000, // 10 seconds
   headers: {
@@ -40,9 +30,6 @@ const DEFAULT_CONFIG: Partial<AxiosRequestConfig> = {
   },
 };
 
-/**
- * Enhanced HTTP Client class with retry logic, rate limiting, and performance monitoring
- */
 export class HTTPClient {
   private client: AxiosInstance;
   private retryConfig: RetryConfig;
@@ -80,9 +67,6 @@ export class HTTPClient {
     this.setupInterceptors();
   }
 
-  /**
-   * Setup request and response interceptors with enhanced functionality
-   */
   private setupInterceptors(): void {
     // Request interceptor for logging, rate limiting, and performance tracking
     this.client.interceptors.request.use(
@@ -151,9 +135,6 @@ export class HTTPClient {
     );
   }
 
-  /**
-   * Enhanced rate limiting with sliding window and burst protection
-   */
   private checkRateLimit(): void {
     const now = Date.now();
     const windowStart = now - this.rateLimitConfig.windowMs;
@@ -212,9 +193,6 @@ export class HTTPClient {
     }
   }
 
-  /**
-   * Enhanced performance metrics tracking
-   */
   private updatePerformanceMetrics(config: AxiosRequestConfig | undefined, success: boolean): void {
     if (!this.enablePerformanceMonitoring || !config?.metadata?.startTime) {
       return;
@@ -242,9 +220,6 @@ export class HTTPClient {
       this.performanceMetrics.failedRequests / this.performanceMetrics.totalRequests;
   }
 
-  /**
-   * Enhanced retry logic with jitter and adaptive backoff
-   */
   private shouldRetry(
     error: AxiosError,
     originalRequest: AxiosRequestConfig & { _retryCount?: number }
@@ -274,9 +249,6 @@ export class HTTPClient {
     return false;
   }
 
-  /**
-   * Enhanced retry with exponential backoff and jitter
-   */
   private async retryRequest(
     originalRequest: AxiosRequestConfig & { _retryCount?: number }
   ): Promise<AxiosResponse> {
@@ -305,9 +277,6 @@ export class HTTPClient {
     return this.client(originalRequest);
   }
 
-  /**
-   * Enhanced API error creation with better categorization
-   */
   private createAPIError(error: AxiosError): APIError {
     const statusCode = error.response?.status ?? 0;
     const errorCode = error.code ?? 'UNKNOWN_ERROR';
@@ -343,9 +312,6 @@ export class HTTPClient {
     });
   }
 
-  /**
-   * Enhanced retryable error detection
-   */
   private isRetryableError(error: AxiosError): boolean {
     return !!(
       (error.response?.status &&
@@ -354,113 +320,68 @@ export class HTTPClient {
     );
   }
 
-  /**
-   * Sleep utility for retry delays
-   */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  /**
-   * HTTP GET request with enhanced features
-   */
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.get<T>(url, config);
     return response.data;
   }
 
-  /**
-   * HTTP POST request with enhanced features
-   */
   async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.post<T>(url, data, config);
     return response.data;
   }
 
-  /**
-   * HTTP PUT request with enhanced features
-   */
   async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.put<T>(url, data, config);
     return response.data;
   }
 
-  /**
-   * HTTP DELETE request with enhanced features
-   */
   async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.delete<T>(url, config);
     return response.data;
   }
 
-  /**
-   * HTTP PATCH request with enhanced features
-   */
   async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.patch<T>(url, data, config);
     return response.data;
   }
 
-  /**
-   * Custom request method for more flexibility
-   */
   async request<T = any>(config: AxiosRequestConfig): Promise<T> {
     const response = await this.client.request<T>(config);
     return response.data;
   }
 
-  /**
-   * Set default headers for all requests
-   */
   setDefaultHeaders(headers: Record<string, string>): void {
     Object.assign(this.client.defaults.headers, headers);
   }
 
-  /**
-   * Set authorization header
-   */
   setAuthorization(token: string, type: 'Bearer' | 'ApiKey' = 'Bearer'): void {
     this.client.defaults.headers.Authorization = `${type} ${token}`;
   }
 
-  /**
-   * Clear authorization header
-   */
   clearAuthorization(): void {
     delete this.client.defaults.headers.Authorization;
   }
 
-  /**
-   * Update retry configuration
-   */
   updateRetryConfig(config: Partial<RetryConfig>): void {
     this.retryConfig = { ...this.retryConfig, ...config };
   }
 
-  /**
-   * Get current retry configuration
-   */
   getRetryConfig(): RetryConfig {
     return { ...this.retryConfig };
   }
 
-  /**
-   * Get current rate limit configuration
-   */
   getRateLimitConfig(): ClientRateLimitConfig {
     return { ...this.rateLimitConfig };
   }
 
-  /**
-   * Get performance metrics
-   */
   getPerformanceMetrics(): PerformanceMetrics {
     return { ...this.performanceMetrics };
   }
 
-  /**
-   * Reset performance metrics
-   */
   resetPerformanceMetrics(): void {
     this.performanceMetrics = {
       totalRequests: 0,
@@ -472,9 +393,6 @@ export class HTTPClient {
     };
   }
 
-  /**
-   * Get current rate limit status
-   */
   getRateLimitStatus(): {
     requestsInCurrentWindow: number;
     requestsRemaining: number;
@@ -504,9 +422,6 @@ export class HTTPClient {
   }
 }
 
-/**
- * Enhanced API Error class that implements the APIErrorInterface
- */
 export class APIError extends Error implements APIErrorInterface {
   public readonly code: string;
   public readonly statusCode: number;
@@ -531,9 +446,6 @@ export class APIError extends Error implements APIErrorInterface {
     }
   }
 
-  /**
-   * Convert error to JSON for serialization
-   */
   toJSON(): Record<string, any> {
     return {
       name: this.name,
@@ -547,29 +459,17 @@ export class APIError extends Error implements APIErrorInterface {
     };
   }
 
-  /**
-   * Create a retryable API error
-   */
   static retryable(data: Omit<APIErrorData, 'isRetryable'> & { message: string }): APIError {
     return new APIError({ ...data, isRetryable: true });
   }
 
-  /**
-   * Create a non-retryable API error
-   */
   static nonRetryable(data: Omit<APIErrorData, 'isRetryable'> & { message: string }): APIError {
     return new APIError({ ...data, isRetryable: false });
   }
 }
 
-/**
- * Convenience function to create a new HTTP client
- */
 export function createHTTPClient(config?: HTTPClientConfig): HTTPClient {
   return new HTTPClient(config);
 }
 
-/**
- * Default HTTP client instance
- */
 export const httpClient = new HTTPClient();

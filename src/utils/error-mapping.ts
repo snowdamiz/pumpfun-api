@@ -1,12 +1,5 @@
-/**
- * Error mapping and conversion utilities
- */
-
 import { ValidationError } from './validation';
 
-/**
- * Maps various error types to simplified error hierarchy
- */
 export function mapToStreamError(error: any, _context?: string): StreamError {
   if (error instanceof ValidationError) {
     // Convert ValidationError to StreamError
@@ -114,9 +107,6 @@ export function mapToStreamError(error: any, _context?: string): StreamError {
   );
 }
 
-/**
- * Creates a context-aware error with suggestions
- */
 export function createContextualError(
   message: string,
   code: string,
@@ -169,9 +159,6 @@ export function createContextualError(
   return new StreamError(message, code, { context }, allSuggestions);
 }
 
-/**
- * Enhanced error class for streaming operations
- */
 export class StreamError extends Error {
   constructor(
     message: string,
@@ -198,9 +185,6 @@ export class StreamError extends Error {
   }
 }
 
-/**
- * Connection-specific error
- */
 export class ConnectionError extends StreamError {
   constructor(message: string, details?: any) {
     super(message, 'CONNECTION_ERROR', details, [

@@ -1,10 +1,3 @@
-/**
- * Configuration Manager for PumpFun API Client
- *
- * This class handles all configuration loading, validation, and management
- * for the PumpFun API client, supporting environment variables and validation.
- */
-
 import {
   ClientConfig,
   ValidatedConfig,
@@ -18,9 +11,6 @@ import {
 import { ConfigurationError } from '../error-handling/errors';
 import { Logger } from '../logging/logger';
 
-/**
- * Configuration manager for PumpFun API client
- */
 export class ConfigurationManager {
   private config!: ValidatedConfig;
   private logger?: Logger;
@@ -34,9 +24,6 @@ export class ConfigurationManager {
   private static readonly MIN_RATE_LIMIT_WINDOW = 1000;
   private static readonly MIN_BURST = 1;
 
-  /**
-   * Initialize configuration with environment variable support
-   */
   initializeConfig(inputConfig?: ClientConfig): ValidatedConfig {
     // Load configuration from environment variables first
     const envConfig = this.loadEnvironmentConfig();
@@ -99,9 +86,6 @@ export class ConfigurationManager {
     return this.config;
   }
 
-  /**
-   * Load configuration from environment variables
-   */
   private loadEnvironmentConfig(): Partial<ClientConfig> {
     const envConfig: Partial<ClientConfig> = {};
 
@@ -274,9 +258,6 @@ export class ConfigurationManager {
     return envConfig;
   }
 
-  /**
-   * Validate configuration parameters
-   */
   private validateConfig(config: Partial<ClientConfig>): void {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -556,9 +537,6 @@ export class ConfigurationManager {
     }
   }
 
-  /**
-   * Get the current configuration
-   */
   getConfig(): ValidatedConfig {
     if (!this.config) {
       throw new ConfigurationError({
@@ -568,9 +546,6 @@ export class ConfigurationManager {
     return this.config;
   }
 
-  /**
-   * Detect configuration source for debugging
-   */
   detectConfigSource(): string {
     const hasEnvVars = Object.keys(process.env).some(
       key =>

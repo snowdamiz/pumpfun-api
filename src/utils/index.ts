@@ -1,18 +1,19 @@
-/**
- * Utilities exports for simplified API
- */
-
-// Simplified API utilities
 export * from './stream-helpers';
 export { mapToStreamError, createContextualError, StreamError, ConnectionError } from './error-mapping';
 export { isValidMintId, validateFilterCriteria, validateContentFilters } from './validation';
-
-// Export DEFAULT_STREAM_OPTIONS from client
+export { Logger, createLogger, logger } from '../infrastructure/logging/logger';
+export { ConfigurationManager } from '../infrastructure/config/config-manager';
+export * from '../infrastructure/error-handling/errors';
+import { StreamClip } from '../types';
 export { DEFAULT_STREAM_OPTIONS } from '../client/PumpFunClient';
 
-/**
- * Parse stream URL to extract mint ID
- */
+export {
+  HTTPClient,
+  createHTTPClient,
+  httpClient,
+  APIError,
+} from '../infrastructure/http/http-client';
+
 export function parseStreamUrl(url: string): string | null {
   try {
     const urlObj = new URL(url);
@@ -23,52 +24,10 @@ export function parseStreamUrl(url: string): string | null {
   }
 }
 
-// HTTP Client
-export {
-  HTTPClient,
-  createHTTPClient,
-  httpClient,
-  APIError,
-} from '../infrastructure/http/http-client';
-
-// Logger
-export { Logger, createLogger, logger } from '../infrastructure/logging/logger';
-
-// Error Handler
-export { ErrorHandler } from '../infrastructure/error-handling/error-handler';
-
-// Configuration Manager
-export { ConfigurationManager } from '../infrastructure/config/config-manager';
-
-// Error Types
-export * from '../infrastructure/error-handling/errors';
-
-// ============================================================================
-// Clip Utility Functions
-// ============================================================================
-
-import { StreamClip } from '../types';
-
-/**
- * Clip processing utilities for duration calculation, metadata extraction, and analysis
- */
-
-/**
- * Calculate total duration of multiple clips in seconds
- *
- * @param clips - Array of clips to calculate duration for
- * @returns Total duration in seconds
- */
 export function calculateTotalClipDuration(clips: StreamClip[]): number {
   return clips.reduce((total, clip) => total + (clip.duration ?? 0), 0);
 }
 
-/**
- * Calculate average duration of clips in seconds
- *
- * @param clips - Array of clips to calculate average duration for
- * @returns Average duration in seconds, or 0 if no clips with duration
- */
 export function calculateAverageClipDuration(clips: StreamClip[]): number {
   const clipsWithDuration = clips.filter(clip => clip.duration !== undefined);
   if (clipsWithDuration.length === 0) {
@@ -79,12 +38,6 @@ export function calculateAverageClipDuration(clips: StreamClip[]): number {
   return totalDuration / clipsWithDuration.length;
 }
 
-/**
- * Format duration in seconds to human-readable string (MM:SS or HH:MM:SS)
- *
- * @param durationSeconds - Duration in seconds
- * @returns Formatted duration string
- */
 export function formatClipDuration(durationSeconds: number): string {
   if (durationSeconds < 0) {
     return '00:00';
@@ -101,50 +54,27 @@ export function formatClipDuration(durationSeconds: number): string {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-/**
- * Extract clip metadata and calculate derived metrics
- *
- * @param clip - Single clip to analyze
- * @returns Object with extracted metadata and calculated metrics
- */
 export function extractClipMetadata(clip: StreamClip) {
   return {
-    // Basic metadata
     id: clip.id,
     mintId: clip.mintId,
     clipType: clip.clipType,
-
-    // Duration metrics
     hasDuration: clip.duration !== undefined,
     durationSeconds: clip.duration ?? 0,
     durationFormatted: clip.duration ? formatClipDuration(clip.duration) : 'Unknown',
-
-    // Engagement metrics
     hasViewCount: clip.view_count !== undefined,
     viewCount: clip.view_count ?? 0,
-
-    // Availability metrics
     hasUrl: !!(clip.clip_url && clip.clip_url.trim() !== ''),
     url: clip.clip_url ?? null,
-
-    // Timestamp metadata
     hasCreatedAt: clip.created_at !== undefined,
     createdAt: clip.created_at ?? null,
     createdTimestamp: clip.created_at ? new Date(clip.created_at).getTime() : null,
-
-    // Quality indicators
     isComplete: clip.clipType === 'COMPLETE',
     isHighlight: clip.clipType === 'HIGHLIGHT',
     hasAllMetadata: !!(clip.duration && clip.view_count && clip.created_at && clip.clip_url),
   };
 }
 
-/**
- * Calculate comprehensive clip statistics for an array of clips
- *
- * @param clips - Array of clips to analyze
- * @returns Object with calculated statistics
- */
 export function calculateClipStatistics(clips: StreamClip[]) {
   const totalClips = clips.length;
   const completeClips = clips.filter(clip => clip.clipType === 'COMPLETE');
@@ -231,14 +161,6 @@ export function calculateClipStatistics(clips: StreamClip[]) {
   };
 }
 
-/**
- * Filter clips by duration criteria
- *
- * @param clips - Array of clips to filter
- * @param minDuration - Minimum duration in seconds (optional)
- * @param maxDuration - Maximum duration in seconds (optional)
- * @returns Filtered array of clips
- */
 export function filterClipsByDuration(
   clips: StreamClip[],
   minDuration?: number,
@@ -261,13 +183,6 @@ export function filterClipsByDuration(
   });
 }
 
-/**
- * Sort clips by duration
- *
- * @param clips - Array of clips to sort
- * @param order - Sort order ('ASC' for shortest first, 'DESC' for longest first)
- * @returns Sorted array of clips
- */
 export function sortClipsByDuration(
   clips: StreamClip[],
   order: 'ASC' | 'DESC' = 'DESC'
@@ -279,13 +194,6 @@ export function sortClipsByDuration(
   });
 }
 
-/**
- * Sort clips by view count
- *
- * @param clips - Array of clips to sort
- * @param order - Sort order ('ASC' for fewest views first, 'DESC' for most views first)
- * @returns Sorted array of clips
- */
 export function sortClipsByViewCount(
   clips: StreamClip[],
   order: 'ASC' | 'DESC' = 'DESC'
@@ -297,13 +205,6 @@ export function sortClipsByViewCount(
   });
 }
 
-/**
- * Sort clips by creation date
- *
- * @param clips - Array of clips to sort
- * @param order - Sort order ('ASC' for oldest first, 'DESC' for newest first)
- * @returns Sorted array of clips
- */
 export function sortClipsByCreationDate(
   clips: StreamClip[],
   order: 'ASC' | 'DESC' = 'DESC'
@@ -315,12 +216,6 @@ export function sortClipsByCreationDate(
   });
 }
 
-/**
- * Group clips by type
- *
- * @param clips - Array of clips to group
- * @returns Object with clips grouped by type
- */
 export function groupClipsByType(clips: StreamClip[]) {
   const complete = clips.filter(clip => clip.clipType === 'COMPLETE');
   const highlights = clips.filter(clip => clip.clipType === 'HIGHLIGHT');
@@ -340,12 +235,6 @@ export function groupClipsByType(clips: StreamClip[]) {
   };
 }
 
-/**
- * Find clips with missing metadata
- *
- * @param clips - Array of clips to analyze
- * @returns Object with clips categorized by missing metadata
- */
 export function findClipsWithMissingMetadata(clips: StreamClip[]) {
   const missingDuration = clips.filter(clip => clip.duration === undefined);
   const missingViewCount = clips.filter(clip => clip.view_count === undefined);
@@ -389,12 +278,6 @@ export function findClipsWithMissingMetadata(clips: StreamClip[]) {
   };
 }
 
-/**
- * Validate clip data integrity
- *
- * @param clip - Single clip to validate
- * @returns Object with validation results
- */
 export function validateClipData(clip: StreamClip) {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -461,12 +344,6 @@ export function validateClipData(clip: StreamClip) {
   };
 }
 
-/**
- * Create a clip analysis report for display or logging
- *
- * @param clips - Array of clips to analyze
- * @returns Formatted report object
- */
 export function createClipAnalysisReport(clips: StreamClip[]) {
   const stats = calculateClipStatistics(clips);
   const grouped = groupClipsByType(clips);
@@ -506,13 +383,6 @@ export function createClipAnalysisReport(clips: StreamClip[]) {
   };
 }
 
-/**
- * Generate recommendations based on clip analysis
- *
- * @param stats - Calculated clip statistics
- * @param missingMetadata - Missing metadata analysis
- * @returns Array of recommendation strings
- */
 function generateClipRecommendations(stats: any, missingMetadata: any): string[] {
   const recommendations: string[] = [];
 

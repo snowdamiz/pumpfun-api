@@ -1,12 +1,3 @@
-/**
- * Comprehensive error handling system for PumpFun API Client
- * Provides hierarchical error classes with retryable/non-retryable categorization
- * and user-friendly messages with clear guidance for resolution
- */
-
-/**
- * Base error class for all PumpFun API errors
- */
 export abstract class PumpFunError extends Error {
   public readonly code: string;
   public readonly statusCode: number;
@@ -38,16 +29,10 @@ export abstract class PumpFunError extends Error {
     }
   }
 
-  /**
-   * Check if this error can be retried
-   */
   canRetry(): boolean {
     return this.isRetryable;
   }
 
-  /**
-   * Get suggested retry delay in milliseconds
-   */
   getRetryDelay(): number {
     if (!this.isRetryable) {
       return 0;
@@ -70,9 +55,6 @@ export abstract class PumpFunError extends Error {
     }
   }
 
-  /**
-   * Get user-friendly resolution suggestions
-   */
   getResolution(): string[] {
     const suggestions: string[] = [];
 
@@ -84,14 +66,8 @@ export abstract class PumpFunError extends Error {
     return suggestions.concat(this.getSpecificResolution());
   }
 
-  /**
-   * Override in subclasses to provide specific resolution suggestions
-   */
   protected abstract getSpecificResolution(): string[];
 
-  /**
-   * Convert error to JSON for logging/serialization
-   */
   toJSON(): Record<string, unknown> {
     return {
       name: this.name,
@@ -106,9 +82,6 @@ export abstract class PumpFunError extends Error {
   }
 }
 
-/**
- * Network-related errors (connection issues, timeouts, DNS failures)
- */
 export class NetworkError extends PumpFunError {
   constructor(options: {
     message: string;
@@ -134,9 +107,6 @@ export class NetworkError extends PumpFunError {
   }
 }
 
-/**
- * Rate limiting errors (too many requests)
- */
 export class RateLimitError extends PumpFunError {
   public readonly retryAfter?: number;
 
@@ -175,9 +145,6 @@ export class RateLimitError extends PumpFunError {
   }
 }
 
-/**
- * Authentication errors (invalid credentials, expired tokens)
- */
 export class AuthenticationError extends PumpFunError {
   constructor(options: {
     message?: string;
@@ -204,9 +171,6 @@ export class AuthenticationError extends PumpFunError {
   }
 }
 
-/**
- * Authorization errors (insufficient permissions)
- */
 export class AuthorizationError extends PumpFunError {
   constructor(options: {
     message?: string;
@@ -232,9 +196,6 @@ export class AuthorizationError extends PumpFunError {
   }
 }
 
-/**
- * Validation errors (invalid parameters, malformed requests)
- */
 export class ValidationError extends PumpFunError {
   constructor(options: {
     message: string;
@@ -272,9 +233,6 @@ export class ValidationError extends PumpFunError {
   }
 }
 
-/**
- * Resource not found errors
- */
 export class NotFoundError extends PumpFunError {
   constructor(options: {
     message?: string;
@@ -312,9 +270,6 @@ export class NotFoundError extends PumpFunError {
   }
 }
 
-/**
- * Server errors (5xx responses, service unavailable)
- */
 export class ServerError extends PumpFunError {
   constructor(options: {
     message?: string;
@@ -344,9 +299,6 @@ export class ServerError extends PumpFunError {
   }
 }
 
-/**
- * Configuration errors (invalid client configuration)
- */
 export class ConfigurationError extends PumpFunError {
   constructor(options: {
     message: string;
@@ -372,9 +324,6 @@ export class ConfigurationError extends PumpFunError {
   }
 }
 
-/**
- * Timeout errors
- */
 export class TimeoutError extends NetworkError {
   constructor(options: {
     message?: string;
@@ -411,13 +360,7 @@ export class TimeoutError extends NetworkError {
   }
 }
 
-/**
- * Error factory for creating appropriate error instances from HTTP responses
- */
 export class ErrorFactory {
-  /**
-   * Create appropriate error instance from HTTP response and error data
-   */
   static createFromResponse(
     statusCode: number,
     data: Record<string, unknown> | undefined,
@@ -492,9 +435,6 @@ export class ErrorFactory {
     }
   }
 
-  /**
-   * Create error from network-related issues
-   */
   static createFromNetworkError(error: { code?: string; message?: string }): NetworkError {
     const code = error.code ?? 'NETWORK_ERROR';
     const message = error.message ?? 'Network error occurred';
@@ -537,9 +477,6 @@ export class ErrorFactory {
     }
   }
 
-  /**
-   * Create configuration error
-   */
   static createConfigurationError(
     message: string,
     details?: Record<string, unknown>
@@ -605,13 +542,7 @@ export class ErrorFactory {
   }
 }
 
-/**
- * Utility functions for error handling
- */
 export class ErrorUtils {
-  /**
-   * Check if an error is retryable
-   */
   static isRetryable(error: unknown): boolean {
     if (error instanceof PumpFunError) {
       return error.canRetry();
@@ -619,9 +550,6 @@ export class ErrorUtils {
     return false;
   }
 
-  /**
-   * Get retry delay for an error
-   */
   static getRetryDelay(error: unknown): number {
     if (error instanceof PumpFunError) {
       return error.getRetryDelay();
@@ -629,9 +557,6 @@ export class ErrorUtils {
     return 0;
   }
 
-  /**
-   * Get resolution suggestions for an error
-   */
   static getResolution(error: unknown): string[] {
     if (error instanceof PumpFunError) {
       return error.getResolution();
@@ -639,9 +564,6 @@ export class ErrorUtils {
     return ['An unknown error occurred. Please try again or contact support.'];
   }
 
-  /**
-   * Format error for logging
-   */
   static formatForLogging(error: unknown): string {
     if (error instanceof PumpFunError) {
       return `${error.name} (${error.code}): ${error.message}`;
@@ -650,9 +572,6 @@ export class ErrorUtils {
     return err?.message || err?.toString() || 'Unknown error';
   }
 
-  /**
-   * Convert error to safe JSON (removing circular references)
-   */
   static toJSON(error: unknown): Record<string, unknown> {
     if (error instanceof PumpFunError) {
       return error.toJSON();
@@ -667,12 +586,8 @@ export class ErrorUtils {
   }
 }
 
-// Re-export commonly used error types for convenience
 export { PumpFunError as BaseError };
 
-/**
- * LiveKit integration errors
- */
 export class LiveKitError extends PumpFunError {
   constructor(options: {
     message: string;

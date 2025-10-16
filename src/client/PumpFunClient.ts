@@ -1,13 +1,3 @@
-/**
- * Simplified PumpFun Client - Core API with 8 essential methods
- *
- * This is the new simplified client that consolidates the functionality
- * from 28+ methods down to 8 core methods focused on user needs.
- *
- * @version 2.0.0
- * @author PumpFun Team
- */
-
 import {
   ClientConfig,
   FilterCriteria,
@@ -44,9 +34,6 @@ import {
   ConnectionError
 } from '../utils/error-mapping';
 
-/**
- * Default stream options
- */
 export const DEFAULT_STREAM_OPTIONS: Partial<StreamOptions> = {
   autoConnect: true,
   autoPlay: true,
@@ -58,9 +45,6 @@ export const DEFAULT_STREAM_OPTIONS: Partial<StreamOptions> = {
   reconnectDelayMs: 2000,
 };
 
-/**
- * Simplified PumpFun client with 8 core methods
- */
 export class PumpFunClient {
   private httpClient!: HTTPClient;
   private logger!: Logger;
@@ -69,11 +53,6 @@ export class PumpFunClient {
   private isInitialized: boolean = false;
   private activeConnections: Map<string, StreamConnection> = new Map();
 
-  /**
-   * Create a new PumpFunClient instance
-   *
-   * @param config - Optional configuration options
-   */
   constructor(config?: ClientConfig) {
     this.initializeComponents(config);
     this.isInitialized = true;
@@ -83,9 +62,6 @@ export class PumpFunClient {
     });
   }
 
-  /**
-   * Initialize all components in the correct order
-   */
   private initializeComponents(config?: ClientConfig): void {
     // Initialize configuration first
     this.configManager = new ConfigurationManager();
@@ -111,9 +87,6 @@ export class PumpFunClient {
     this.logger.debug('All components initialized successfully');
   }
 
-  /**
-   * Ensure client is properly initialized before operations
-   */
   private ensureInitialized(): void {
     if (!this.isInitialized) {
       throw new StreamError(
@@ -125,9 +98,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * Find connection by ID or mint ID
-   */
   private findConnection(connectionIdOrMintId: string): StreamConnection | null {
     // First try to find by connection ID
     const connection = this.activeConnections.get(connectionIdOrMintId);
@@ -145,16 +115,10 @@ export class PumpFunClient {
     return null;
   }
 
-  /**
-   * Generate a unique connection ID
-   */
   private generateConnectionId(mintId: string): string {
     return `${mintId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  /**
-   * Fetch live streams from API
-   */
   private async fetchLiveStreams(params?: GetLiveCoinsParams): Promise<LiveCoin[]> {
     this.logger.debug('Fetching live streams', { params });
 
@@ -186,9 +150,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * Get stream clips from API
-   */
   private async getStreamClips(
     mintId: string,
     clipType?: 'COMPLETE' | 'HIGHLIGHT',
@@ -226,9 +187,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * Get live stream information
-   */
   private async getLiveStreamInfo(mintId: string): Promise<LiveStreamInfo | null> {
     this.logger.debug('Getting live stream info', { mintId });
 
@@ -262,16 +220,6 @@ export class PumpFunClient {
     }
   }
 
-  // ============================================================================
-  // Core API Methods - 8 Essential Methods
-  // ============================================================================
-
-  /**
-   * 1. Stream Discovery: Filter and search live streams
-   *
-   * @param criteria - Filtering criteria for streams
-   * @returns Promise<FilteredStreams> - Filtered streams with metadata
-   */
   public async filterStreams(criteria: FilterCriteria): Promise<FilteredStreams> {
     this.ensureInitialized();
     validateFilterCriteria(criteria);
@@ -331,13 +279,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * 2. Content Retrieval: Get stream content and clips
-   *
-   * @param mintId - The mint identifier of the token
-   * @param filters - Optional content filters
-   * @returns Promise<StreamContent> - Stream content with metadata
-   */
   public async getStreamContent(mintId: string, filters?: ContentFilters): Promise<StreamContent> {
     this.ensureInitialized();
 
@@ -575,13 +516,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * 3. LiveKit Connection: Connect to a live stream
-   *
-   * @param mintId - The mint identifier of the token to connect to
-   * @param options - Optional connection options
-   * @returns Promise<StreamConnection> - LiveKit connection object
-   */
   public async connectToStream(
     mintId: string,
     options?: StreamOptions
@@ -703,11 +637,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * 4. LiveKit Disconnection: Disconnect from a live stream
-   *
-   * @param connectionIdOrMintId - Connection ID or mint ID
-   */
   public async disconnectFromStream(connectionIdOrMintId: string): Promise<void> {
     this.ensureInitialized();
 
@@ -736,11 +665,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * 5. Active Connections: Get all active stream connections
-   *
-   * @returns Promise<StreamConnection[]> - Array of active connections
-   */
   public async getActiveStreams(): Promise<StreamConnection[]> {
     this.ensureInitialized();
 
@@ -759,11 +683,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * 6. Audio Control: Toggle audio for a stream connection
-   *
-   * @param connectionIdOrMintId - Connection ID or mint ID
-   */
   public async toggleAudio(connectionIdOrMintId: string): Promise<void> {
     this.ensureInitialized();
 
@@ -796,11 +715,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * 7. Video Control: Toggle video for a stream connection
-   *
-   * @param connectionIdOrMintId - Connection ID or mint ID
-   */
   public async toggleVideo(connectionIdOrMintId: string): Promise<void> {
     this.ensureInitialized();
 
@@ -833,12 +747,6 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * 8. Quality Control: Set video quality for a stream connection
-   *
-   * @param connectionIdOrMintId - Connection ID or mint ID
-   * @param quality - Video quality setting
-   */
   public async setStreamQuality(
     connectionIdOrMintId: string,
     quality: VideoQuality
@@ -882,13 +790,6 @@ export class PumpFunClient {
     }
   }
 
-  // ============================================================================
-  // Utility Methods
-  // ============================================================================
-
-  /**
-   * Graceful shutdown of the client
-   */
   public async shutdown(): Promise<void> {
     try {
       this.logger.info('Starting client shutdown');
@@ -919,17 +820,11 @@ export class PumpFunClient {
     }
   }
 
-  /**
-   * String representation for debugging
-   */
   public toString(): string {
     const config = this.configManager.getConfig();
     return `PumpFunClient(baseURL="${config.baseURL}", timeout=${config.timeout}ms)`;
   }
 
-  /**
-   * JSON representation for debugging
-   */
   public toJSON(): Record<string, any> {
     const config = this.configManager.getConfig();
     return {

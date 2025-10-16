@@ -1,14 +1,3 @@
-/**
- * Constants for PumpFun API Client
- *
- * Centralized constants to avoid magic numbers throughout the codebase
- * and improve maintainability.
- */
-
-// ============================================================================
-// Time Constants (milliseconds)
-// ============================================================================
-
 /** One second in milliseconds */
 export const ONE_SECOND_MS = 1000;
 
@@ -41,10 +30,6 @@ export const THIRTY_SECONDS_MS_ALIAS = 30 * ONE_SECOND_MS;
 
 /** One hour in milliseconds */
 export const ONE_HOUR_MS = SECONDS_PER_MINUTE * ONE_MINUTE_MS;
-
-// ============================================================================
-// Default Configuration Values
-// ============================================================================
 
 /** Default request timeout in milliseconds */
 export const DEFAULT_TIMEOUT_MS = TEN_SECONDS_MS;
@@ -85,10 +70,6 @@ export const ADAPTIVE_ADJUSTMENT_INTERVAL_MS = THIRTY_SECONDS_MS;
 /** Minimum delay between requests in milliseconds */
 export const MIN_REQUEST_DELAY_MS = 100;
 
-// ============================================================================
-// Rate Limiting Constants
-// ============================================================================
-
 /** Default rate limit for live streaming (requests per minute) */
 export const DEFAULT_LIVE_STREAMING_RATE_LIMIT = 55;
 
@@ -110,10 +91,6 @@ export const RATE_LIMIT_RECOVERY_TIME_MS = THIRTY_SECONDS_MS;
 /** Safety buffer between requests in milliseconds */
 export const REQUEST_SAFETY_BUFFER_MS = ONE_SECOND_MS;
 
-// ============================================================================
-// Validation Constants
-// ============================================================================
-
 /** Maximum description length */
 export const MAX_DESCRIPTION_LENGTH = 1000;
 
@@ -125,10 +102,6 @@ export const MAX_RETRY_ATTEMPTS = 5;
 
 /** Maximum concurrent errors before backoff */
 export const MAX_CONSECUTIVE_ERRORS = 5;
-
-// ============================================================================
-// Error Thresholds
-// ============================================================================
 
 /** Error rate threshold for warnings (percentage) */
 export const ERROR_RATE_WARNING_THRESHOLD = 5;
@@ -142,19 +115,11 @@ export const RATE_LIMIT_WARNING_THRESHOLD = 70;
 /** Rate limit utilization critical threshold (percentage) */
 export const RATE_LIMIT_CRITICAL_THRESHOLD = 90;
 
-// ============================================================================
-// API Constants
-// ============================================================================
-
 /** Default API base URL */
 export const DEFAULT_API_BASE_URL = 'https://frontend-api-v3.pump.fun';
 
 /** User agent string */
 export const USER_AGENT = '@pumpfun/api-client/1.0.0';
-
-// ============================================================================
-// Logging Constants
-// ============================================================================
 
 /** Default log level */
 export const DEFAULT_LOG_LEVEL = 'INFO';
@@ -164,10 +129,6 @@ export const KILOBYTE = 1024;
 
 /** Maximum log file size (not implemented yet) */
 export const MAX_LOG_FILE_SIZE = 10 * KILOBYTE * KILOBYTE; // 10MB
-
-// ============================================================================
-// Performance Constants
-// ============================================================================
 
 /** Jitter percentage for backoff calculations */
 export const JITTER_PERCENTAGE = 0.1; // 10%
@@ -183,10 +144,6 @@ export const MIN_ADAPTIVE_FACTOR = 0.3;
 
 /** Maximum adaptive rate limit factor */
 export const MAX_ADAPTIVE_FACTOR = 2.0;
-
-// ============================================================================
-// HTTP Status Codes
-// ============================================================================
 
 /** HTTP Too Many Requests status code */
 export const HTTP_TOO_MANY_REQUESTS = 429;
@@ -205,10 +162,6 @@ export const HTTP_GATEWAY_TIMEOUT = 504;
 
 /** HTTP Request Timeout status code */
 export const HTTP_REQUEST_TIMEOUT = 408;
-
-// ============================================================================
-// LiveKit Constants
-// ============================================================================
 
 /** Default LiveKit server regions with optimal selection */
 export const LIVEKIT_REGIONS = [
