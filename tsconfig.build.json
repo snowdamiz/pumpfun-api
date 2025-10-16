@@ -30,12 +30,8 @@
   "exclude": [
     "node_modules",
     "dist",
-    "tests",
-    "**/*.test.ts",
     "**/*.spec.ts",
     "**/*.stories.ts",
-    "src/examples/**/*",
-    "**/*.test.*",
-    "src/**/*.test.*"
+    "src/examples/**/*"
   ]
 }
