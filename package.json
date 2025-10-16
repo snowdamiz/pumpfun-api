@@ -1,5 +1,5 @@
 {
-  "name": "@openworth/pump-api",
+  "name": "@120356aa/pump-api",
   "version": "1.0.0",
   "type": "module",
   "description": "TypeScript client library for PumpFun streaming data API",
@@ -107,10 +107,10 @@
     }
   },
   "publishConfig": {
-    "access": "restricted",
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "private": true,
+  "private": false,
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/openworth"
