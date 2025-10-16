@@ -438,13 +438,6 @@ export class HTTPClient {
   }
 
   /**
-   * Update rate limit configuration
-   */
-  updateRateLimitConfig(config: Partial<ClientRateLimitConfig>): void {
-    this.rateLimitConfig = { ...this.rateLimitConfig, ...config };
-  }
-
-  /**
    * Get current retry configuration
    */
   getRetryConfig(): RetryConfig {

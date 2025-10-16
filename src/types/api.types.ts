@@ -433,6 +433,75 @@ export interface StreamSearchResult extends LiveCoin {
 }
 
 // ============================================================================
+// Unified Stream Content Types
+// ============================================================================
+
+/**
+ * Comprehensive filters for getStreamContent method
+ * Consolidates all previous content filtering methods into a single interface
+ */
+export interface StreamContentFilters {
+  // Content type selection
+  contentType?: 'clips' | 'previous_streams' | 'highlights' | 'all';
+  clipType?: 'COMPLETE' | 'HIGHLIGHT' | 'all';
+
+  // Basic filtering options
+  includeHighlights?: boolean;
+  includePreviousStreams?: boolean;
+  includeClips?: boolean;
+
+  // Limiting and sorting
+  limit?: number;
+  maxHighlights?: number;
+  maxPreviousStreams?: number;
+  daysBack?: number;
+
+  // Clip-specific filters
+  minDuration?: number;
+  maxDuration?: number;
+  minViewCount?: number;
+  maxViewCount?: number;
+  dateRange?: { start: string; end: string };
+  hasUrl?: boolean;
+
+  // Sorting options
+  sortBy?: 'created_at' | 'duration' | 'view_count' | 'stream_start';
+  sortOrder?: 'ASC' | 'DESC';
+}
+
+/**
+ * Result from unified getStreamContent method
+ * Consolidates all content types with comprehensive metadata
+ */
+export interface StreamContentResult {
+  /** Clips array (if requested) */
+  clips?: StreamClip[];
+  /** Previous streams array (if requested) */
+  previousStreams?: StreamClip[];
+  /** Highlights array (if requested) */
+  highlights?: StreamClip[];
+
+  /** Total count and summary information */
+  totalCount: number;
+  contentSummary: {
+    clipsCount: number;
+    previousStreamsCount: number;
+    highlightsCount: number;
+  };
+
+  /** Processing metrics */
+  metrics: {
+    processingTimeMs: number;
+    filtersApplied: number;
+  };
+
+  /** Applied filters summary */
+  appliedFilters: {
+    [key: string]: any;
+  };
+}
+
+// ============================================================================
 // Stream Status and State Types
 // ============================================================================
 

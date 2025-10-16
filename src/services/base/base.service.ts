@@ -31,13 +31,6 @@ export abstract class BaseService {
   }
 
   /**
-   * Get the current service state
-   */
-  public getState(): ServiceState {
-    return { ...this.state };
-  }
-
-  /**
    * Reset the service state
    */
   public resetState(): void {

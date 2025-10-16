@@ -24,13 +24,14 @@ import {
   StreamSearchResult,
   StreamStatistics,
   StreamClip,
-  StreamHistoryResult,
   LiveKitConnectionOptions,
   LiveStreamConnection,
   ConnectionState,
   JurisdictionResponse,
   UnifiedFilterCriteria,
-  AdvancedFilterResult
+  AdvancedFilterResult,
+  StreamContentFilters,
+  StreamContentResult
 } from '../types';
 import {
   ClipFilterParams,
@@ -598,15 +599,372 @@ export class PumpFunAPIClient {
   }
 
   /**
+   * Unified stream content retrieval method that consolidates all content access
+   *
+   * This method replaces 13+ separate content retrieval methods with a single,
+   * comprehensive interface that handles all content types (clips, previous streams,
+   * highlights) with advanced filtering, sorting, and pagination capabilities.
+   *
+   * @param mintId - The mint identifier of the token to get content for
+   * @param filters - Comprehensive filtering options for content retrieval
+   * @returns Promise<StreamContentResult> - Consolidated content with metadata
+   *
+   * @example
+   * ```typescript
+   * // Basic usage - get all content types
+   * const content = await client.getStreamContent('mintId');
+   * console.log(`Found ${content.totalCount} total items`);
+   *
+   * // Get only highlights from last 7 days
+   * const recentHighlights = await client.getStreamContent('mintId', {
+   *   contentType: 'highlights',
+   *   daysBack: 7,
+   *   maxHighlights: 20
+   * });
+   *
+   * // Get clips with specific duration and view count requirements
+   * const qualityClips = await client.getStreamContent('mintId', {
+   *   contentType: 'clips',
+   *   clipType: 'HIGHLIGHT',
+   *   minDuration: 30,
+   *   maxDuration: 300,
+   *   minViewCount: 100,
+   *   sortBy: 'view_count',
+   *   sortOrder: 'DESC',
+   *   limit: 10
+   * });
+   *
+   * // Get previous streams from specific date range
+   * const archivalStreams = await client.getStreamContent('mintId', {
+   *   contentType: 'previous_streams',
+   *   dateRange: {
+   *     start: '2024-01-01T00:00:00Z',
+   *     end: '2024-01-31T23:59:59Z'
+   *   },
+   *   sortBy: 'created_at',
+   *   sortOrder: 'ASC'
+   * });
+   *
+   * // Get content that has URLs available
+   * const availableContent = await client.getStreamContent('mintId', {
+   *   hasUrl: true,
+   *   includeHighlights: true,
+   *   includePreviousStreams: true
+   * });
+   * ```
+   */
+  public async getStreamContent(
+    mintId: string,
+    filters: StreamContentFilters = {}
+  ): Promise<StreamContentResult> {
+    this.ensureInitialized();
+
+    const startTime = Date.now();
+
+    // Set default values
+    const {
+      contentType = 'all',
+      clipType = 'all',
+      includeHighlights = true,
+      includePreviousStreams = true,
+      includeClips = true,
+      limit,
+      maxHighlights = 50,
+      maxPreviousStreams = 20,
+      daysBack,
+      minDuration,
+      maxDuration,
+      minViewCount,
+      maxViewCount,
+      dateRange,
+      hasUrl,
+      sortBy = 'created_at',
+      sortOrder = 'DESC'
+    } = filters;
+
+    this.logger.info('Retrieving unified stream content', {
+      mintId,
+      contentType,
+      clipType,
+      filters: {
+        includeHighlights,
+        includePreviousStreams,
+        includeClips,
+        limit,
+        maxHighlights,
+        maxPreviousStreams,
+        daysBack,
+        minDuration,
+        maxDuration,
+        minViewCount,
+        maxViewCount,
+        hasUrl,
+        sortBy,
+        sortOrder
+      }
+    });
+
+    try {
+      const result: StreamContentResult = {
+        totalCount: 0,
+        contentSummary: {
+          clipsCount: 0,
+          previousStreamsCount: 0,
+          highlightsCount: 0
+        },
+        metrics: {
+          processingTimeMs: 0,
+          filtersApplied: 0
+        },
+        appliedFilters: {
+          contentType,
+          clipType,
+          includeHighlights,
+          includePreviousStreams,
+          includeClips,
+          sortBy,
+          sortOrder,
+          daysBack,
+          minDuration,
+          maxDuration,
+          minViewCount,
+          maxViewCount,
+          hasUrl
+        }
+      };
+
+      let allContent: StreamClip[] = [];
+      let filtersApplied = 0;
+
+      // Helper function to apply filters to clips
+      const applyFiltersToClips = (clips: StreamClip[]): StreamClip[] => {
+        let filtered = [...clips];
+
+        // Filter by clip type if specified
+        if (clipType !== 'all') {
+          filtered = filtered.filter(clip => clip.clipType === clipType);
+          filtersApplied++;
+        }
+
+        // Filter by duration range
+        if (minDuration !== undefined) {
+          filtered = filtered.filter(clip => (clip.duration ?? 0) >= minDuration);
+          filtersApplied++;
+        }
+        if (maxDuration !== undefined) {
+          filtered = filtered.filter(clip => (clip.duration ?? 0) <= maxDuration);
+          filtersApplied++;
+        }
+
+        // Filter by view count range
+        if (minViewCount !== undefined) {
+          filtered = filtered.filter(clip => (clip.view_count ?? 0) >= minViewCount);
+          filtersApplied++;
+        }
+        if (maxViewCount !== undefined) {
+          filtered = filtered.filter(clip => (clip.view_count ?? 0) <= maxViewCount);
+          filtersApplied++;
+        }
+
+        // Filter by date range
+        if (dateRange) {
+          const startDate = new Date(dateRange.start);
+          const endDate = new Date(dateRange.end);
+          filtered = filtered.filter(clip => {
+            if (!clip.created_at) return false;
+            const clipDate = new Date(clip.created_at);
+            return clipDate >= startDate && clipDate <= endDate;
+          });
+          filtersApplied++;
+        }
+
+        // Filter by days back
+        if (daysBack) {
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+          const cutoffTimestamp = cutoffDate.toISOString();
+          filtered = filtered.filter(clip => clip.created_at >= cutoffTimestamp);
+          filtersApplied++;
+        }
+
+        // Filter by URL availability
+        if (hasUrl !== undefined) {
+          filtered = filtered.filter(clip => {
+            const hasClipUrl = !!(clip.clip_url && clip.clip_url.trim() !== '');
+            const hasPlaylistUrl = !!(clip.playlistUrl && clip.playlistUrl.trim() !== '');
+            const hasMp4Url = !!(clip.mp4Url && clip.mp4Url.trim() !== '');
+            return hasUrl === (hasClipUrl || hasPlaylistUrl || hasMp4Url);
+          });
+          filtersApplied++;
+        }
+
+        // Sort the results
+        filtered.sort((a, b) => {
+          let aValue: any, bValue: any;
+
+          switch (sortBy) {
+            case 'duration':
+              aValue = a.duration ?? 0;
+              bValue = b.duration ?? 0;
+              break;
+            case 'view_count':
+              aValue = a.view_count ?? 0;
+              bValue = b.view_count ?? 0;
+              break;
+            case 'stream_start':
+              aValue = new Date(a.startTime).getTime();
+              bValue = new Date(b.startTime).getTime();
+              break;
+            case 'created_at':
+            default:
+              aValue = new Date(a.created_at).getTime();
+              bValue = new Date(b.created_at).getTime();
+              break;
+          }
+
+          return sortOrder === 'ASC' ? aValue - bValue : bValue - aValue;
+        });
+        if (sortBy) filtersApplied++;
+
+        return filtered;
+      };
+
+      // Fetch content based on contentType and include flags
+      if (contentType === 'all' || contentType === 'clips' || contentType === 'previous_streams') {
+        if (includePreviousStreams || contentType === 'previous_streams') {
+          try {
+            const previousStreams = await this.liveStreamsService.getStreamClips(mintId, 'COMPLETE', maxPreviousStreams);
+            const filteredPrevious = applyFiltersToClips(previousStreams);
+
+            if (contentType === 'previous_streams') {
+              result.previousStreams = filteredPrevious;
+              result.contentSummary.previousStreamsCount = filteredPrevious.length;
+              allContent.push(...filteredPrevious);
+            } else if (includePreviousStreams) {
+              result.previousStreams = filteredPrevious;
+              result.contentSummary.previousStreamsCount = filteredPrevious.length;
+              allContent.push(...filteredPrevious);
+            }
+          } catch (error) {
+            this.logger.warn('Failed to fetch previous streams', {
+              mintId,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+      }
+
+      if (contentType === 'all' || contentType === 'clips' || contentType === 'highlights') {
+        if (includeHighlights || contentType === 'highlights') {
+          try {
+            const highlights = await this.liveStreamsService.getStreamClips(mintId, 'HIGHLIGHT', maxHighlights);
+            const filteredHighlights = applyFiltersToClips(highlights);
+
+            if (contentType === 'highlights') {
+              result.highlights = filteredHighlights;
+              result.contentSummary.highlightsCount = filteredHighlights.length;
+              allContent.push(...filteredHighlights);
+            } else if (includeHighlights) {
+              result.highlights = filteredHighlights;
+              result.contentSummary.highlightsCount = filteredHighlights.length;
+              allContent.push(...filteredHighlights);
+            }
+          } catch (error) {
+            this.logger.warn('Failed to fetch highlights', {
+              mintId,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+      }
+
+      // Handle general clips case (both types combined)
+      if (contentType === 'clips' && includeClips) {
+        try {
+          const completeClips = await this.liveStreamsService.getStreamClips(mintId, 'COMPLETE', maxPreviousStreams);
+          const highlightClips = await this.liveStreamsService.getStreamClips(mintId, 'HIGHLIGHT', maxHighlights);
+
+          const allClipTypes = [...completeClips, ...highlightClips];
+          const filteredClips = applyFiltersToClips(allClipTypes);
+
+          result.clips = filteredClips;
+          result.contentSummary.clipsCount = filteredClips.length;
+          allContent.push(...filteredClips);
+        } catch (error) {
+          this.logger.warn('Failed to fetch clips', {
+            mintId,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      // Apply final limit if specified
+      if (limit !== undefined && limit > 0) {
+        allContent = allContent.slice(0, limit);
+      }
+
+      // If contentType is 'all', provide combined results
+      if (contentType === 'all') {
+        // Remove duplicates by ID while preserving order
+        const seen = new Set<string>();
+        const uniqueContent = allContent.filter(clip => {
+          if (seen.has(clip.id)) {
+            return false;
+          }
+          seen.add(clip.id);
+          return true;
+        });
+
+        // Populate clips array with all content for 'all' type
+        result.clips = uniqueContent;
+        result.contentSummary.clipsCount = uniqueContent.length;
+      }
+
+      // Set total count
+      result.totalCount = result.contentSummary.clipsCount +
+                        result.contentSummary.previousStreamsCount +
+                        result.contentSummary.highlightsCount;
+
+      // Set processing metrics
+      result.metrics.processingTimeMs = Date.now() - startTime;
+      result.metrics.filtersApplied = filtersApplied;
+
+      this.logger.info('Unified stream content retrieval completed', {
+        mintId,
+        totalCount: result.totalCount,
+        contentSummary: result.contentSummary,
+        processingTimeMs: result.metrics.processingTimeMs,
+        filtersApplied: result.metrics.filtersApplied
+      });
+
+      return result;
+
+    } catch (error) {
+      const pumpFunError = this.errorHandler.handleError(error, 'getStreamContent', {
+        mintId,
+        filters,
+        suggestions: [
+          'Check if the mintId is valid',
+          'Verify the API server is accessible',
+          'Consider checking if the mint has any available content',
+          'Try with fewer filter restrictions'
+        ],
+      });
+
+      this.logger.error('Failed to get stream content', {
+        error: pumpFunError.toJSON(),
+        mintId,
+        filters,
+      });
+
+      throw pumpFunError;
+    }
+  }
+
+  /**
    * Get stream clips for a specific mint with type filtering and pagination
    *
-   * This method fetches recorded stream clips for a specific token mint,
-   * supporting filtering by clip type (COMPLETE/HIGHLIGHT) and pagination.
-   *
-   * @param mintId - The mint identifier of the token to get clips for
-   * @param clipType - Optional clip type filter ('COMPLETE' | 'HIGHLIGHT')
-   * @param limit - Optional maximum number of clips to return (default: 10)
-   * @returns Promise<StreamClip[]> - Array of stream clips
+   * @deprecated Use getStreamContent() instead for unified content access
    */
   public async getStreamClips(
     mintId: string,
@@ -620,12 +978,7 @@ export class PumpFunAPIClient {
   /**
    * Filter stream clips by type and other criteria
    *
-   * This method provides advanced filtering capabilities for stream clips,
-   * allowing filtering by clip type, duration, view count, date range, and custom criteria.
-   *
-   * @param mintId - The mint identifier of the token to filter clips for
-   * @param params - Filtering and sorting parameters
-   * @returns Promise<ClipFilterResult> - Filtered clips with metadata
+   * @deprecated Use getStreamContent() instead for unified content access
    */
   public async filterStreamClips(
     mintId: string,
@@ -635,554 +988,14 @@ export class PumpFunAPIClient {
     return this.streamFilters.filterClipsByMint(mintId, params);
   }
 
-  /**
-   * Get complete clips only
-   *
-   * @param mintId - The mint identifier of the token to get complete clips for
-   * @param params - Optional additional filtering parameters
-   * @returns Promise<ClipFilterResult> - Complete clips with metadata
-   */
-  public async getCompleteClips(
-    mintId: string,
-    params?: Omit<ClipFilterParams, 'clipType'>
-  ): Promise<ClipFilterResult> {
-    this.ensureInitialized();
-    return this.streamFilters.getCompleteClips(mintId, params);
-  }
-
-  /**
-   * Get highlight clips only
-   *
-   * @param mintId - The mint identifier of the token to get highlight clips for
-   * @param params - Optional additional filtering parameters
-   * @returns Promise<ClipFilterResult> - Highlight clips with metadata
-   */
-  public async getHighlightClips(
-    mintId: string,
-    params?: Omit<ClipFilterParams, 'clipType'>
-  ): Promise<ClipFilterResult> {
-    this.ensureInitialized();
-    return this.streamFilters.getHighlightClips(mintId, params);
-  }
-
-  /**
-   * Get clips sorted by duration
-   *
-   * @param mintId - The mint identifier of the token to get clips for
-   * @param sortOrder - Sort order ('ASC' for shortest first, 'DESC' for longest first)
-   * @param params - Optional additional filtering parameters
-   * @returns Promise<ClipFilterResult> - Clips sorted by duration with metadata
-   */
-  public async getClipsByDuration(
-    mintId: string,
-    sortOrder: 'ASC' | 'DESC' = 'DESC',
-    params?: Omit<ClipFilterParams, 'sortBy' | 'sortOrder'>
-  ): Promise<ClipFilterResult> {
-    this.ensureInitialized();
-    return this.streamFilters.getClipsByDuration(mintId, sortOrder, params);
-  }
-
-  /**
-   * Get clips sorted by view count
-   *
-   * @param mintId - The mint identifier of the token to get clips for
-   * @param sortOrder - Sort order ('ASC' for lowest first, 'DESC' for highest first)
-   * @param params - Optional additional filtering parameters
-   * @returns Promise<ClipFilterResult> - Clips sorted by view count with metadata
-   */
-  public async getClipsByViewCount(
-    mintId: string,
-    sortOrder: 'ASC' | 'DESC' = 'DESC',
-    params?: Omit<ClipFilterParams, 'sortBy' | 'sortOrder'>
-  ): Promise<ClipFilterResult> {
-    this.ensureInitialized();
-    return this.streamFilters.getClipsByViewCount(mintId, sortOrder, params);
-  }
-
-  /**
-   * Get clips sorted by creation date
-   *
-   * @param mintId - The mint identifier of the token to get clips for
-   * @param sortOrder - Sort order ('ASC' for oldest first, 'DESC' for newest first)
-   * @param params - Optional additional filtering parameters
-   * @returns Promise<ClipFilterResult> - Clips sorted by creation date with metadata
-   */
-  public async getClipsByCreationDate(
-    mintId: string,
-    sortOrder: 'ASC' | 'DESC' = 'DESC',
-    params?: Omit<ClipFilterParams, 'sortBy' | 'sortOrder'>
-  ): Promise<ClipFilterResult> {
-    this.ensureInitialized();
-    return this.streamFilters.getClipsByCreationDate(mintId, sortOrder, params);
-  }
-
-  /**
-   * Get clips with duration within specified range
-   *
-   * @param mintId - The mint identifier of the token to get clips for
-   * @param minDuration - Minimum duration in seconds
-   * @param maxDuration - Maximum duration in seconds
-   * @param params - Optional additional filtering parameters
-   * @returns Promise<ClipFilterResult> - Clips within duration range with metadata
-   */
-  public async getClipsByDurationRange(
-    mintId: string,
-    minDuration: number,
-    maxDuration: number,
-    params?: Omit<ClipFilterParams, 'minDuration' | 'maxDuration'>
-  ): Promise<ClipFilterResult> {
-    this.ensureInitialized();
-    return this.streamFilters.getClipsByDurationRange(mintId, minDuration, maxDuration, params);
-  }
-
-  /**
-   * Get clips with view count within specified range
-   *
-   * @param mintId - The mint identifier of the token to get clips for
-   * @param minViewCount - Minimum view count
-   * @param maxViewCount - Maximum view count
-   * @param params - Optional additional filtering parameters
-   * @returns Promise<ClipFilterResult> - Clips within view count range with metadata
-   */
-  public async getClipsByViewCountRange(
-    mintId: string,
-    minViewCount: number,
-    maxViewCount: number,
-    params?: Omit<ClipFilterParams, 'minViewCount' | 'maxViewCount'>
-  ): Promise<ClipFilterResult> {
-    this.ensureInitialized();
-    return this.streamFilters.getClipsByViewCountRange(mintId, minViewCount, maxViewCount, params);
-  }
-
-  /**
-   * Get clips created within date range
-   *
-   * @param mintId - The mint identifier of the token to get clips for
-   * @param startDate - Start date in ISO format
-   * @param endDate - End date in ISO format
-   * @param params - Optional additional filtering parameters
-   * @returns Promise<ClipFilterResult> - Clips within date range with metadata
-   */
-  public async getClipsByDateRange(
-    mintId: string,
-    startDate: string,
-    endDate: string,
-    params?: Omit<ClipFilterParams, 'createdDateRange'>
-  ): Promise<ClipFilterResult> {
-    this.ensureInitialized();
-    return this.streamFilters.getClipsByDateRange(mintId, startDate, endDate, params);
-  }
-
-  /**
-   * Get clips that have URLs available
-   *
-   * @param mintId - The mint identifier of the token to get clips for
-   * @param params - Optional additional filtering parameters
-   * @returns Promise<ClipFilterResult> - Clips with available URLs with metadata
-   */
-  public async getClipsWithUrls(
-    mintId: string,
-    params?: Omit<ClipFilterParams, 'hasUrl'>
-  ): Promise<ClipFilterResult> {
-    this.ensureInitialized();
-    return this.streamFilters.getClipsWithUrls(mintId, params);
-  }
+  // All redundant clip filtering methods have been consolidated into getStreamContent()
+// See getStreamContent() for unified content access with comprehensive filtering options
 
   // ============================================================================
-  // Previous Streams Video Fetching Methods
+  // Previous Streams and History Methods - Consolidated
   // ============================================================================
-
-  /**
-   * Get previous stream videos (full completed streams)
-   *
-   * This method retrieves complete previous stream recordings that represent
-   * the full duration of past livestreams. These are essentially the VOD
-   * (Video on Demand) versions of completed streams.
-   *
-   * @param mintId - The mint identifier of the token to get previous streams for
-   * @param limit - Optional maximum number of previous streams to return (default: 10)
-   * @returns Promise<StreamClip[]> - Array of previous stream videos
-   * @throws {PumpFunError} When the request fails or parameters are invalid
-   *
-   * @example
-   * ```typescript
-   * // Get all previous streams for a token
-   * const previousStreams = await client.getPreviousStreams('mintId');
-   *
-   * // Get the 5 most recent previous streams
-   * const recentStreams = await client.getPreviousStreams('mintId', 5);
-   *
-   * // Each result contains:
-   * // - playlistUrl: HLS streaming URL for full video playback
-   * // - duration: Full stream duration in seconds (e.g., 1800 = 30 minutes)
-   * // - thumbnailUrl: Thumbnail image URL
-   * // - startTime: When the stream started
-   * // - endTime: When the stream ended
-   * ```
-   */
-  public async getPreviousStreams(
-    mintId: string,
-    limit: number = 10
-  ): Promise<StreamClip[]> {
-    this.ensureInitialized();
-
-    try {
-      const previousStreams = await this.liveStreamsService.getStreamClips(mintId, 'COMPLETE', limit);
-
-      this.logger.info('Retrieved previous streams', {
-        mintId,
-        count: previousStreams.length,
-        limit,
-        clipType: 'COMPLETE'
-      });
-
-      return previousStreams;
-    } catch (error) {
-      this.logger.error('Failed to get previous streams', {
-        mintId,
-        limit,
-        error: ErrorUtils.formatForLogging(error),
-      });
-
-      const pumpFunError = this.errorHandler.handleError(error, 'getPreviousStreams', {
-        mintId,
-        limit,
-      });
-
-      throw pumpFunError;
-    }
-  }
-
-  /**
-   * Get stream highlights (short highlight segments)
-   *
-   * This method retrieves short highlight segments that are automatically
-   * generated from stream content. These are typically 15-60 seconds long
-   * and represent the most engaging moments from streams.
-   *
-   * @param mintId - The mint identifier of the token to get highlights for
-   * @param limit - Optional maximum number of highlights to return (default: 20)
-   * @returns Promise<StreamClip[]> - Array of highlight clips
-   * @throws {PumpFunError} When the request fails or parameters are invalid
-   *
-   * @example
-   * ```typescript
-   * // Get all highlights for a token
-   * const highlights = await client.getStreamHighlights('mintId');
-   *
-   * // Get the 10 most recent highlights
-   * const recentHighlights = await client.getStreamHighlights('mintId', 10);
-   *
-   * // Each result contains:
-   * // - mp4Url: Direct MP4 download URL
-   * // - duration: Short clip duration in seconds (typically 15-60)
-   * // - view_count: Number of views for the highlight
-   * // - highlightCreatorAddress: User who created the highlight
-   * ```
-   */
-  public async getStreamHighlights(
-    mintId: string,
-    limit: number = 20
-  ): Promise<StreamClip[]> {
-    this.ensureInitialized();
-
-    try {
-      const highlights = await this.liveStreamsService.getStreamClips(mintId, 'HIGHLIGHT', limit);
-
-      this.logger.info('Retrieved stream highlights', {
-        mintId,
-        count: highlights.length,
-        limit,
-        clipType: 'HIGHLIGHT'
-      });
-
-      return highlights;
-    } catch (error) {
-      this.logger.error('Failed to get stream highlights', {
-        mintId,
-        limit,
-        error: ErrorUtils.formatForLogging(error),
-      });
-
-      const pumpFunError = this.errorHandler.handleError(error, 'getStreamHighlights', {
-        mintId,
-        limit,
-      });
-
-      throw pumpFunError;
-    }
-  }
-
-  /**
-   * Get comprehensive stream history including both previous streams and highlights
-   *
-   * This method provides a complete view of all available video content for a token,
-   * including full previous streams and highlight segments, sorted by creation date.
-   *
-   * @param mintId - The mint identifier of the token to get stream history for
-   * @param options - Optional configuration for history retrieval
-   * @returns Promise<StreamHistoryResult> - Complete stream history with metadata
-   * @throws {PumpFunError} When the request fails or parameters are invalid
-   *
-   * @example
-   * ```typescript
-   * // Get complete stream history
-   * const history = await client.getStreamHistory('mintId');
-   *
-   * console.log(`Found ${history.totalPreviousStreams} previous streams`);
-   * console.log(`Found ${history.totalHighlights} highlights`);
-   * console.log(`Total watch time: ${history.totalDuration} seconds`);
-   *
-   * // Get only recent content (last 7 days)
-   * const recentHistory = await client.getStreamHistory('mintId', {
-   *   daysBack: 7,
-   *   maxPreviousStreams: 5,
-   *   maxHighlights: 20
-   * });
-   * ```
-   */
-  public async getStreamHistory(
-    mintId: string,
-    options: {
-      maxPreviousStreams?: number;
-      maxHighlights?: number;
-      daysBack?: number;
-      sortBy?: 'created_at' | 'duration' | 'view_count';
-      sortOrder?: 'ASC' | 'DESC';
-    } = {}
-  ): Promise<StreamHistoryResult> {
-    this.ensureInitialized();
-
-    const {
-      maxPreviousStreams = 20,
-      maxHighlights = 50,
-      daysBack,
-      sortBy = 'created_at',
-      sortOrder = 'DESC'
-    } = options;
-
-    try {
-      // Fetch both types of clips in parallel
-      const [previousStreams, highlights] = await Promise.all([
-        this.getPreviousStreams(mintId, maxPreviousStreams),
-        this.getStreamHighlights(mintId, maxHighlights)
-      ]);
-
-      // Combine and filter by date if specified
-      let allClips = [...previousStreams, ...highlights];
-
-      if (daysBack) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-        const cutoffTimestamp = cutoffDate.toISOString();
-
-        allClips = allClips.filter(clip => clip.created_at >= cutoffTimestamp);
-      }
-
-      // Sort combined results
-      allClips.sort((a, b) => {
-        let aValue: any, bValue: any;
-
-        switch (sortBy) {
-          case 'duration':
-            aValue = a.duration;
-            bValue = b.duration;
-            break;
-          case 'view_count':
-            aValue = a.view_count || 0;
-            bValue = b.view_count || 0;
-            break;
-          case 'created_at':
-          default:
-            aValue = new Date(a.created_at).getTime();
-            bValue = new Date(b.created_at).getTime();
-            break;
-        }
-
-        if (sortOrder === 'ASC') {
-          return aValue - bValue;
-        } else {
-          return bValue - aValue;
-        }
-      });
-
-      // Calculate statistics
-      const totalDuration = allClips.reduce((sum, clip) => sum + clip.duration, 0);
-      const totalViews = allClips.reduce((sum, clip) => sum + (clip.view_count || 0), 0);
-      const averageDuration = allClips.length > 0 ? totalDuration / allClips.length : 0;
-
-      const result: StreamHistoryResult = {
-        mintId,
-        previousStreams,
-        highlights,
-        allClips,
-        totalPreviousStreams: previousStreams.length,
-        totalHighlights: highlights.length,
-        totalClips: allClips.length,
-        totalDuration,
-        totalViews,
-        averageDuration,
-        retrievedAt: new Date().toISOString(),
-        filters: options
-      };
-
-      this.logger.info('Retrieved comprehensive stream history', {
-        mintId,
-        totalPreviousStreams: result.totalPreviousStreams,
-        totalHighlights: result.totalHighlights,
-        totalDuration: result.totalDuration,
-        filters: options
-      });
-
-      return result;
-    } catch (error) {
-      this.logger.error('Failed to get stream history', {
-        mintId,
-        options,
-        error: ErrorUtils.formatForLogging(error),
-      });
-
-      const pumpFunError = this.errorHandler.handleError(error, 'getStreamHistory', {
-        mintId,
-        options,
-      });
-
-      throw pumpFunError;
-    }
-  }
-
-  /**
-   * Validate jurisdiction for API access
-   */
-  public async validateJurisdiction(): Promise<boolean> {
-    this.ensureInitialized();
-
-    try {
-      this.logger.info('Validating jurisdiction', {
-        endpoint: '/auth/is-valid-jurisdiction',
-      });
-
-      // Apply rate limiting before making the request
-      await this.rateLimiter.waitForRequest();
-
-      const response = await this.httpClient.get<JurisdictionResponse>(
-        '/auth/is-valid-jurisdiction'
-      );
-
-      // Update statistics
-      this.state.requestCount++;
-      this.state.lastRequestTime = Date.now();
-
-      // Record successful request in rate limiter
-      this.rateLimiter.recordRequest();
-
-      const isValid = response?.valid === true;
-
-      this.logger.info('Jurisdiction validation completed', {
-        isValid,
-        response,
-        timestamp: new Date().toISOString(),
-      });
-
-      return isValid;
-    } catch (error) {
-      this.state.errorCount++;
-      const pumpFunError = this.errorHandler.handleError(error, 'validateJurisdiction', {
-        endpoint: '/auth/is-valid-jurisdiction',
-        requestTime: new Date().toISOString(),
-      });
-
-      this.logger.error('Jurisdiction validation failed', {
-        error: pumpFunError.toJSON(),
-        resolution: pumpFunError.getResolution(),
-        errorCategory: pumpFunError.details?.errorCategory,
-      });
-
-      throw pumpFunError;
-    }
-  }
-
-  /**
-   * Test connection to the API
-   */
-  public async testConnection(): Promise<boolean> {
-    this.ensureInitialized();
-
-    try {
-      this.logger.info('Testing API connection', {
-        baseURL: this.configManager.getConfig().baseURL,
-        timeout: this.configManager.getConfig().timeout,
-      });
-
-      // Try to validate jurisdiction as a simple connection test
-      const isValid = await this.validateJurisdiction();
-
-      this.logger.info('Connection test successful', {
-        isValid,
-        baseURL: this.configManager.getConfig().baseURL,
-      });
-
-      return true;
-    } catch (error) {
-      this.logger.error('Connection test failed', {
-        error: ErrorUtils.formatForLogging(error),
-        baseURL: this.configManager.getConfig().baseURL,
-      });
-
-      return false;
-    }
-  }
-
-  /**
-   * Configuration and state management methods
-   */
-
-  /**
-   * Get current client configuration
-   */
-  public getConfiguration(): Readonly<ReturnType<typeof this.configManager.getConfig>> {
-    return this.configManager.getConfig();
-  }
-
-  /**
-   * Get current client state
-   */
-  public getState(): Readonly<ClientState> {
-    const rateLimiterStats = this.rateLimiter.getStats();
-
-    return {
-      ...this.state,
-      rateLimitInfo: {
-        requestsInWindow: rateLimiterStats.requests,
-        windowStart: rateLimiterStats.windowStart,
-        backoffUntil: rateLimiterStats.isBackoffActive
-          ? Date.now() + this.rateLimiter.getTimeUntilNextRequest()
-          : 0,
-        consecutiveErrors: rateLimiterStats.consecutiveErrors,
-      },
-    };
-  }
-
-  /**
-   * Check if client is properly initialized
-   */
-  public isClientInitialized(): boolean {
-    return this.isInitialized && this.state.isInitialized;
-  }
-
-  /**
-   * Get the base URL
-   */
-  public getBaseURL(): string {
-    return this.configManager.getConfig().baseURL;
-  }
-
-  /**
-   * Get the timeout configuration
-   */
-  public getTimeout(): number {
-    return this.configManager.getConfig().timeout;
-  }
+  // All previous stream and history methods have been consolidated into getStreamContent()
+  // Use getStreamContent() with contentType='previous_streams', 'highlights', or 'all' for unified access
 
   /**
    * Check if currently rate limited
@@ -1192,204 +1005,6 @@ export class PumpFunAPIClient {
   }
 
   /**
-   * Get remaining backoff time in milliseconds
-   */
-  public getRateLimitBackoffRemaining(): number {
-    return this.rateLimiter.getTimeUntilNextRequest();
-  }
-
-  /**
-   * Update logger configuration
-   */
-  public updateLoggerConfig(
-    config: Partial<typeof import('../types').DEFAULT_LOGGER_CONFIG>
-  ): void {
-    this.configManager.updateLoggerConfig(config, this.logger);
-  }
-
-  /**
-   * Update rate limit configuration
-   */
-  public updateRateLimitConfig(
-    config: Partial<typeof import('../types').DEFAULT_RATE_LIMIT_CONFIG>
-  ): void {
-    this.configManager.updateRateLimitConfig(config, this.logger);
-  }
-
-  /**
-   * Reset statistics
-   */
-  public resetStatistics(): void {
-    this.state.requestCount = 0;
-    this.state.errorCount = 0;
-    this.state.lastRequestTime = 0;
-    this.rateLimiter.reset();
-
-    this.logger.info('Client statistics reset');
-  }
-
-  /**
-   * Get statistics about client usage
-   */
-  public getStatistics(): {
-    requestCount: number;
-    errorCount: number;
-    errorRate: number;
-    successRate: number;
-    lastRequestTime: number | null;
-    uptime: number;
-    startTime: string;
-    rateLimitState: RateLimitState;
-  } {
-    const errorRate =
-      this.state.requestCount > 0 ? (this.state.errorCount / this.state.requestCount) * 100 : 0;
-    const successRate =
-      this.state.requestCount > 0
-        ? ((this.state.requestCount - this.state.errorCount) / this.state.requestCount) * 100
-        : 100;
-
-    const rateLimiterStats = this.rateLimiter.getStats();
-
-    return {
-      requestCount: this.state.requestCount,
-      errorCount: this.state.errorCount,
-      errorRate,
-      successRate,
-      lastRequestTime: this.state.lastRequestTime || null,
-      uptime: Date.now() - this.state.lastRequestTime,
-      startTime: new Date().toISOString(),
-      rateLimitState: {
-        requestsInWindow: rateLimiterStats.requests,
-        windowStart: rateLimiterStats.windowStart,
-        backoffUntil: rateLimiterStats.isBackoffActive
-          ? Date.now() + this.rateLimiter.getTimeUntilNextRequest()
-          : 0,
-        consecutiveErrors: rateLimiterStats.consecutiveErrors,
-      },
-    };
-  }
-
-  /**
-   * Attempt automatic error recovery
-   */
-  public attemptErrorRecovery(error: PumpFunError): boolean {
-    this.ensureInitialized();
-
-    try {
-      this.logger.info('Attempting automatic error recovery', {
-        errorType: error.constructor.name,
-        errorCode: error.code,
-        isRetryable: error.isRetryable,
-      });
-
-      // Reset rate limiting state for rate limit errors
-      if (error instanceof RateLimitError) {
-        this.rateLimiter.reset();
-        this.logger.info('Rate limiter reset for recovery');
-        return true;
-      }
-
-      // Reset HTTP client connection for network errors
-      if (error instanceof NetworkError) {
-        this.logger.info('Network error detected, connection will be reset on next request');
-        return true;
-      }
-
-      // For timeout errors, just log and retry
-      if (error instanceof TimeoutError) {
-        this.logger.info('Timeout error detected, retry should work with fresh request');
-        return true;
-      }
-
-      // For server errors, suggest retry after delay
-      if (error instanceof ServerError) {
-        const SERVER_RETRY_DELAY = 5000; // 5 seconds
-        this.logger.info(`Server error detected,建议 retry after ${SERVER_RETRY_DELAY}ms`);
-        return true;
-      }
-
-      // Configuration errors cannot be automatically recovered
-      if (error instanceof ConfigurationError) {
-        this.logger.warn('Configuration error cannot be automatically recovered');
-        return false;
-      }
-
-      this.logger.warn('Unknown error type, cannot determine recovery strategy');
-      return false;
-    } catch (recoveryError) {
-      this.logger.error('Automatic error recovery failed', {
-        originalError: ErrorUtils.formatForLogging(error),
-        recoveryError: ErrorUtils.formatForLogging(recoveryError),
-      });
-      return false;
-    }
-  }
-
-  /**
-   * Get error diagnostics information
-   */
-  public getErrorDiagnostics(): {
-    clientState: ClientState;
-    configuration: ValidatedConfig;
-    environment: {
-      nodeVersion: string;
-      platform: string;
-      arch: string;
-    };
-    configSource: string;
-    troubleshootingSuggestions: string[];
-  } {
-    return {
-      clientState: this.getState(),
-      configuration: this.configManager.getConfig(),
-      environment: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        arch: process.arch,
-      },
-      configSource: 'environment', // Simplified for refactoring
-      troubleshootingSuggestions: this.getGeneralTroubleshootingSuggestions(),
-    };
-  }
-
-  /**
-   * Get general troubleshooting suggestions
-   */
-  private getGeneralTroubleshootingSuggestions(): string[] {
-    const HIGH_ERROR_RATE_THRESHOLD = 50;
-    const FIVE_MINUTES_MS = 5 * 60 * 1000; // 300000ms
-
-    const suggestions = [
-      'Check network connectivity to the API server',
-      'Verify API credentials are valid and active',
-      'Review rate limit configuration and usage',
-      'Check for recent API changes or maintenance',
-    ];
-
-    if (this.state.errorCount > 0) {
-      const errorRate = (this.state.errorCount / Math.max(this.state.requestCount, 1)) * 100;
-      if (errorRate > HIGH_ERROR_RATE_THRESHOLD) {
-        suggestions.push('High error rate detected - review configuration and API access');
-      }
-    }
-
-    if (this.rateLimiter.isRateLimited()) {
-      suggestions.push('Currently rate limited - wait before making more requests');
-    }
-
-    if (Date.now() - this.state.lastRequestTime > FIVE_MINUTES_MS) {
-      // 5 minutes
-      suggestions.push('No recent requests - check if client is being used correctly');
-    }
-
-    return suggestions;
-  }
-
-  /**
-   * Component access methods for testing/advanced usage
-   */
-
-  /**
    * Get the logger instance
    */
   public getLogger(): Logger {
@@ -1397,20 +1012,9 @@ export class PumpFunAPIClient {
   }
 
   /**
-   * Get the rate limiter instance
-   */
-  public getRateLimiter(): RateLimiter {
-    return this.rateLimiter;
-  }
-
-  /**
    * Graceful shutdown
    */
   public shutdown(): void {
-    this.logger.info('Shutting down PumpFunAPIClient', {
-      finalStats: this.getStatistics(),
-    });
-
     try {
       // Cleanup LiveKit connections first
       this.shutdownLiveKitComponents();
@@ -1446,8 +1050,6 @@ export class PumpFunAPIClient {
         timeout: config.timeout,
       },
       isInitialized: this.isInitialized,
-      state: this.getState(),
-      statistics: this.getStatistics(),
     };
   }
 

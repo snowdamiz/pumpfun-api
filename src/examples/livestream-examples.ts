@@ -923,13 +923,13 @@ export async function getStreamStatisticsExample() {
 }
 
 /**
- * Example 21: Get stream clips for a specific mint
+ * Example 21: Unified stream content retrieval
  *
- * This example demonstrates the new getStreamClips method that fetches
- * recorded stream clips for a specific token mint with type filtering and pagination.
+ * This example demonstrates the new getStreamContent method that consolidates
+ * all content access (clips, previous streams, highlights) into a single unified API.
  */
-export async function getStreamClipsExample() {
-  console.log('=== Stream Clips Example ===');
+export async function getStreamContentExample() {
+  console.log('=== Unified Stream Content Example ===');
 
   const client = new PumpFunAPIClient({
     timeout: 15000,
@@ -942,27 +942,28 @@ export async function getStreamClipsExample() {
 
   try {
     // First get some live coins to test with
-    console.log('🔍 Getting live coins to test stream clips...');
+    console.log('🔍 Getting live coins to test stream content...');
     const result = await client.filterStreams({ limit: STREAM_INFO_LIMIT });
     const liveCoins = result.streams;
 
     if (liveCoins.length === 0) {
-      console.log('⚠️ No live coins found to test stream clips');
-      return { client, clipTests: [] };
+      console.log('⚠️ No live coins found to test stream content');
+      return { client, contentTests: [] };
     }
 
     console.log(
-      `📹 Testing stream clips for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
+      `📹 Testing unified stream content for ${Math.min(liveCoins.length, MAX_STREAM_INFO_TEST)} coins...\n`
     );
 
-    const clipTests: Array<{
+    const contentTests: Array<{
       mint: string;
       name: string;
       symbol: string;
       participants: number;
-      allClips: any[];
-      completeClips: any[];
-      highlightClips: any[];
+      allContent: any;
+      highlightsOnly: any;
+      previousStreamsOnly: any;
+      filteredContent: any;
     }> = [];
 
     for (let i = 0; i < Math.min(liveCoins.length, MAX_STREAM_INFO_TEST); i++) {
@@ -972,92 +973,112 @@ export async function getStreamClipsExample() {
         continue;
       }
 
-      console.log(`${i + INDEX_OFFSET}. Testing stream clips for: ${coin.name} (${coin.symbol})`);
+      console.log(`${i + INDEX_OFFSET}. Testing unified content for: ${coin.name} (${coin.symbol})`);
       console.log(`   🔗 Mint: ${coin.mint}`);
       console.log(`   👥 Live Participants: ${coin.num_participants}`);
       console.log(`   📺 Stream Title: "${coin.livestream_title ?? 'No Title'}"`);
 
       try {
-        // Test 1: Get all clips (no filtering)
-        console.log(`   📹 Testing getStreamClips (all clips)...`);
-        const allClips = await client.getStreamClips(coin.mint);
+        // Test 1: Get all content types (default behavior)
+        console.log(`   📦 Testing getStreamContent (all content types)...`);
+        const allContent = await client.getStreamContent(coin.mint);
 
-        // Test 2: Get only COMPLETE clips
-        console.log(`   🎬 Testing getStreamClips (COMPLETE only)...`);
-        const completeClips = await client.getStreamClips(coin.mint, 'COMPLETE');
+        // Test 2: Get only highlights
+        console.log(`   🌟 Testing getStreamContent (highlights only)...`);
+        const highlightsOnly = await client.getStreamContent(coin.mint, {
+          contentType: 'highlights',
+          maxHighlights: 10
+        });
 
-        // Test 3: Get only HIGHLIGHT clips
-        console.log(`   🌟 Testing getStreamClips (HIGHLIGHT only)...`);
-        const highlightClips = await client.getStreamClips(coin.mint, 'HIGHLIGHT');
+        // Test 3: Get only previous streams
+        console.log(`   🎬 Testing getStreamContent (previous streams only)...`);
+        const previousStreamsOnly = await client.getStreamContent(coin.mint, {
+          contentType: 'previous_streams',
+          maxPreviousStreams: 5
+        });
 
-        console.log(`   ✅ Stream Clips Retrieved:`);
-        console.log(`      📦 All Clips: ${allClips.length}`);
-        console.log(`      🎬 Complete Clips: ${completeClips.length}`);
-        console.log(`      🌟 Highlight Clips: ${highlightClips.length}`);
+        // Test 4: Get filtered content (clips with min duration and views)
+        console.log(`   🔍 Testing getStreamContent (filtered clips)...`);
+        const filteredContent = await client.getStreamContent(coin.mint, {
+          contentType: 'clips',
+          clipType: 'HIGHLIGHT',
+          minDuration: 30,
+          minViewCount: 10,
+          sortBy: 'view_count',
+          sortOrder: 'DESC',
+          limit: 5
+        });
 
-        // Display details about the clips
-        if (allClips.length > 0) {
-          const clipTypes = new Set(allClips.map(clip => clip.clipType));
-          console.log(
-            `      📋 Clip Types: ${Array.from(clipTypes).join(', ')}`
-          );
+        console.log(`   ✅ Stream Content Retrieved:`);
 
-          const totalDuration = allClips.reduce((sum, clip) => sum + (clip.duration || 0), 0);
-          const totalViews = allClips.reduce((sum, clip) => sum + (clip.view_count || 0), 0);
+        // Display all content results
+        if (allContent.clips && allContent.clips.length > 0) {
+          console.log(`      📦 All Content: ${allContent.totalCount} items`);
+          console.log(`         • Clips: ${allContent.contentSummary.clipsCount}`);
+          console.log(`         • Previous Streams: ${allContent.contentSummary.previousStreamsCount}`);
+          console.log(`         • Highlights: ${allContent.contentSummary.highlightsCount}`);
+          console.log(`         • Processing Time: ${allContent.metrics.processingTimeMs}ms`);
+          console.log(`         • Filters Applied: ${allContent.metrics.filtersApplied}`);
 
-          console.log(`      ⏱️  Total Duration: ${totalDuration}s`);
-          console.log(`      👁️ Total Views: ${totalViews.toLocaleString()}`);
-
-          // Show clip URLs if available
-          const clipsWithUrls = allClips.filter(clip => clip.clip_url);
-          if (clipsWithUrls.length > 0) {
-            console.log(`      🔗 Clips with URLs: ${clipsWithUrls.length}`);
-          }
-
-          // Show oldest and newest clips
-          const sortedByDate = allClips
-            .filter(clip => clip.created_at)
-            .sort((a, b) => new Date(a.created_at!).getTime() - new Date(b.created_at!).getTime());
-
-          if (sortedByDate.length > 0) {
-            const oldest = sortedByDate[0];
-            const newest = sortedByDate[sortedByDate.length - 1];
-            if (oldest && newest) {
-              console.log(
-                `      📅 Oldest Clip: ${new Date(oldest.created_at!).toLocaleString()} (${oldest.clipType})`
-              );
-              console.log(
-                `      📅 Newest Clip: ${new Date(newest.created_at!).toLocaleString()} (${newest.clipType})`
-              );
-            }
-          }
+          const totalDuration = allContent.clips.reduce((sum, clip) => sum + (clip.duration || 0), 0);
+          const totalViews = allContent.clips.reduce((sum, clip) => sum + (clip.view_count || 0), 0);
+          console.log(`         • Total Duration: ${totalDuration}s`);
+          console.log(`         • Total Views: ${totalViews.toLocaleString()}`);
         } else {
-          console.log(`      ⚠️ No clips found for this stream`);
+          console.log(`      ⚠️ No content found for this stream`);
         }
 
-        clipTests.push({
+        // Display highlights results
+        if (highlightsOnly.highlights && highlightsOnly.highlights.length > 0) {
+          console.log(`      🌟 Highlights Only: ${highlightsOnly.contentSummary.highlightsCount} items`);
+          console.log(`         • Processing Time: ${highlightsOnly.metrics.processingTimeMs}ms`);
+        } else {
+          console.log(`      ⚠️ No highlights found`);
+        }
+
+        // Display previous streams results
+        if (previousStreamsOnly.previousStreams && previousStreamsOnly.previousStreams.length > 0) {
+          console.log(`      🎬 Previous Streams Only: ${previousStreamsOnly.contentSummary.previousStreamsCount} items`);
+          console.log(`         • Processing Time: ${previousStreamsOnly.metrics.processingTimeMs}ms`);
+        } else {
+          console.log(`      ⚠️ No previous streams found`);
+        }
+
+        // Display filtered results
+        if (filteredContent.clips && filteredContent.clips.length > 0) {
+          console.log(`      🔍 Filtered Clips: ${filteredContent.contentSummary.clipsCount} items`);
+          console.log(`         • Min Duration: 30s, Min Views: 10`);
+          console.log(`         • Sorted by: view_count (DESC)`);
+          console.log(`         • Processing Time: ${filteredContent.metrics.processingTimeMs}ms`);
+        } else {
+          console.log(`      ⚠️ No clips matching filter criteria`);
+        }
+
+        contentTests.push({
           mint: coin.mint,
           name: coin.name,
           symbol: coin.symbol,
           participants: coin.num_participants,
-          allClips,
-          completeClips,
-          highlightClips,
+          allContent,
+          highlightsOnly,
+          previousStreamsOnly,
+          filteredContent,
         });
       } catch (error) {
         console.log(
-          `   ❌ Error getting stream clips: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `   ❌ Error getting stream content: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
 
         // Add failed test entry
-        clipTests.push({
+        contentTests.push({
           mint: coin.mint,
           name: coin.name,
           symbol: coin.symbol,
           participants: coin.num_participants,
-          allClips: [],
-          completeClips: [],
-          highlightClips: [],
+          allContent: { totalCount: 0 },
+          highlightsOnly: { contentSummary: { highlightsCount: 0 } },
+          previousStreamsOnly: { contentSummary: { previousStreamsCount: 0 } },
+          filteredContent: { contentSummary: { clipsCount: 0 } },
         });
       }
 
@@ -1065,91 +1086,90 @@ export async function getStreamClipsExample() {
     }
 
     // Summary Statistics
-    console.log(`📊 Stream Clips Summary:`);
-    console.log(`   Total Tested: ${clipTests.length}`);
+    console.log(`📊 Stream Content Summary:`);
+    console.log(`   Total Tested: ${contentTests.length}`);
 
-    if (clipTests.length > 0) {
-      const totalAllClips = clipTests.reduce((sum, test) => sum + test.allClips.length, 0);
-      const totalCompleteClips = clipTests.reduce(
-        (sum, test) => sum + test.completeClips.length,
-        0
-      );
-      const totalHighlightClips = clipTests.reduce(
-        (sum, test) => sum + test.highlightClips.length,
-        0
-      );
-      const streamsWithClips = clipTests.filter(test => test.allClips.length > 0).length;
+    if (contentTests.length > 0) {
+      const totalAllContent = contentTests.reduce((sum, test) => sum + test.allContent.totalCount, 0);
+      const totalHighlights = contentTests.reduce((sum, test) => sum + test.highlightsOnly.contentSummary.highlightsCount, 0);
+      const totalPreviousStreams = contentTests.reduce((sum, test) => sum + test.previousStreamsOnly.contentSummary.previousStreamsCount, 0);
+      const totalFiltered = contentTests.reduce((sum, test) => sum + test.filteredContent.contentSummary.clipsCount, 0);
+      const streamsWithContent = contentTests.filter(test => test.allContent.totalCount > 0).length;
 
-      console.log(`   Streams with Clips: ${streamsWithClips}`);
-      console.log(`   Total All Clips: ${totalAllClips}`);
-      console.log(`   Total Complete Clips: ${totalCompleteClips}`);
-      console.log(`   Total Highlight Clips: ${totalHighlightClips}`);
+      console.log(`   Streams with Content: ${streamsWithContent}`);
+      console.log(`   Total All Content: ${totalAllContent}`);
+      console.log(`   Total Highlights: ${totalHighlights}`);
+      console.log(`   Total Previous Streams: ${totalPreviousStreams}`);
+      console.log(`   Total Filtered Clips: ${totalFiltered}`);
 
-      if (totalAllClips > 0) {
-        const averageClipsPerStream = (totalAllClips / clipTests.length).toFixed(1);
-        console.log(`   Average Clips per Stream: ${averageClipsPerStream}`);
-
-        // Clip type distribution
-        const completePercentage = ((totalCompleteClips / totalAllClips) * 100).toFixed(1);
-        const highlightPercentage = ((totalHighlightClips / totalAllClips) * 100).toFixed(1);
-        console.log(
-          `   Clip Type Distribution: ${completePercentage}% Complete, ${highlightPercentage}% Highlight`
-        );
+      if (totalAllContent > 0) {
+        const averageContentPerStream = (totalAllContent / contentTests.length).toFixed(1);
+        console.log(`   Average Content per Stream: ${averageContentPerStream}`);
       }
 
-      // Show streams with the most clips
-      const sortedByClipCount = clipTests
-        .filter(test => test.allClips.length > 0)
-        .sort((a, b) => b.allClips.length - a.allClips.length)
+      // Show streams with the most content
+      const sortedByContentCount = contentTests
+        .filter(test => test.allContent.totalCount > 0)
+        .sort((a, b) => b.allContent.totalCount - a.allContent.totalCount)
         .slice(0, 3);
 
-      if (sortedByClipCount.length > 0) {
-        console.log(`\n🏆 Top ${sortedByClipCount.length} Streams by Clip Count:`);
-        sortedByClipCount.forEach((test, index) => {
+      if (sortedByContentCount.length > 0) {
+        console.log(`\n🏆 Top ${sortedByContentCount.length} Streams by Content Count:`);
+        sortedByContentCount.forEach((test, index) => {
           console.log(`   ${index + 1}. ${test.name} (${test.symbol})`);
-          console.log(`      📹 Total Clips: ${test.allClips.length}`);
+          console.log(`      📦 Total Content: ${test.allContent.totalCount}`);
           console.log(`      👥 Participants: ${test.participants}`);
           console.log(`      🔗 Mint: ${test.mint}`);
         });
       }
     }
 
-    console.log('\n🎯 Stream Clips Usage Examples:');
-    console.log('   // Get all clips for a stream');
-    console.log('   const clips = await client.getStreamClips(mintId);');
+    console.log('\n🎯 Unified Stream Content Usage Examples:');
+    console.log('   // Get all content types');
+    console.log('   const content = await client.getStreamContent(mintId);');
     console.log('');
-    console.log('   // Get only complete clips');
-    console.log('   const completeClips = await client.getStreamClips(mintId, "COMPLETE");');
-    console.log('');
-    console.log('   // Get only highlight clips with pagination');
-    console.log('   const highlights = await client.getStreamClips(mintId, "HIGHLIGHT", 5);');
-    console.log('');
-    console.log('   // Clip data structure');
-    console.log('   clips.forEach(clip => {');
-    console.log('     console.log(`Clip ID: ${clip.id}`);');
-    console.log('     console.log(`Type: ${clip.clipType}`);');
-    console.log('     console.log(`Duration: ${clip.duration}s`);');
-    console.log('     console.log(`Views: ${clip.view_count}`);');
-    console.log('     console.log(`URL: ${clip.clip_url}`);');
+    console.log('   // Get only highlights from last 7 days');
+    console.log('   const highlights = await client.getStreamContent(mintId, {');
+    console.log('     contentType: "highlights",');
+    console.log('     daysBack: 7');
     console.log('   });');
     console.log('');
-    console.log('💡 Stream Clips Features:');
-    console.log('   • Support for COMPLETE and HIGHLIGHT clip types');
-    console.log('   • Pagination with configurable limit (max 100)');
-    console.log('   • Comprehensive validation of clip data');
-    console.log('   • View count and duration information');
-    console.log('   • Creation timestamps for chronological ordering');
-    console.log('   • Clip URLs for video playback integration');
+    console.log('   // Get clips with specific criteria');
+    console.log('   const qualityClips = await client.getStreamContent(mintId, {');
+    console.log('     contentType: "clips",');
+    console.log('     clipType: "HIGHLIGHT",');
+    console.log('     minDuration: 30,');
+    console.log('     minViewCount: 100,');
+    console.log('     sortBy: "view_count",');
+    console.log('     sortOrder: "DESC"');
+    console.log('   });');
+    console.log('');
+    console.log('   // Get content from specific date range');
+    console.log('   const archivalContent = await client.getStreamContent(mintId, {');
+    console.log('     dateRange: {');
+    console.log('       start: "2024-01-01T00:00:00Z",');
+    console.log('       end: "2024-01-31T23:59:59Z"');
+    console.log('     }');
+    console.log('   });');
+    console.log('');
+    console.log('💡 Unified Stream Content Features:');
+    console.log('   • Single API for all content types (clips, previous streams, highlights)');
+    console.log('   • Advanced filtering (duration, view count, date range, URL availability)');
+    console.log('   • Multiple sorting options (created_at, duration, view_count, stream_start)');
+    console.log('   • Content type selection (all, clips, previous_streams, highlights)');
+    console.log('   • Pagination and limiting options');
+    console.log('   • Performance metrics and processing time tracking');
+    console.log('   • Comprehensive content summary statistics');
 
-    return { client, clipTests };
+    return { client, contentTests };
   } catch (error) {
-    console.error('❌ Error in stream clips example:', error);
+    console.error('❌ Error in stream content example:', error);
 
     // Provide helpful error context
     if (error instanceof Error) {
       console.log('\n💡 Possible Solutions:');
       if (error.message.includes('rate limit')) {
-        console.log('   • Wait before making another clips request');
+        console.log('   • Wait before making another content request');
         console.log('   • Check rate limit status with client.isRateLimited()');
       } else if (error.message.includes('network') || error.message.includes('timeout')) {
         console.log('   • Check internet connection');
@@ -1157,7 +1177,7 @@ export async function getStreamClipsExample() {
         console.log('   • Try again later');
       } else if (error.message.includes('API')) {
         console.log('   • Verify API endpoints are accessible');
-        console.log('   • Check if clips endpoint is available');
+        console.log('   • Check if content endpoints are available');
       } else {
         console.log('   • Review error details above');
         console.log('   • Check client configuration');

@@ -569,29 +569,6 @@ export class ConfigurationManager {
   }
 
   /**
-   * Update logger configuration
-   */
-  updateLoggerConfig(config: Partial<typeof DEFAULT_LOGGER_CONFIG>, logger: Logger): void {
-    this.config.loggerConfig = {
-      ...this.config.loggerConfig,
-      ...config,
-    };
-    logger.updateConfig(config);
-    logger.info('Logger configuration updated', config);
-  }
-
-  /**
-   * Update rate limit configuration
-   */
-  updateRateLimitConfig(config: Partial<typeof DEFAULT_RATE_LIMIT_CONFIG>, logger: Logger): void {
-    this.config.rateLimitConfig = {
-      ...this.config.rateLimitConfig,
-      ...config,
-    };
-    logger.info('Rate limit configuration updated', config);
-  }
-
-  /**
    * Detect configuration source for debugging
    */
   detectConfigSource(): string {
