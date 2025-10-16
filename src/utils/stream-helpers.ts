@@ -204,3 +204,13 @@ export function summarizeFilterCriteria(criteria: FilterCriteria): Record<string
 
   return summary;
 }
+
+export function parseStreamUrl(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/');
+    return pathParts[pathParts.length - 1] || null;
+  } catch {
+    return null;
+  }
+}

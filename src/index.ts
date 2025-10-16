@@ -2,15 +2,9 @@
 // Main Exports
 // ============
 
-export { PumpFunClient } from './client/PumpFunClient';
+export { PumpFunClient, DEFAULT_STREAM_OPTIONS } from './client/PumpFunClient';
 export { createClient } from './factory';
-
-// Utilities
-export {
-  isValidMintId,
-  parseStreamUrl,
-  DEFAULT_STREAM_OPTIONS
-} from './utils';
+export { isValidMintId, parseStreamUrl } from './utils';
 
 // Type exports
 export type {
@@ -62,17 +56,15 @@ export type {
   RetryConfig,
   RateLimitConfig,
   LoggerConfig,
-  ValidatedConfig
-} from './types/types';
+  ValidatedConfig,
 
-// Enum exports
-export {
+  // Video
+  VideoQuality,
+
+  // Enums
   LogLevel,
-  ConnectionState
+  ConnectionState,
 } from './types/types';
-
-// Type utility exports
-export type { VideoQuality } from './types/types';
 
 // Constants exports
 export {
