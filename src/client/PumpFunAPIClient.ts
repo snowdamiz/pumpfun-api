@@ -11,13 +11,11 @@
 import {
   ClientConfig,
   ClientState,
-  RateLimitState,
   LiveCoin,
   GetLiveCoinsParams,
   StreamOptions,
   LiveStreamInfo,
   LiveKitConnectionInfo,
-  ValidatedConfig,
   VideoStreamAnalysis,
   JoinLiveStreamResponse,
   SearchLiveStreamsParams,
@@ -27,7 +25,6 @@ import {
   LiveKitConnectionOptions,
   LiveStreamConnection,
   ConnectionState,
-  JurisdictionResponse,
   UnifiedFilterCriteria,
   AdvancedFilterResult,
   StreamContentFilters,
@@ -43,12 +40,7 @@ import { HTTPClient } from '../infrastructure/http/http-client';
 import { Logger } from '../infrastructure/logging/logger';
 import { RateLimiter } from '../infrastructure/rate-limiting/rate-limiter';
 import {
-  PumpFunError,
-  NetworkError,
-  RateLimitError,
-  ServerError,
   ConfigurationError,
-  TimeoutError,
   LiveKitError,
   ErrorUtils,
 } from '../infrastructure/error-handling/errors';
