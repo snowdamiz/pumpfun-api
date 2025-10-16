@@ -1,20 +1,19 @@
 /**
  * Advanced Filtering Examples for PumpFun API Client
  *
- * This module demonstrates the new advanced filtering capabilities introduced in T043,
- * including custom filter functions, compound queries, and predefined filter builders.
+ * This module demonstrates the new unified filterStreams() method that consolidates
+ * all filtering functionality into a single, comprehensive interface.
  */
 
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
+import { FilterBuilders } from '../utils/filter-builders';
 import {
   LogLevel,
-  AdvancedFilterCriteria,
-  CompoundFilterQuery,
-  StreamFilterFunction,
+  UnifiedFilterCriteria,
 } from '../types';
 
 /**
- * Example 1: Using predefined filter builders
+ * Example 1: Using predefined filter builders with unified API
  */
 export async function demonstratePredefinedFilters() {
   console.log('=== Predefined Filter Builders Example ===');
@@ -28,13 +27,13 @@ export async function demonstratePredefinedFilters() {
   });
 
   try {
-    const filterBuilders = client.getFilterBuilders();
-
     // Get high-quality streams
     console.log('🔍 Finding high-quality streams...');
-    const highQualityFilter = filterBuilders.highQualityStreams();
-    const highQualityResult = await client.applyAdvancedFilters({
-      customFilters: [highQualityFilter],
+    const highQualityResult = await client.filterStreams({
+      customFilters: [
+        { name: 'high-quality', filter: FilterBuilders.highQualityStreams() }
+      ],
+      limit: 20
     });
 
     console.log(`✅ Found ${highQualityResult.streams.length} high-quality streams`);
@@ -43,9 +42,11 @@ export async function demonstratePredefinedFilters() {
 
     // Get new and trending streams (last 24 hours)
     console.log('\n🔥 Finding new and trending streams (last 24 hours)...');
-    const trendingFilter = filterBuilders.newAndTrending(24);
-    const trendingResult = await client.applyAdvancedFilters({
-      customFilters: [trendingFilter],
+    const trendingResult = await client.filterStreams({
+      customFilters: [
+        { name: 'new-trending', filter: FilterBuilders.newAndTrending(24) }
+      ],
+      limit: 20
     });
 
     console.log(`✅ Found ${trendingResult.streams.length} trending streams`);
@@ -53,9 +54,11 @@ export async function demonstratePredefinedFilters() {
 
     // Get professional streams
     console.log('\n💼 Finding professional streams...');
-    const professionalFilter = filterBuilders.professionalStreams();
-    const professionalResult = await client.applyAdvancedFilters({
-      customFilters: [professionalFilter],
+    const professionalResult = await client.filterStreams({
+      customFilters: [
+        { name: 'professional', filter: FilterBuilders.professionalStreams() }
+      ],
+      limit: 20
     });
 
     console.log(`✅ Found ${professionalResult.streams.length} professional streams`);
@@ -76,7 +79,7 @@ export async function demonstratePredefinedFilters() {
 }
 
 /**
- * Example 2: Custom filter functions
+ * Example 2: Custom filter functions with unified API
  */
 export async function demonstrateCustomFilters() {
   console.log('=== Custom Filter Functions Example ===');
@@ -90,20 +93,22 @@ export async function demonstrateCustomFilters() {
 
   try {
     // Create custom filter for streams with specific characteristics
-    const customFilter: StreamFilterFunction = stream => {
-      const hasTitle = !!(stream.livestream_title && stream.livestream_title.length > 15);
-      const hasSocial = !!(stream.twitter && stream.telegram);
-      const isEngaging = (stream.num_participants ?? 0) >= 3 && (stream.reply_count ?? 0) >= 5;
-      const hasGoodMarketCap = stream.usd_market_cap >= 1000;
+    const customFilter = {
+      name: 'engagingSocialStreams',
+      filter: (stream: any) => {
+        const hasTitle = !!(stream.livestream_title && stream.livestream_title.length > 15);
+        const hasSocial = !!(stream.twitter && stream.telegram);
+        const isEngaging = (stream.num_participants ?? 0) >= 3 && (stream.reply_count ?? 0) >= 5;
+        const hasGoodMarketCap = stream.usd_market_cap >= 1000;
 
-      return hasTitle && hasSocial && isEngaging && hasGoodMarketCap;
+        return hasTitle && hasSocial && isEngaging && hasGoodMarketCap;
+      }
     };
 
-    const namedFilter = client.createCustomFilter(customFilter, 'engagingSocialStreams');
-
     console.log('🎯 Applying custom filter for engaging social streams...');
-    const customResult = await client.applyAdvancedFilters({
-      customFilters: [namedFilter],
+    const customResult = await client.filterStreams({
+      customFilters: [customFilter],
+      limit: 20
     });
 
     console.log(`✅ Found ${customResult.streams.length} streams matching custom criteria`);
@@ -132,7 +137,7 @@ export async function demonstrateCustomFilters() {
 }
 
 /**
- * Example 3: Complex criteria filtering
+ * Example 3: Complex criteria filtering with unified API
  */
 export async function demonstrateComplexCriteria() {
   console.log('=== Complex Criteria Filtering Example ===');
@@ -145,7 +150,7 @@ export async function demonstrateComplexCriteria() {
   });
 
   try {
-    const complexCriteria: AdvancedFilterCriteria = {
+    const complexCriteria: UnifiedFilterCriteria = {
       // Market cap range: $1,000 - $100,000
       marketCapRange: {
         min: 1000,
@@ -178,6 +183,7 @@ export async function demonstrateComplexCriteria() {
         nameContains: ['crypto', 'defi', 'token'],
         excludePatterns: ['scam', 'fake', 'test'],
       },
+      limit: 25
     };
 
     console.log('🎯 Applying complex filtering criteria...');
@@ -189,7 +195,7 @@ export async function demonstrateComplexCriteria() {
     console.log('   🔍 Name contains crypto/defi/token');
     console.log('   ❌ Excludes scam/fake/test');
 
-    const complexResult = await client.applyAdvancedFilters(complexCriteria);
+    const complexResult = await client.filterStreams(complexCriteria);
 
     console.log(`\n✅ Found ${complexResult.streams.length} streams matching complex criteria`);
     console.log(`   📊 Filtered from ${complexResult.totalBeforeFilter} total streams`);
@@ -198,7 +204,7 @@ export async function demonstrateComplexCriteria() {
 
     // Display criteria summary
     console.log('\n📋 Applied criteria summary:');
-    Object.entries(complexResult.appliedCriteria).forEach(([key, value]) => {
+    Object.entries(complexResult.appliedCriteria.unifiedCriteria).forEach(([key, value]) => {
       console.log(`   ${key}: ${JSON.stringify(value)}`);
     });
 
@@ -210,7 +216,7 @@ export async function demonstrateComplexCriteria() {
 }
 
 /**
- * Example 4: Compound filter queries with logical operators
+ * Example 4: Compound filter queries with logical operators using unified API
  */
 export async function demonstrateCompoundQueries() {
   console.log('=== Compound Filter Queries Example ===');
@@ -223,46 +229,39 @@ export async function demonstrateCompoundQueries() {
   });
 
   try {
-    const compoundQuery: CompoundFilterQuery = {
-      groupOperator: 'OR',
-      groups: [
-        {
-          operator: 'AND',
-          criteria: [
-            {
+    const compoundCriteria: UnifiedFilterCriteria = {
+      compoundQuery: {
+        operator: 'OR',
+        groups: [
+          {
+            operator: 'AND',
+            filters: {
               // Group 1: High engagement streams
               participantRange: { min: 20 },
               activityLevel: { minReplyCount: 50 },
               hasSocialMedia: { twitter: true },
-            },
-            {
-              // Group 1 continued: Good content quality
               contentQuality: {
                 hasTitle: true,
                 minTitleLength: 15,
               },
             },
-          ],
-        },
-        {
-          operator: 'AND',
-          criteria: [
-            {
+          },
+          {
+            operator: 'AND',
+            filters: {
               // Group 2: Established streams
               marketCapRange: { min: 50000 },
               textPatterns: {
                 nameContains: ['bitcoin', 'ethereum', 'solana'],
               },
-            },
-            {
-              // Group 2 continued: Active community
               activityLevel: {
                 hasRecentActivity: true,
               },
             },
-          ],
-        },
-      ],
+          },
+        ],
+      },
+      limit: 30
     };
 
     console.log('🔗 Applying compound query with OR logic...');
@@ -277,7 +276,7 @@ export async function demonstrateCompoundQueries() {
     console.log('     - Name contains bitcoin/ethereum/solana');
     console.log('     - Recent activity');
 
-    const compoundResult = await client.applyCompoundFilter(compoundQuery);
+    const compoundResult = await client.filterStreams(compoundCriteria);
 
     console.log(`\n✅ Found ${compoundResult.streams.length} streams matching compound query`);
     console.log(`   📊 Filtered from ${compoundResult.totalBeforeFilter} total streams`);
@@ -286,7 +285,7 @@ export async function demonstrateCompoundQueries() {
 
     // Display query summary
     console.log('\n📋 Query summary:');
-    Object.entries(compoundResult.appliedCriteria.query).forEach(([key, value]) => {
+    Object.entries(compoundResult.appliedCriteria.unifiedCriteria).forEach(([key, value]) => {
       console.log(`   ${key}: ${JSON.stringify(value)}`);
     });
 
@@ -298,7 +297,7 @@ export async function demonstrateCompoundQueries() {
 }
 
 /**
- * Example 5: Performance comparison
+ * Example 5: Performance comparison with unified API
  */
 export async function demonstratePerformanceComparison() {
   console.log('=== Performance Comparison Example ===');
@@ -314,8 +313,9 @@ export async function demonstratePerformanceComparison() {
     // Test 1: Simple market cap range filter
     console.log('📊 Test 1: Simple market cap range filter...');
     const startTime1 = Date.now();
-    const simpleResult = await client.applyAdvancedFilters({
+    const simpleResult = await client.filterStreams({
       marketCapRange: { min: 1000, max: 50000 },
+      limit: 50
     });
     const time1 = Date.now() - startTime1;
 
@@ -328,7 +328,7 @@ export async function demonstratePerformanceComparison() {
     // Test 2: Complex multi-criteria filter
     console.log('\n📊 Test 2: Complex multi-criteria filter...');
     const startTime2 = Date.now();
-    const complexResult = await client.applyAdvancedFilters({
+    const complexResult = await client.filterStreams({
       marketCapRange: { min: 1000, max: 50000 },
       participantRange: { min: 5, max: 100 },
       hasSocialMedia: { twitter: true },
@@ -343,6 +343,7 @@ export async function demonstratePerformanceComparison() {
       textPatterns: {
         excludePatterns: ['test', 'demo'],
       },
+      limit: 50
     });
     const time2 = Date.now() - startTime2;
 
@@ -355,18 +356,27 @@ export async function demonstratePerformanceComparison() {
     // Test 3: Compound query with logical operators
     console.log('\n📊 Test 3: Compound query with logical operators...');
     const startTime3 = Date.now();
-    const compoundResult = await client.applyCompoundFilter({
-      groupOperator: 'OR',
-      groups: [
-        {
-          operator: 'AND',
-          criteria: [{ participantRange: { min: 10 } }, { hasSocialMedia: { twitter: true } }],
-        },
-        {
-          operator: 'AND',
-          criteria: [{ marketCapRange: { min: 10000 } }, { contentQuality: { hasTitle: true } }],
-        },
-      ],
+    const compoundResult = await client.filterStreams({
+      compoundQuery: {
+        operator: 'OR',
+        groups: [
+          {
+            operator: 'AND',
+            filters: {
+              participantRange: { min: 10 },
+              hasSocialMedia: { twitter: true }
+            },
+          },
+          {
+            operator: 'AND',
+            filters: {
+              marketCapRange: { min: 10000 },
+              contentQuality: { hasTitle: true }
+            },
+          },
+        ],
+      },
+      limit: 50
     });
     const time3 = Date.now() - startTime3;
 
@@ -427,6 +437,7 @@ export async function runAdvancedFilteringExamples() {
 
     console.log('\n🎉 All advanced filtering examples completed successfully!');
     console.log('\n💡 Key Features Demonstrated:');
+    console.log('   ✅ Unified filterStreams() method for all filtering needs');
     console.log('   ✅ Predefined filter builders for common use cases');
     console.log('   ✅ Custom filter functions with naming support');
     console.log('   ✅ Complex multi-criteria filtering');

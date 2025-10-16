@@ -538,7 +538,7 @@ export class ErrorHandler {
       suggestions.push('Check DNS configuration');
     }
 
-    if (operation === 'getLiveStreams') {
+    if (operation === 'filterStreams') {
       suggestions.push('The live streaming API server may be temporarily unavailable');
       suggestions.push('Check server status at https://status.pump.fun');
     }
@@ -595,7 +595,7 @@ export class ErrorHandler {
         suggestions.push('Refer to API documentation for this status code');
     }
 
-    if (operation === 'getLiveStreams') {
+    if (operation === 'filterStreams') {
       suggestions.push('The live streaming data format may have changed');
       suggestions.push('Contact support if the issue persists');
     }
@@ -610,7 +610,7 @@ export class ErrorHandler {
       'Try the request again with a longer timeout',
     ];
 
-    if (operation === 'getLiveStreams') {
+    if (operation === 'filterStreams') {
       suggestions.push('The live streaming API may be experiencing high load');
       suggestions.push('Consider reducing the amount of data requested');
     }
@@ -652,10 +652,10 @@ export class ErrorHandler {
       'Contact support if the issue persists',
     ];
 
-    if (operation === 'getLiveStreams') {
+    if (operation === 'filterStreams') {
       suggestions.push('The live streaming data format may have been updated');
       suggestions.push(
-        'Use getLiveStreams() with minimal filtering if you need all live streams'
+        'Use filterStreams() with minimal filtering if you need all live streams'
       );
     }
 
@@ -699,7 +699,7 @@ export class ErrorHandler {
       'Consider reducing request frequency',
     ];
 
-    if (operation === 'getLiveStreams') {
+    if (operation === 'filterStreams') {
       suggestions.push('Cache live streams data to reduce API calls');
       suggestions.push('Consider using websockets for real-time updates instead of polling');
     }

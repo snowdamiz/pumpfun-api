@@ -63,7 +63,8 @@ export async function demonstrateDurationUtilities() {
   try {
     // Get some live coins to test with
     console.log('🔍 Getting live coins to test duration utilities...');
-    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
+    const result = await client.filterStreams({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = result.streams;
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test duration utilities');
@@ -197,7 +198,8 @@ export async function demonstrateMetadataExtraction() {
   try {
     // Get some live coins to test with
     console.log('🔍 Getting live coins to test metadata extraction...');
-    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
+    const result = await client.filterStreams({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = result.streams;
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test metadata extraction');
@@ -342,7 +344,8 @@ export async function demonstrateSortingFilteringUtilities() {
   try {
     // Get some live coins to test with
     console.log('🔍 Getting live coins to test sorting and filtering utilities...');
-    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
+    const result = await client.filterStreams({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = result.streams;
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test sorting and filtering utilities');
@@ -529,7 +532,8 @@ export async function demonstrateDataValidation() {
   try {
     // Get some live coins to test with
     console.log('🔍 Getting live coins to test data validation...');
-    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
+    const result = await client.filterStreams({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = result.streams;
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test data validation');

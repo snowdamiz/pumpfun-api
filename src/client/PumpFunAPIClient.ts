@@ -28,13 +28,11 @@ import {
   LiveKitConnectionOptions,
   LiveStreamConnection,
   ConnectionState,
-  JurisdictionResponse
+  JurisdictionResponse,
+  UnifiedFilterCriteria,
+  AdvancedFilterResult
 } from '../types';
 import {
-  AdvancedFilterCriteria,
-  AdvancedFilterResult,
-  CompoundFilterQuery,
-  StreamFilterFunction,
   ClipFilterParams,
   ClipFilterResult,
   StreamFilters,
@@ -162,7 +160,7 @@ export class PumpFunAPIClient {
     this.streamFilters = new StreamFilters(
       this.logger,
       this.errorHandler,
-      (options?: StreamOptions) => this.liveStreamsService.getLiveStreams(options),
+      (options?: StreamOptions) => this.liveStreamsService.fetchBaseLiveStreams(options),
       (mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number) =>
         this.liveStreamsService.getStreamClips(mintId, clipType, limit)
     );
@@ -195,43 +193,193 @@ export class PumpFunAPIClient {
    * Public API methods - delegate to services
    */
 
+  
   /**
-   * Get live streams with comprehensive filtering options
+   * Unified stream filtering method that consolidates all filtering functionality
    *
-   * This is the primary method for retrieving live streams, supporting all
-   * filtering and sorting options that were previously spread across multiple methods.
+   * This method replaces 11+ separate filtering methods with a single, comprehensive
+   * interface that handles basic to advanced filtering scenarios. It supports all
+   * previously available filtering options while providing better performance
+   * through a unified data fetching pipeline.
    *
-   * @param options - Optional filtering and sorting parameters
-   * @returns Promise<LiveCoin[]> - Array of live streams matching the criteria
+   * @param criteria - Unified filter criteria supporting basic and advanced filtering
+   * @param baseParams - Optional base parameters for stream fetching
+   * @returns Promise<AdvancedFilterResult> - Filtered streams with metadata and performance metrics
    *
    * @example
    * ```typescript
-   * // Get all live streams
-   * const streams = await client.getLiveStreams();
-   *
-   * // Get active streams with minimum participants
-   * const activeStreams = await client.getLiveStreams({
+   * // Basic usage (backwards compatible with previous filtering methods)
+   * const streams = await client.filterStreams({
    *   minParticipants: 5,
    *   limit: 20
    * });
    *
-   * // Get top streams by participant count
-   * const topStreams = await client.getLiveStreams({
-   *   sortBy: 'participants',
-   *   sortOrder: 'desc',
-   *   limit: 10
+   * // Advanced filtering with market cap range
+   * const establishedStreams = await client.filterStreams({
+   *   marketCapRange: { min: 10000, max: 500000 },
+   *   participantRange: { min: 10, max: 100 },
+   *   sortBy: 'market_cap',
+   *   sortOrder: 'desc'
    * });
    *
-   * // Get only streams with titles
-   * const titledStreams = await client.getLiveStreams({
-   *   includeTitledOnly: true,
-   *   limit: 15
+   * // Content quality filtering
+   * const qualityStreams = await client.filterStreams({
+   *   contentQuality: {
+   *     hasTitle: true,
+   *     hasDescription: true,
+   *     minTitleLength: 20,
+   *     minDescriptionLength: 100
+   *   },
+   *   hasSocialMedia: { twitter: true, telegram: true }
+   * });
+   *
+   * // Text pattern matching
+   * const cryptoStreams = await client.filterStreams({
+   *   textPatterns: {
+   *     nameContains: ['crypto', 'defi', 'token'],
+   *     symbolContains: ['USD'],
+   *     excludePatterns: ['scam', 'fake']
+   *   }
+   * });
+   *
+   * // Compound queries with logical operators
+   * const complexFilter = await client.filterStreams({
+   *   compoundQuery: {
+   *     operator: 'OR',
+   *     groups: [
+   *       {
+   *         operator: 'AND',
+   *         filters: {
+   *           minParticipants: 10,
+   *           marketCapRange: { min: 5000 }
+   *         }
+   *       },
+   *       {
+   *         operator: 'AND',
+   *         filters: {
+   *           contentQuality: { hasTitle: true },
+   *           hasSocialMedia: { twitter: true }
+   *         }
+   *       }
+   *     ]
+   *   }
+   * });
+   *
+   * // Custom filters
+   * const customFiltered = await client.filterStreams({
+   *   customFilters: [
+   *     { name: 'high-engagement', filter: (stream) => stream.reply_count > 50 },
+   *     { name: 'recent-activity', filter: (stream) => Date.now() - stream.last_reply * 1000 < 3600000 }
+   *   ]
    * });
    * ```
    */
-  public async getLiveStreams(options?: StreamOptions): Promise<LiveCoin[]> {
+  public async filterStreams(
+    criteria: UnifiedFilterCriteria,
+    baseParams?: GetLiveCoinsParams
+  ): Promise<AdvancedFilterResult> {
     this.ensureInitialized();
-    return this.liveStreamsService.getLiveStreams(options);
+
+    const startTime = Date.now();
+
+    this.logger.info('Applying unified stream filtering', {
+      criteriaSummary: this.summarizeUnifiedCriteria(criteria),
+      baseParams,
+    });
+
+    try {
+      // Convert unified criteria to internal format for filtering
+      const internalCriteria = this.convertToInternalCriteria(criteria);
+
+      // Convert baseParams to StreamOptions if provided
+      let streamOptions: StreamOptions | undefined;
+      if (baseParams) {
+        streamOptions = {
+          limit: baseParams.limit,
+          offset: baseParams.offset,
+          includeNsfw: baseParams.includeNsfw,
+          // Map legacy sort options to new format
+          sortBy: baseParams.sort === 'participants' ? 'participants' : 'default',
+          sortOrder: baseParams.order?.toLowerCase() as 'asc' | 'desc',
+        };
+      }
+
+      // Use stream filters service directly for core filtering
+      const result = await this.streamFilters.applyAdvancedFilters(internalCriteria, streamOptions);
+
+      // Apply additional sorting for unified criteria that's not handled by core method
+      let filteredStreams = result.streams;
+
+      // Apply unified-specific sorting if specified
+      if (criteria.sortBy && criteria.sortBy !== 'default') {
+        filteredStreams = this.applyUnifiedSorting(filteredStreams, criteria);
+      }
+
+      // Apply compound query if specified
+      if (criteria.compoundQuery) {
+        filteredStreams = this.applyCompoundQuery(filteredStreams, criteria.compoundQuery);
+      }
+
+      // Apply custom filters if specified
+      if (criteria.customFilters && criteria.customFilters.length > 0) {
+        filteredStreams = this.applyCustomFilters(filteredStreams, criteria.customFilters);
+      }
+
+      // Apply pagination from unified criteria
+      const offset = criteria.offset || 0;
+      const limit = criteria.limit;
+      let finalStreams = filteredStreams;
+
+      if (limit !== undefined) {
+        finalStreams = filteredStreams.slice(offset, offset + limit);
+      } else {
+        finalStreams = filteredStreams.slice(offset);
+      }
+
+      const processingTime = Date.now() - startTime;
+      const unifiedResult: AdvancedFilterResult = {
+        streams: finalStreams,
+        totalBeforeFilter: result.totalBeforeFilter,
+        filteredOut: result.totalBeforeFilter - finalStreams.length,
+        appliedCriteria: {
+          ...result.appliedCriteria,
+          unifiedCriteria: this.summarizeUnifiedCriteria(criteria),
+        },
+        metrics: {
+          processingTimeMs: processingTime,
+          filtersApplied: result.metrics.filtersApplied + this.countUnifiedFilters(criteria),
+        },
+      };
+
+      this.logger.info('Unified stream filtering completed', {
+        totalBeforeFilter: unifiedResult.totalBeforeFilter,
+        filteredOut: unifiedResult.filteredOut,
+        finalCount: unifiedResult.streams.length,
+        processingTimeMs: unifiedResult.metrics.processingTimeMs,
+        filtersApplied: unifiedResult.metrics.filtersApplied,
+      });
+
+      return unifiedResult;
+    } catch (error) {
+      const pumpFunError = this.errorHandler.handleError(error, 'filterStreams', {
+        criteria,
+        baseParams,
+        suggestions: [
+          'Check if the filter criteria are valid',
+          'Verify the API server is accessible',
+          'Consider reducing the complexity of filter criteria',
+          'Try using basic filtering options first',
+        ],
+      });
+
+      this.logger.error('Failed to apply unified stream filtering', {
+        error: pumpFunError.toJSON(),
+        criteria,
+        baseParams,
+      });
+
+      throw pumpFunError;
+    }
   }
 
   
@@ -264,70 +412,7 @@ export class PumpFunAPIClient {
     return this.liveStreamsService.getStreamStatistics();
   }
 
-  /**
-   * Apply advanced filtering with custom criteria
-   *
-   * This method provides powerful filtering capabilities with custom filter functions
-   * and complex queries for fine-grained control over stream selection.
-   *
-   * @param criteria - Advanced filter criteria with multiple filtering options
-   * @param params - Optional base parameters for stream fetching
-   * @returns Promise<AdvancedFilterResult> - Filtered streams with metadata
-   */
-  public async applyAdvancedFilters(
-    criteria: AdvancedFilterCriteria,
-    params?: GetLiveCoinsParams
-  ): Promise<AdvancedFilterResult> {
-    this.ensureInitialized();
-    return this.liveStreamsService.applyAdvancedFilters(criteria, params);
-  }
-
-  /**
-   * Apply compound filter queries with logical operators
-   *
-   * This method allows complex filtering with AND/OR logical operators
-   * across multiple filter groups for sophisticated query building.
-   *
-   * @param query - Compound filter query with groups and logical operators
-   * @param params - Optional base parameters for stream fetching
-   * @returns Promise<AdvancedFilterResult> - Filtered streams with metadata
-   */
-  public async applyCompoundFilter(
-    query: CompoundFilterQuery,
-    params?: GetLiveCoinsParams
-  ): Promise<AdvancedFilterResult> {
-    this.ensureInitialized();
-    return this.liveStreamsService.applyCompoundFilter(query, params);
-  }
-
-  /**
-   * Create custom filter function with optional name
-   *
-   * This method allows creating named custom filter functions for
-   * advanced filtering scenarios.
-   *
-   * @param filterFn - Custom filter function that takes a LiveCoin and returns boolean
-   * @param name - Optional name for the filter function for debugging
-   * @returns StreamFilterFunction - Named custom filter function
-   */
-  public createCustomFilter(filterFn: StreamFilterFunction, name?: string): StreamFilterFunction {
-    this.ensureInitialized();
-    return this.liveStreamsService.createCustomFilter(filterFn, name);
-  }
-
-  /**
-   * Get predefined filter builders for common use cases
-   *
-   * This method provides access to a collection of predefined filter builders
-   * for common filtering scenarios like high-quality streams, trending streams, etc.
-   *
-   * @returns Object containing filter builder functions
-   */
-  public getFilterBuilders() {
-    this.ensureInitialized();
-    return this.liveStreamsService.getFilterBuilders();
-  }
-
+  
   /**
    * Get live stream information for a specific mint
    */
@@ -1403,6 +1488,354 @@ export class PumpFunAPIClient {
       state: this.getState(),
       statistics: this.getStatistics(),
     };
+  }
+
+  // ============================================================================
+  // Unified Stream Filtering Helper Methods
+  // ============================================================================
+
+  /**
+   * Convert unified filter criteria to internal criteria for filtering
+   */
+  private convertToInternalCriteria(criteria: UnifiedFilterCriteria): any {
+    const internalCriteria: any = {};
+
+    // Map basic options
+    if (criteria.minParticipants !== undefined || criteria.maxParticipants !== undefined) {
+      internalCriteria.participantRange = {
+        min: criteria.minParticipants,
+        max: criteria.maxParticipants,
+      };
+    }
+
+    if (criteria.marketCapRange) {
+      internalCriteria.marketCapRange = criteria.marketCapRange;
+    }
+
+    if (criteria.createdTimeRange) {
+      internalCriteria.createdTimeRange = criteria.createdTimeRange;
+    }
+
+    if (criteria.lastActivityRange) {
+      internalCriteria.lastActivityRange = criteria.lastActivityRange;
+    }
+
+    // Map social media filters
+    if (criteria.hasSocialMedia) {
+      internalCriteria.hasSocialMedia = criteria.hasSocialMedia;
+    }
+
+    // Map content quality filters
+    if (criteria.contentQuality) {
+      internalCriteria.contentQuality = criteria.contentQuality;
+    }
+
+    // Map activity level filters
+    if (criteria.activityLevel) {
+      internalCriteria.activityLevel = criteria.activityLevel;
+    }
+
+    // Map text pattern filters
+    if (criteria.textPatterns) {
+      internalCriteria.textPatterns = criteria.textPatterns;
+    }
+
+    // Convert custom filters
+    if (criteria.customFilters && criteria.customFilters.length > 0) {
+      internalCriteria.customFilters = criteria.customFilters.map(cf => cf.filter);
+    }
+
+    return internalCriteria;
+  }
+
+  /**
+   * Summarize unified filter criteria for logging
+   */
+  private summarizeUnifiedCriteria(criteria: UnifiedFilterCriteria): Record<string, any> {
+    const summary: Record<string, any> = {};
+
+    // Basic options
+    if (criteria.minParticipants !== undefined || criteria.maxParticipants !== undefined) {
+      summary.participantRange = {
+        min: criteria.minParticipants,
+        max: criteria.maxParticipants,
+      };
+    }
+
+    if (criteria.limit !== undefined) {
+      summary.limit = criteria.limit;
+    }
+
+    if (criteria.includeTitledOnly !== undefined) {
+      summary.includeTitledOnly = criteria.includeTitledOnly;
+    }
+
+    if (criteria.sortBy !== undefined) {
+      summary.sortBy = criteria.sortBy;
+    }
+
+    if (criteria.sortOrder !== undefined) {
+      summary.sortOrder = criteria.sortOrder;
+    }
+
+    // Advanced options
+    if (criteria.marketCapRange) {
+      summary.marketCapRange = criteria.marketCapRange;
+    }
+
+    if (criteria.createdTimeRange) {
+      summary.createdTimeRange = criteria.createdTimeRange;
+    }
+
+    if (criteria.lastActivityRange) {
+      summary.lastActivityRange = criteria.lastActivityRange;
+    }
+
+    if (criteria.hasSocialMedia) {
+      summary.hasSocialMedia = criteria.hasSocialMedia;
+    }
+
+    if (criteria.contentQuality) {
+      summary.contentQuality = criteria.contentQuality;
+    }
+
+    if (criteria.activityLevel) {
+      summary.activityLevel = criteria.activityLevel;
+    }
+
+    if (criteria.textPatterns) {
+      summary.textPatterns = {
+        nameContains: criteria.textPatterns.nameContains?.length || 0,
+        symbolContains: criteria.textPatterns.symbolContains?.length || 0,
+        descriptionContains: criteria.textPatterns.descriptionContains?.length || 0,
+        titleContains: criteria.textPatterns.titleContains?.length || 0,
+        excludePatterns: criteria.textPatterns.excludePatterns?.length || 0,
+      };
+    }
+
+    if (criteria.customFilters && criteria.customFilters.length > 0) {
+      summary.customFilters = criteria.customFilters.length;
+    }
+
+    if (criteria.compoundQuery) {
+      summary.compoundQuery = {
+        operator: criteria.compoundQuery.operator,
+        groupCount: criteria.compoundQuery.groups.length,
+      };
+    }
+
+    return summary;
+  }
+
+  /**
+   * Apply unified-specific sorting
+   */
+  private applyUnifiedSorting(streams: LiveCoin[], criteria: UnifiedFilterCriteria): LiveCoin[] {
+    const sortBy = criteria.sortBy;
+    const sortOrder = criteria.sortOrder || 'desc';
+
+    if (!sortBy || sortBy === 'default') {
+      return streams;
+    }
+
+    return [...streams].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortBy) {
+        case 'participants':
+          comparison = (a.num_participants ?? 0) - (b.num_participants ?? 0);
+          break;
+        case 'market_cap':
+          comparison = a.usd_market_cap - b.usd_market_cap;
+          break;
+        case 'created_at':
+          comparison = a.created_timestamp - b.created_timestamp;
+          break;
+        default:
+          return 0;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }
+
+  /**
+   * Apply compound query with logical operators
+   */
+  private applyCompoundQuery(
+    streams: LiveCoin[],
+    compoundQuery: UnifiedFilterCriteria['compoundQuery']
+  ): LiveCoin[] {
+    if (!compoundQuery) {
+      return streams;
+    }
+
+    const { operator = 'AND', groups } = compoundQuery;
+
+    return streams.filter(stream => {
+      const groupResults = groups.map(group => {
+        const groupOperator = group.operator || 'AND';
+        return this.matchesGroupCriteria(stream, group.filters, groupOperator);
+      });
+
+      return operator === 'AND'
+        ? groupResults.every(result => result)
+        : groupResults.some(result => result);
+    });
+  }
+
+  /**
+   * Check if stream matches group criteria with logical operator
+   */
+  private matchesGroupCriteria(
+    stream: LiveCoin,
+    filters: Partial<UnifiedFilterCriteria>,
+    _operator: 'AND' | 'OR'
+  ): boolean {
+    // Convert partial filters to full criteria for evaluation
+    const criteria = filters as UnifiedFilterCriteria;
+    const internalCriteria = this.convertToInternalCriteria(criteria);
+
+    // Use existing stream filtering logic
+    return this.matchesStreamCriteria(stream, internalCriteria);
+  }
+
+  /**
+   * Check if stream matches criteria (simplified version)
+   */
+  private matchesStreamCriteria(stream: LiveCoin, criteria: any): boolean {
+    // Market cap range
+    if (criteria.marketCapRange) {
+      const { min, max } = criteria.marketCapRange;
+      if (min !== undefined && stream.usd_market_cap < min) return false;
+      if (max !== undefined && stream.usd_market_cap > max) return false;
+    }
+
+    // Participant range
+    if (criteria.participantRange) {
+      const { min, max } = criteria.participantRange;
+      const participants = stream.num_participants ?? 0;
+      if (min !== undefined && participants < min) return false;
+      if (max !== undefined && participants > max) return false;
+    }
+
+    // Social media
+    if (criteria.hasSocialMedia) {
+      const { twitter, telegram } = criteria.hasSocialMedia;
+      if (twitter !== undefined && (!stream.twitter || stream.twitter.trim() === '')) return false;
+      if (telegram !== undefined && (!stream.telegram || stream.telegram.trim() === '')) return false;
+    }
+
+    // Content quality
+    if (criteria.contentQuality) {
+      const { hasTitle, hasDescription, hasImage, minTitleLength, minDescriptionLength } = criteria.contentQuality;
+      if (hasTitle && (!stream.livestream_title || stream.livestream_title.trim() === '')) return false;
+      if (hasDescription && (!stream.description || stream.description.trim() === '')) return false;
+      if (hasImage && (!stream.image_uri || stream.image_uri.trim() === '')) return false;
+      if (minTitleLength && (!stream.livestream_title || stream.livestream_title.length < minTitleLength)) return false;
+      if (minDescriptionLength && (!stream.description || stream.description.length < minDescriptionLength)) return false;
+    }
+
+    // Activity level
+    if (criteria.activityLevel) {
+      const { minReplyCount, hasRecentActivity, maxIdleTime } = criteria.activityLevel;
+      if (minReplyCount !== undefined && (stream.reply_count ?? 0) < minReplyCount) return false;
+      if (hasRecentActivity) {
+        const now = Date.now();
+        const lastActivityMs = stream.last_reply * 1000;
+        const oneHourAgo = now - 60 * 60 * 1000;
+        if (lastActivityMs < oneHourAgo) return false;
+      }
+      if (maxIdleTime !== undefined) {
+        const now = Date.now();
+        const lastActivityMs = stream.last_reply * 1000;
+        const idleMinutes = (now - lastActivityMs) / (60 * 1000);
+        if (idleMinutes > maxIdleTime) return false;
+      }
+    }
+
+    // Text patterns
+    if (criteria.textPatterns) {
+      const { nameContains, symbolContains, descriptionContains, titleContains, excludePatterns } = criteria.textPatterns;
+
+      if (nameContains && nameContains.length > 0) {
+        const matches = nameContains.some((pattern: string) =>
+          stream.name.toLowerCase().includes(pattern.toLowerCase())
+        );
+        if (!matches) return false;
+      }
+
+      if (symbolContains && symbolContains.length > 0) {
+        const matches = symbolContains.some((pattern: string) =>
+          stream.symbol.toLowerCase().includes(pattern.toLowerCase())
+        );
+        if (!matches) return false;
+      }
+
+      if (descriptionContains && descriptionContains.length > 0) {
+        const matches = descriptionContains.some((pattern: string) =>
+          stream.description.toLowerCase().includes(pattern.toLowerCase())
+        );
+        if (!matches) return false;
+      }
+
+      if (titleContains && titleContains.length > 0) {
+        if (!stream.livestream_title) return false;
+        const matches = titleContains.some((pattern: string) =>
+          stream.livestream_title!.toLowerCase().includes(pattern.toLowerCase())
+        );
+        if (!matches) return false;
+      }
+
+      if (excludePatterns && excludePatterns.length > 0) {
+        const allText = `${stream.name} ${stream.symbol} ${stream.description} ${stream.livestream_title || ''}`.toLowerCase();
+        const hasExcludedPattern = excludePatterns.some((pattern: string) =>
+          allText.includes(pattern.toLowerCase())
+        );
+        if (hasExcludedPattern) return false;
+      }
+    }
+
+    // Custom filters
+    if (criteria.customFilters && criteria.customFilters.length > 0) {
+      for (const customFilter of criteria.customFilters) {
+        if (!customFilter(stream)) return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Apply custom filters to streams
+   */
+  private applyCustomFilters(
+    streams: LiveCoin[],
+    customFilters: Array<{ name: string; filter: (stream: LiveCoin) => boolean }>
+  ): LiveCoin[] {
+    return streams.filter(stream => {
+      return customFilters.every(customFilter => customFilter.filter(stream));
+    });
+  }
+
+  /**
+   * Count active filters in unified criteria
+   */
+  private countUnifiedFilters(criteria: UnifiedFilterCriteria): number {
+    let count = 0;
+
+    if (criteria.minParticipants !== undefined || criteria.maxParticipants !== undefined) count++;
+    if (criteria.marketCapRange) count++;
+    if (criteria.createdTimeRange) count++;
+    if (criteria.lastActivityRange) count++;
+    if (criteria.hasSocialMedia) count++;
+    if (criteria.contentQuality) count++;
+    if (criteria.activityLevel) count++;
+    if (criteria.textPatterns) count++;
+    if (criteria.customFilters && criteria.customFilters.length > 0) count++;
+    if (criteria.compoundQuery) count++;
+
+    return count;
   }
 
   // ============================================================================

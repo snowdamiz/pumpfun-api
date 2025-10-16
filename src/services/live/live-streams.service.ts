@@ -21,12 +21,6 @@ import {
   StreamClip,
   GetStreamClipsParams,
 } from '../../types';
-import {
-  AdvancedFilterCriteria,
-  AdvancedFilterResult,
-  CompoundFilterQuery,
-  StreamFilterFunction,
-} from './stream-filters.service';
 import { Logger } from '../../infrastructure/logging/logger';
 import { RateLimiter } from '../../infrastructure/rate-limiting/rate-limiter';
 import { HTTPClient } from '../../infrastructure/http/http-client';
@@ -60,7 +54,7 @@ export class LiveStreamsService {
     this.streamFilters = new StreamFilters(
       logger,
       errorHandler,
-      (options?: StreamOptions) => this.getLiveStreams(options),
+      (options?: StreamOptions) => this.fetchBaseLiveStreams(options),
       (mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number) =>
         this.getStreamClips(mintId, clipType, limit)
     );
@@ -75,7 +69,7 @@ export class LiveStreamsService {
    * @param options - Optional filtering and sorting parameters
    * @returns Promise<LiveCoin[]> - Array of live streams matching the criteria
    */
-  async getLiveStreams(options?: StreamOptions): Promise<LiveCoin[]> {
+  async fetchBaseLiveStreams(options?: StreamOptions): Promise<LiveCoin[]> {
     // Set default options
     const defaultOptions: Required<StreamOptions> = {
       minParticipants: 0,
@@ -152,7 +146,7 @@ export class LiveStreamsService {
       return streams;
     } catch (error) {
       this.state.errorCount++;
-      const pumpFunError = this.errorHandler.handleError(error, 'getLiveStreams', {
+      const pumpFunError = this.errorHandler.handleError(error, 'fetchBaseLiveStreams', {
         options: mergedOptions,
         requestTime: new Date().toISOString(),
       });
@@ -204,67 +198,7 @@ export class LiveStreamsService {
   }
 
   
-  /**
-   * Apply advanced filtering with custom criteria
-   */
-  async applyAdvancedFilters(
-    criteria: AdvancedFilterCriteria,
-    options?: StreamOptions
-  ): Promise<AdvancedFilterResult> {
-    this.logger.info('Applying advanced filters via LiveStreamsService', {
-      criteriaSummary: this.summarizeCriteria(criteria),
-      options,
-    });
-
-    try {
-      return await this.streamFilters.applyAdvancedFilters(criteria, options);
-    } catch (error) {
-      this.logger.error('Failed to apply advanced filters via LiveStreamsService', {
-        criteria,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Apply compound filter queries with logical operators
-   */
-  async applyCompoundFilter(
-    query: CompoundFilterQuery,
-    options?: StreamOptions
-  ): Promise<AdvancedFilterResult> {
-    this.logger.info('Applying compound filter query via LiveStreamsService', {
-      groupCount: query.groups.length,
-      groupOperator: query.groupOperator,
-      options,
-    });
-
-    try {
-      return await this.streamFilters.applyCompoundFilter(query, options);
-    } catch (error) {
-      this.logger.error('Failed to apply compound filter via LiveStreamsService', {
-        query,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Create custom filter function
-   */
-  createCustomFilter(filterFn: StreamFilterFunction, name?: string): StreamFilterFunction {
-    return this.streamFilters.createCustomFilter(filterFn, name);
-  }
-
-  /**
-   * Get predefined filter builders
-   */
-  getFilterBuilders() {
-    return this.streamFilters.getFilterBuilders;
-  }
-
+  
   /**
    * Search live streams by keyword across multiple fields
    */
@@ -633,7 +567,7 @@ export class LiveStreamsService {
     try {
       // Fetch live streaming data with a reasonable limit to calculate statistics
       // Using a higher limit to get comprehensive data for statistics
-      const liveCoins = await this.getLiveStreams({
+      const liveCoins = await this.fetchBaseLiveStreams({
         limit: 100, // Get up to 100 live streams for statistics
         includeNsfw: false, // Exclude NSFW from general statistics
       });
@@ -759,56 +693,6 @@ export class LiveStreamsService {
 
       throw pumpFunError;
     }
-  }
-
-  /**
-   * Summarize filter criteria for logging
-   */
-  private summarizeCriteria(criteria: AdvancedFilterCriteria): Record<string, any> {
-    const summary: Record<string, any> = {};
-
-    if (criteria.customFilters && criteria.customFilters.length > 0) {
-      summary.customFilters = criteria.customFilters.length;
-    }
-
-    if (criteria.marketCapRange) {
-      summary.marketCapRange = criteria.marketCapRange;
-    }
-
-    if (criteria.participantRange) {
-      summary.participantRange = criteria.participantRange;
-    }
-
-    if (criteria.hasSocialMedia) {
-      summary.hasSocialMedia = criteria.hasSocialMedia;
-    }
-
-    if (criteria.contentQuality) {
-      summary.contentQuality = criteria.contentQuality;
-    }
-
-    if (criteria.activityLevel) {
-      summary.activityLevel = criteria.activityLevel;
-    }
-
-    if (criteria.textPatterns) {
-      summary.textPatterns = {
-        nameContains: criteria.textPatterns.nameContains?.length || 0,
-        symbolContains: criteria.textPatterns.symbolContains?.length || 0,
-        descriptionContains: criteria.textPatterns.descriptionContains?.length || 0,
-        titleContains: criteria.textPatterns.titleContains?.length || 0,
-        excludePatterns: criteria.textPatterns.excludePatterns?.length || 0,
-      };
-    }
-
-    if (criteria.creatorFilters) {
-      summary.creatorFilters = {
-        excludeCreators: criteria.creatorFilters.excludeCreators?.length || 0,
-        includeCreators: criteria.creatorFilters.includeCreators?.length || 0,
-      };
-    }
-
-    return summary;
   }
 
   /**

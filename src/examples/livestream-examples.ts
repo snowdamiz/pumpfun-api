@@ -26,7 +26,7 @@ import {
 /**
  * Example 9a: Get live streams with filtering options (NEW API)
  */
-export async function getLiveStreamsExample() {
+export async function filterStreamsExample() {
   console.log('=== Get Live Streams Example (New API) ===');
 
   const client = new PumpFunAPIClient({
@@ -38,38 +38,42 @@ export async function getLiveStreamsExample() {
   });
 
   try {
-    console.log('🔍 Demonstrating new getLiveStreams API with various options...\n');
+    console.log('🔍 Demonstrating new filterStreams API with various options...\n');
 
     // Test 1: Basic live streams
     console.log('1️⃣ Getting basic live streams...');
-    const basicStreams = await client.getLiveStreams({
+    const basicResult = await client.filterStreams({
       limit: 5
     });
+    const basicStreams = basicResult.streams;
     console.log(`✅ Found ${basicStreams.length} basic live streams`);
 
     // Test 2: Active streams with minimum participants
     console.log('\n2️⃣ Getting active streams (min 5 participants)...');
-    const activeStreams = await client.getLiveStreams({
+    const activeResult = await client.filterStreams({
       minParticipants: 5,
       limit: 5
     });
+    const activeStreams = activeResult.streams;
     console.log(`✅ Found ${activeStreams.length} active streams with 5+ participants`);
 
     // Test 3: Top streams by participants
     console.log('\n3️⃣ Getting top streams by participants...');
-    const topStreams = await client.getLiveStreams({
+    const topResult = await client.filterStreams({
       sortBy: 'participants',
       sortOrder: 'desc',
       limit: 5
     });
+    const topStreams = topResult.streams;
     console.log(`✅ Found ${topStreams.length} top streams by participants`);
 
     // Test 4: Titled streams only
     console.log('\n4️⃣ Getting titled streams only...');
-    const titledStreams = await client.getLiveStreams({
+    const titledResult = await client.filterStreams({
       includeTitledOnly: true,
       limit: 5
     });
+    const titledStreams = titledResult.streams;
     console.log(`✅ Found ${titledStreams.length} titled streams`);
 
     // Display results
@@ -91,7 +95,7 @@ export async function getLiveStreamsExample() {
       });
     }
 
-    console.log('🎯 New getLiveStreams API Features:');
+    console.log('🎯 New filterStreams API Features:');
     console.log('   ✅ Consolidated filtering (minParticipants, includeTitledOnly)');
     console.log('   ✅ Multiple sorting options (participants, default)');
     console.log('   ✅ Sort order control (asc, desc)');
@@ -109,7 +113,7 @@ export async function getLiveStreamsExample() {
       }
     };
   } catch (error) {
-    console.error('❌ Error testing getLiveStreams API:', error);
+    console.error('❌ Error testing filterStreams API:', error);
     throw error;
   }
 }
@@ -131,7 +135,8 @@ export async function getStreamInfoExample() {
   try {
     // First get some live coins to test with
     console.log('🔍 Getting live coins to test stream info...');
-    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
+    const result = await client.filterStreams({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = result.streams;
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test stream info');
@@ -217,7 +222,8 @@ export async function checkCreatorApprovalExample() {
   try {
     // First get some live coins to test with
     console.log('🔍 Getting live coins to test creator approval...');
-    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
+    const result = await client.filterStreams({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = result.streams;
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test creator approval');
@@ -313,7 +319,8 @@ export async function joinLiveStreamExample() {
   try {
     // First get some live coins to test with
     console.log('🔍 Getting live coins to test joining streams...');
-    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
+    const result = await client.filterStreams({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = result.streams;
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test joining streams');
@@ -936,7 +943,8 @@ export async function getStreamClipsExample() {
   try {
     // First get some live coins to test with
     console.log('🔍 Getting live coins to test stream clips...');
-    const liveCoins = await client.getLiveStreams({ limit: STREAM_INFO_LIMIT });
+    const result = await client.filterStreams({ limit: STREAM_INFO_LIMIT });
+    const liveCoins = result.streams;
 
     if (liveCoins.length === 0) {
       console.log('⚠️ No live coins found to test stream clips');

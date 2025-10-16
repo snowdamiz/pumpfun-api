@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Based on comprehensive analysis of the PumpFunAPIClient API, this roadmap outlines the systematic reduction of the current 65+ public methods to a streamlined 15-20 core methods. The refactoring will eliminate ~70% of the API surface while maintaining 100% of functionality, significantly improving developer experience and maintainability.
+Based on comprehensive analysis of the PumpFunAPIClient API, this roadmap outlines the systematic reduction of the current 65+ public methods to a streamlined 15-20 core methods. The refactoring will eliminate ~70% of thWe API surface while maintaining 100% of functionality, significantly improving developer experience and maintainability.
 
 ## Current State Analysis
 
@@ -27,39 +27,137 @@ The `src/examples/basic-usage.ts` file contains:
 
 ### Goal: Eliminate most redundant methods and provide core functionality
 
-#### 1.1 Stream Retrieval Consolidation
+#### 1.1 Unified Stream Filtering Consolidation (Previously Phases 1.1 + 3.1)
 
-**Current Methods (7 → 2):** 
-- `getLiveCoins()` ❌ Remove - merge into new method
-- `getActiveStreams()` ❌ Remove - merge into new method
-- `getTopLiveStreams()` ❌ Remove - merge into new method
-- `getTopActiveStreams()` ❌ Remove - merge into new method
-- `getTitledStreams()` ❌ Remove - merge into new method
-- `getTitledActiveStreams()` ❌ Remove - merge into new method
+**Consolidation Rationale:**
+Phases 1.1 and 3.1 have been merged due to significant overlap in functionality. Both phases operate on the same stream dataset with different complexity levels, creating artificial API separation. Users frequently need both basic and advanced filtering in the same workflow.
 
-**New Consolidated API:**
+**Current Methods (11 → 1):**
+- `getLiveStreams()` ❌ Remove - merge into unified method
+- `getLiveCoins()` ❌ Remove - merge into unified method
+- `getActiveStreams()` ❌ Remove - merge into unified method
+- `getTopLiveStreams()` ❌ Remove - merge into unified method
+- `getTopActiveStreams()` ❌ Remove - merge into unified method
+- `getTitledStreams()` ❌ Remove - merge into unified method
+- `getTitledActiveStreams()` ❌ Remove - merge into unified method
+- `applyAdvancedFilters()` ❌ Remove - merge into unified method
+- `applyCompoundFilter()` ❌ Remove - merge into unified method
+- `createCustomFilter()` ❌ Remove - merge as utility
+- `getFilterBuilders()` ❌ Remove - merge as utility
+
+**New Unified API:**
 ```typescript
-// Core method
-getLiveStreams(options?: {
+// Single method for all stream filtering needs
+filterStreams(criteria: {
+  // Basic options (backwards compatible with previous getLiveStreams)
   minParticipants?: number;
+  maxParticipants?: number;
   limit?: number;
   includeTitledOnly?: boolean;
-  sortBy?: 'participants' | 'default';
+  sortBy?: 'participants' | 'market_cap' | 'created_at' | 'default';
   sortOrder?: 'asc' | 'desc';
-}): Promise<LiveCoin[]>
+  offset?: number;
+
+  // Advanced filtering options
+  marketCapRange?: { min?: number; max?: number };
+  participantRange?: { min?: number; max?: number };
+  createdTimeRange?: { after?: number; before?: number };
+  lastActivityRange?: { after?: number; before?: number };
+
+  // Social media and content quality
+  hasSocialMedia?: { twitter?: boolean; telegram?: boolean };
+  contentQuality?: {
+    hasTitle?: boolean;
+    hasDescription?: boolean;
+    hasImage?: boolean;
+    minTitleLength?: number;
+    minDescriptionLength?: number;
+  };
+
+  // Activity patterns
+  activityLevel?: {
+    minReplyCount?: number;
+    hasRecentActivity?: boolean;
+    maxIdleTime?: number;
+  };
+
+  // Text pattern matching
+  textPatterns?: {
+    nameContains?: string[];
+    symbolContains?: string[];
+    descriptionContains?: string[];
+    titleContains?: string[];
+    excludePatterns?: string[];
+  };
+
+  // Custom filters and compound queries
+  customFilters?: Array<{ name: string; filter: (stream: LiveCoin) => boolean }>;
+  compoundQuery?: {
+    operator: 'AND' | 'OR';
+    groups: Array<{
+      filters: Partial<FilterCriteria>;
+      operator: 'AND' | 'OR';
+    }>;
+  };
+}, baseParams?: GetLiveCoinsParams): Promise<AdvancedFilterResult>
+```
+
+**Utility Functions (extracted from methods):**
+```typescript
+// Helper functions for common filter patterns
+const FilterBuilders = {
+  highQualityStreams: () => StreamFilterFunction,
+  newAndTrending: (maxAgeHours?: number) => StreamFilterFunction,
+  establishedStreams: (minMarketCap?: number) => StreamFilterFunction,
+  activeCommunity: (minRepliesPerHour?: number) => StreamFilterFunction,
+  professionalStreams: () => StreamFilterFunction,
+  marketCapRange: (min: number, max: number) => StreamFilterFunction,
+  participantRange: (min: number, max: number) => StreamFilterFunction,
+};
+
+// Create named custom filters
+function createCustomFilter(filterFn: StreamFilterFunction, name?: string): StreamFilterFunction
+```
+
+**Benefits of Consolidation:**
+- **Single Entry Point**: One method handles all filtering complexity levels
+- **Backwards Compatibility**: Existing basic usage patterns still work
+- **Reduced Cognitive Load**: No need to choose between basic vs advanced methods
+- **Better Performance**: Unified filtering pipeline eliminates duplicate data fetching
+- **Simpler API Surface**: 11 methods → 1 unified method + utilities
+
+**Migration Examples:**
+```typescript
+// Old basic usage (now refactored)
+const result = client.filterStreams({ minParticipants: 5, limit: 20 })
+const streams = result.streams
+// → New unified usage (extract streams from result)
+
+// Old advanced usage
+client.applyAdvancedFilters({ marketCapRange: { min: 1000, max: 50000 } })
+// → New unified usage
+client.filterStreams({ marketCapRange: { min: 1000, max: 50000 } })
+
+// Old compound query
+client.applyCompoundFilter({ groupOperator: 'OR', groups: [...] })
+// → New unified usage
+client.filterStreams({ compoundQuery: { operator: 'OR', groups: [...] } })
 ```
 
 **Checklist:**
-- [x] Implement new `getLiveStreams()` with options parameter
-- [x] Update internal LiveStreamsService to handle options
-- [x] Add TypeScript interfaces for new options type
-- [x] Remove 5 redundant methods from PumpFunAPIClient
-- [x] Update examples to use new parameterized API
+- [x] Implement new `filterStreams()` with unified criteria interface
+- [x] Update internal StreamFilters to handle all filtering in one pipeline
+- [x] Add TypeScript interfaces for unified criteria type
+- [x] Extract FilterBuilders as utility functions
+- [x] Remove 11 redundant methods from PumpFunAPIClient
+- [x] Update examples to use unified filtering API
+- [x] Update advanced filtering examples to demonstrate unified approach
 
-#### 1.2 Stream Clips Consolidation
+#### 1.2 Stream Content Consolidation (History + Clips)
 
-**Current Methods (10 → 2):**
-- `getStreamClips()` ✅ Keep as base method
+**Current Methods (13 → 1):**
+- `getStreamContent()` ✅ New base method
+- `getStreamClips()` ❌ Remove - merge into base
 - `getCompleteClips()` ❌ Remove - merge into base
 - `getHighlightClips()` ❌ Remove - merge into base
 - `getClipsByDuration()` ❌ Remove - merge into base
@@ -69,93 +167,64 @@ getLiveStreams(options?: {
 - `getClipsByViewCountRange()` ❌ Remove - merge into base
 - `getClipsByDateRange()` ❌ Remove - merge into base
 - `getClipsWithUrls()` ❌ Remove - merge into base
+- `getPreviousStreams()` ❌ Remove - merge into base
+- `getStreamHighlights()` ❌ Remove - merge into base
+- `getStreamHistory()` ❌ Remove - merge into base
 
 **New Consolidated API:**
 ```typescript
-// Core filtering method
-getStreamClips(mintId: string, filters?: {
-  clipType?: 'COMPLETE' | 'HIGHLIGHT';
+// Single method for all historical/replay content
+getStreamContent(mintId: string, filters?: {
+  // Content type selection
+  contentType?: 'clips' | 'previous_streams' | 'highlights' | 'all';
+  clipType?: 'COMPLETE' | 'HIGHLIGHT' | 'all';
+
+  // Filtering options
+  includeHighlights?: boolean;
+  includePreviousStreams?: boolean;
+  includeClips?: boolean;
+
+  // Limiting and sorting
   limit?: number;
-  sortBy?: 'created_at' | 'duration' | 'view_count';
-  sortOrder?: 'ASC' | 'DESC';
+  maxHighlights?: number;
+  maxPreviousStreams?: number;
+  daysBack?: number;
+
+  // Clip-specific filters
   minDuration?: number;
   maxDuration?: number;
   minViewCount?: number;
   maxViewCount?: number;
   dateRange?: { start: string; end: string };
   hasUrl?: boolean;
-}): Promise<StreamClip>
-```
 
-**Checklist:**
-- [ ] Implement new `filterStreamClips()` with comprehensive filters
-- [ ] Simplify `getStreamClips()` to basic retrieval
-- [ ] Update StreamFilters service to use new consolidated API
-- [ ] Remove 8 redundant clip filtering methods
-
-#### 1.3 History Methods Consolidation
-
-**Current Methods (3 → 1):**
-- `getPreviousStreams()` ❌ Remove - redundant
-- `getStreamHighlights()` ❌ Remove - redundant
-- `getStreamHistory()` ✅ Keep and enhance
-
-**Enhanced API:**
-```typescript
-getStreamHistory(mintId: string, options?: {
-  includePreviousStreams?: boolean;
-  includeHighlights?: boolean;
-  maxPreviousStreams?: number;
-  maxHighlights?: number;
-  daysBack?: number;
-  sortBy?: 'created_at' | 'duration' | 'view_count';
+  // Sorting options
+  sortBy?: 'created_at' | 'duration' | 'view_count' | 'stream_start';
   sortOrder?: 'ASC' | 'DESC';
-}): Promise<StreamHistoryResult>
+}): Promise<{
+  clips?: StreamClip[];
+  previousStreams?: PreviousStream[];
+  highlights?: StreamHighlight[];
+  totalCount: number;
+  contentSummary: {
+    clipsCount: number;
+    previousStreamsCount: number;
+    highlightsCount: number;
+  };
+}>
 ```
 
 **Checklist:**
-- [ ] Enhance `getStreamHistory()` with comprehensive options
-- [ ] Remove `getPreviousStreams()` and `getStreamHighlights()`
-- [ ] Update history-related examples
+- [ ] Implement new `getStreamContent()` method with comprehensive filtering
+- [ ] Update StreamFilters service to use new consolidated API
+- [ ] Remove 12 redundant content retrieval methods
+- [ ] Update examples to use new unified content API
 
 ---
 
 ## Phase 2: Obsolete Methods Removal (Week 3)
 
 ### Goal: Remove deprecated LiveKit and internal methods
-
-#### 2.1 LiveKit Connection Methods
-
-**Current Methods to Remove:**
-- `connectToLiveStream()` ❌ Remove - too complex, should be abstracted
-- `joinLiveStream()` ❌ Remove - superseded by simplified connection
-- `getLiveKitConnectionInfo()` ❌ Remove - internal detail
-- `getVideoStreamAnalysis()` ❌ Remove - combine into stream info
-
-**New Simplified API:**
-```typescript
-// Simple stream joining
-joinStream(mintId: string, options?: {
-  autoPlay?: boolean;
-  videoElement?: HTMLVideoElement;
-  audioElement?: HTMLAudioElement;
-}): Promise<StreamConnection>
-
-// Enhanced stream info (includes analysis)
-getStreamInfo(mintId: string): Promise<LiveStreamInfo & {
-  videoAnalysis?: VideoStreamAnalysis;
-  liveKitConnection?: LiveKitConnectionInfo;
-}>
-```
-
-**Checklist:**
-- [ ] Implement simplified `joinStream()` method
-- [ ] Enhance `getStreamInfo()` to include analysis data
-- [ ] Remove 4 complex LiveKit methods
-- [ ] Update LiveKit integration to use new API
-- [ ] Create LiveKitManager class for advanced use cases (separate package)
-- [ ] Update all LiveKit examples
-- [ ] Remove LiveKit-related complexity from main client
 
 #### 2.2 Internal and Debugging Methods
 
@@ -197,64 +266,14 @@ getStreamInfo(mintId: string): Promise<LiveStreamInfo & {
 - [ ] Remove manual statistics methods
 - [ ] Update all configuration examples
 
----
-
-## Phase 3: Advanced Filtering Consolidation (Week 4)
-
-### Goal: Simplify complex filtering into unified API
-
-#### 3.1 Advanced Filtering Methods
-
-**Current Methods (4 → 1):**
-- `applyAdvancedFilters()` ❌ Remove - merge
-- `applyCompoundFilter()` ❌ Remove - merge
-- `createCustomFilter()` ❌ Remove - merge
-- `getFilterBuilders()` ❌ Remove - merge
-
-**New Unified API:**
-```typescript
-filterStreams(criteria: {
-  // Basic filters
-  minParticipants?: number;
-  maxParticipants?: number;
-  includeTitledOnly?: boolean;
-
-  // Custom filters
-  customFilters?: Array<{
-    name: string;
-    filter: (stream: LiveCoin) => boolean;
-  }>;
-
-  // Compound queries
-  compoundQuery?: {
-    operator: 'AND' | 'OR';
-    groups: Array<{
-      filters: Partial<FilterCriteria>;
-      operator: 'AND' | 'OR';
-    }>;
-  };
-
-  // Sorting and pagination
-  sortBy?: string;
-  sortOrder?: 'ASC' | 'DESC';
-  limit?: number;
-  offset?: number;
-}, baseParams?: GetLiveCoinsParams): Promise<AdvancedFilterResult>
-```
-
-**Checklist:**
-- [ ] Implement unified `filterStreams()` method
-- [ ] Support all current filtering capabilities
-- [ ] Remove 4 redundant filtering methods
-- [ ] Update advanced filtering examples
 
 ---
 
-## Phase 4: Examples Migration (Week 5-6)
+## Phase 3: Examples Migration (Week 3-4)
 
 ### Goal: Update examples to demonstrate streamlined API
 
-#### 4.1 Basic Usage Examples Overhaul
+#### 3.1 Basic Usage Examples Overhaul
 
 **Current State:**
 - 864 lines of code
@@ -277,7 +296,7 @@ filterStreams(criteria: {
 - [ ] Consolidate clip filtering examples
 - [ ] Update advanced filtering examples
 
-#### 4.2 Example Function Mapping
+#### 3.2 Example Function Mapping
 
 **Examples to Remove/Consolidate:**
 - `getActiveStreamsExample()` → merge into `getLiveStreamsExample()`
@@ -293,22 +312,20 @@ filterStreams(criteria: {
 ```typescript
 // Core API examples
 basicInitialization()
-getLiveStreamsExample() // Shows all stream retrieval options
+filterStreamsExample() // Shows all unified filtering options
 getStreamInfoExample() // Enhanced with analysis data
-joinStreamExample() // Simplified connection
+liveKitConnectionExample() // Direct LiveKit usage
 
-// Filtering examples
-searchLiveStreamsExample()
-filterStreamsExample() // Advanced filtering
+// Content and history examples
+getStreamContentExample() // Unified content retrieval
 filterStreamClipsExample() // Clip filtering
-
-// History and analysis
-getStreamHistoryExample()
-getStreamStatisticsExample()
+searchLiveStreamsExample() // Search functionality
+getStreamStatisticsExample() // Analytics and insights
 
 // Best practices
 productionBestPractices()
 errorHandlingExamples()
+unifiedFilteringExamples() // Demonstrates simple to complex filtering
 ```
 
 **Checklist:**
@@ -319,11 +336,11 @@ errorHandlingExamples()
 
 ---
 
-## Phase 5: Documentation and Migration (Week 7-8)
+## Phase 4: Documentation and Migration (Week 5-6)
 
 ### Goal: Complete documentation and migration support
 
-#### 5.1 API Documentation Updates
+#### 4.1 API Documentation Updates
 
 **Checklist:**
 - [ ] Update all JSDoc comments for new API
@@ -337,30 +354,37 @@ errorHandlingExamples()
 
 ## Final Target API (15-18 core methods)
 
-### Core Stream Data
+### Core Stream Data and Filtering
 ```typescript
-getLiveStreams(options?: StreamOptions): Promise<LiveCoin[]>
+// Unified filtering - handles basic to advanced filtering scenarios
+filterStreams(criteria: UnifiedFilterCriteria): Promise<AdvancedFilterResult>
+
+// Search functionality
 searchLiveStreams(params: SearchParams): Promise<StreamSearchResult[]>
+
+// Stream information and analytics
 getStreamInfo(mintId: string): Promise<LiveStreamInfo>
 getStreamStatistics(): Promise<StreamStatistics>
-```
-
-### Stream History and Clips
-```typescript
-getStreamHistory(mintId: string, options?: HistoryOptions): Promise<StreamHistoryResult>
-filterStreamClips(mintId: string, filters?: ClipFilters): Promise<ClipFilterResult>
-getStreamClips(mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number): Promise<StreamClip[]>
-```
-
-### Filtering and Search
-```typescript
-filterStreams(criteria: FilterCriteria, baseParams?: GetLiveCoinsParams): Promise<AdvancedFilterResult>
 isApprovedCreator(mintId: string): Promise<boolean>
 ```
 
-### Simplified Live Streaming
+### Stream Content and History
 ```typescript
-joinStream(mintId: string, options?: JoinOptions): Promise<StreamConnection>
+getStreamContent(mintId: string, filters?: StreamContentFilters): Promise<StreamContentResult>
+filterStreamClips(mintId: string, filters?: ClipFilters): Promise<ClipFilterResult>
+```
+
+### Filter Utilities (Not methods, but utility functions)
+```typescript
+// Available as importable utilities, not client methods
+import { FilterBuilders, createCustomFilter } from './utils/filters'
+```
+
+### LiveKit Integration
+```typescript
+// Access LiveKitStreamManager for advanced streaming scenarios
+client.liveKitManager // LiveKitStreamManager instance
+LiveKitStreamManager // Exported class for direct use
 ```
 
 ### Utilities and Configuration
@@ -376,13 +400,15 @@ toJSON(): object
 ## Success Metrics
 
 ### Quantitative Goals
-- [ ] Reduce public API methods from 65+ to 15-18 (72% reduction)
+- [ ] Reduce public API methods from 65+ to 13-15 (77% reduction) - improved by phase consolidation
 - [ ] Reduce examples file from 864 to ~400 lines (54% reduction)
 - [ ] Reduce example functions from 25+ to 12-15 (40% reduction)
 - [ ] Maintain 100% of existing functionality
+- [ ] Eliminate artificial basic/advanced filtering distinction
 
 ### Qualitative Goals
-- [ ] Improve developer experience with intuitive, parameterized methods
-- [ ] Reduce cognitive load for API users
-- [ ] Eliminate redundant functionality
+- [ ] Improve developer experience with intuitive, unified filtering approach
+- [ ] Reduce cognitive load by eliminating basic/advanced filtering decision
+- [ ] Eliminate redundant functionality through aggressive consolidation
 - [ ] Maintain backward compatibility during transition
+- [ ] Single entry point for all filtering complexity levels

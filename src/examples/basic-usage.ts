@@ -28,6 +28,7 @@ import * as connectionExamples from './connection-examples';
 import * as errorHandlingExamples from './error-handling-examples';
 import * as livestreamExamples from './livestream-examples';
 import * as bestPracticesExamples from './best-practices-examples';
+import * as unifiedFilteringExamples from './unified-filtering-examples';
 
 // Import constants and types
 import { PumpFunAPIClient } from '../client/PumpFunAPIClient';
@@ -59,7 +60,7 @@ export const basicErrorHandling = errorHandlingExamples.basicErrorHandling;
 export const configurationValidation = errorHandlingExamples.configurationValidation;
 
 // Live Stream API Usage Examples (Core Functions Only)
-export const getLiveStreamsExample = livestreamExamples.getLiveStreamsExample;
+export const filterStreamsExample = livestreamExamples.filterStreamsExample;
 export const getStreamInfoExample = livestreamExamples.getStreamInfoExample;
 export const checkCreatorApprovalExample = livestreamExamples.checkCreatorApprovalExample;
 export const joinLiveStreamExample = livestreamExamples.joinLiveStreamExample;
@@ -70,6 +71,15 @@ export const getStreamClipsExample = livestreamExamples.getStreamClipsExample;
 // Best Practices Examples
 export const productionBestPractices = bestPracticesExamples.productionBestPractices;
 export const clientLifecycleManagement = bestPracticesExamples.clientLifecycleManagement;
+
+// Unified Filtering Examples (NEW - replaces 11+ separate methods)
+export const basicFilteringExamples = unifiedFilteringExamples.basicFilteringExamples;
+export const advancedFilteringExamples = unifiedFilteringExamples.advancedFilteringExamples;
+export const compoundQueryExamples = unifiedFilteringExamples.compoundQueryExamples;
+export const customFilterExamples = unifiedFilteringExamples.customFilterExamples;
+export const performanceExamples = unifiedFilteringExamples.performanceExamples;
+export const migrationExamples = unifiedFilteringExamples.migrationExamples;
+export const runUnifiedFilteringExamples = unifiedFilteringExamples.runUnifiedFilteringExamples;
 
 // ============================================================================
 // Basic Example Runner
@@ -144,7 +154,7 @@ export async function runAllBasicExamples() {
     // Live stream API examples
     console.log('🔴 LIVE STREAM API EXAMPLES');
     console.log('='.repeat(REPEAT_COUNT_60));
-    results.liveStreams = await getLiveStreamsExample();
+    results.liveStreams = await filterStreamsExample();
     console.log();
 
     results.streamInfo = await getStreamInfoExample();
@@ -181,7 +191,7 @@ export async function runAllBasicExamples() {
     console.log('\n🎉 Summary of core API functionality tested:');
     console.log('   • Client initialization and configuration');
     console.log('   • Connection testing and jurisdiction validation');
-    console.log('   • Live streams with filtering (getLiveStreams)');
+    console.log('   • Live streams with filtering (filterStreams)');
     console.log('   • Detailed stream information');
     console.log('   • Creator approval status checking');
     console.log('   • Live stream joining functionality');
@@ -211,7 +221,7 @@ export const examples = {
   clientLifecycleManagement,
 
   // Core live stream API examples
-  getLiveStreamsExample,
+  filterStreamsExample,
   getStreamInfoExample,
   checkCreatorApprovalExample,
   joinLiveStreamExample,
@@ -272,7 +282,7 @@ export function quickTest() {
     console.log('\n✅ All quick tests passed!');
     console.log('\n🚀 Ready to run full examples with:');
     console.log('   examples.runAllBasicExamples()');
-    console.log('   examples.getLiveStreamsExample()');
+    console.log('   examples.filterStreamsExample()');
     console.log('   ...and other core functions!');
 
     return true;
@@ -326,7 +336,7 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
       break;
 
     case 'live':
-      getLiveStreamsExample()
+      filterStreamsExample()
         .then(() => {
           console.log('\n✅ Live streams demo completed');
         })

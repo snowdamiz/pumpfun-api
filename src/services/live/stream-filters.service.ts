@@ -204,7 +204,7 @@ export class StreamFilters {
   constructor(
     private logger: Logger,
     private errorHandler: ErrorHandler,
-    private getLiveStreamsFn: (options?: StreamOptions) => Promise<LiveCoin[]>,
+    private fetchBaseLiveStreamsFn: (options?: StreamOptions) => Promise<LiveCoin[]>,
     private getStreamClipsFn?: (mintId: string, clipType?: 'COMPLETE' | 'HIGHLIGHT', limit?: number) => Promise<StreamClip[]>
   ) {
     // Required for parameter properties
@@ -227,7 +227,7 @@ export class StreamFilters {
 
     try {
       // Fetch streams for filtering
-      const liveStreams = await this.getLiveStreamsFn({
+      const liveStreams = await this.fetchBaseLiveStreamsFn({
         limit: 100, // Fetch more for comprehensive filtering (API max limit)
         includeNsfw: false,
         ...options,
@@ -295,7 +295,7 @@ export class StreamFilters {
 
     try {
       // Fetch streams for filtering
-      const liveStreams = await this.getLiveStreamsFn({
+      const liveStreams = await this.fetchBaseLiveStreamsFn({
         limit: 100, // API max limit
         includeNsfw: false,
         ...options,
@@ -486,7 +486,7 @@ export class StreamFilters {
 
     try {
       // Fetch streams for search
-      const liveStreams = await this.getLiveStreamsFn({
+      const liveStreams = await this.fetchBaseLiveStreamsFn({
         limit: Math.max(params.limit ?? 20, 100), // Fetch more for better search results
         includeNsfw: params.includeNsfw ?? false,
       });
@@ -1061,7 +1061,7 @@ export class StreamFilters {
   private getSearchErrorSuggestions(params: SearchLiveStreamsParams): string[] {
     const suggestions: string[] = [
       'Try using different keywords or search terms',
-      'Check if there are any live streams currently available using getLiveStreams()',
+      'Check if there are any live streams currently available using filterStreams()',
       'Verify the API server is accessible',
       'Consider broadening your search criteria',
     ];

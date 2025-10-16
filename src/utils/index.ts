@@ -5,6 +5,9 @@
  * to maintain backward compatibility with existing imports.
  */
 
+// Filter Builders
+export * from './filter-builders';
+
 // HTTP Client
 export {
   HTTPClient,

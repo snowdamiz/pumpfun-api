@@ -5,7 +5,6 @@
  * configuration types, and API-specific type definitions.
  */
 
-import { APIError } from './common.types';
 
 // ============================================================================
 // Core Data Models
@@ -176,7 +175,7 @@ export interface JurisdictionResponse {
 // ============================================================================
 
 /**
- * Parameters for legacy getLiveCoins request (deprecated - use StreamOptions)
+ * Parameters for underlying API requests (used internally by unified methods)
  */
 export interface GetLiveCoinsParams {
   /** Number of items to skip */
@@ -192,7 +191,7 @@ export interface GetLiveCoinsParams {
 }
 
 /**
- * Options for consolidated getLiveStreams request
+ * Options for consolidated live streams request
  */
 export interface StreamOptions {
   /** Minimum number of participants required */
@@ -277,6 +276,89 @@ export interface SearchLiveStreamsParams {
   sortOrder?: 'ASC' | 'DESC';
   /** Include NSFW content */
   includeNsfw?: boolean;
+}
+
+// ============================================================================
+// Unified Stream Filtering Types
+// ============================================================================
+
+/**
+ * Unified stream filtering criteria that consolidates all filtering options
+ * This interface replaces the need for multiple separate filtering methods
+ */
+export interface UnifiedFilterCriteria {
+  // Basic options (backwards compatible with legacy stream filtering)
+  minParticipants?: number;
+  maxParticipants?: number;
+  limit?: number;
+  includeTitledOnly?: boolean;
+  sortBy?: 'participants' | 'market_cap' | 'created_at' | 'default';
+  sortOrder?: 'asc' | 'desc';
+  offset?: number;
+  includeNsfw?: boolean;
+
+  // Advanced filtering options
+  marketCapRange?: { min?: number; max?: number };
+  participantRange?: { min?: number; max?: number };
+  createdTimeRange?: { after?: number; before?: number };
+  lastActivityRange?: { after?: number; before?: number };
+
+  // Social media and content quality
+  hasSocialMedia?: { twitter?: boolean; telegram?: boolean };
+  contentQuality?: {
+    hasTitle?: boolean;
+    hasDescription?: boolean;
+    hasImage?: boolean;
+    minTitleLength?: number;
+    minDescriptionLength?: number;
+  };
+
+  // Activity patterns
+  activityLevel?: {
+    minReplyCount?: number;
+    hasRecentActivity?: boolean;
+    maxIdleTime?: number;
+  };
+
+  // Text pattern matching
+  textPatterns?: {
+    nameContains?: string[];
+    symbolContains?: string[];
+    descriptionContains?: string[];
+    titleContains?: string[];
+    excludePatterns?: string[];
+  };
+
+  // Custom filters and compound queries
+  customFilters?: Array<{ name: string; filter: (stream: LiveCoin) => boolean }>;
+  compoundQuery?: {
+    operator: 'AND' | 'OR';
+    groups: Array<{
+      filters: Partial<UnifiedFilterCriteria>;
+      operator: 'AND' | 'OR';
+    }>;
+  };
+}
+
+/**
+ * Result from unified stream filtering operation
+ */
+export interface AdvancedFilterResult {
+  /** Filtered streams */
+  streams: LiveCoin[];
+  /** Total number of streams before filtering */
+  totalBeforeFilter: number;
+  /** Number of streams filtered out */
+  filteredOut: number;
+  /** Applied filter criteria summary */
+  appliedCriteria: {
+    [key: string]: any;
+  };
+  /** Performance metrics */
+  metrics: {
+    processingTimeMs: number;
+    filtersApplied: number;
+  };
 }
 
 // ============================================================================
