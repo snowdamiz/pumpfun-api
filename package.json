@@ -63,7 +63,7 @@
   "bugs": {
     "url": "https://github.com/snowdamiz/pumpfun-api/issues"
   },
-  "homepage": "https://github.com/snowdamiz/pumpfun-api/tree/main/packages/api-client#readme",
+  "homepage": "https://github.com/snowdamiz/pumpfun-api/blob/main/README.md",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -110,9 +110,5 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "private": false,
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/openworth"
-  }
+  "private": false
 }
