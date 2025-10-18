@@ -10,7 +10,7 @@ import {
   StreamClip,
   LiveCoin,
   LiveStreamInfo,
-  GetLiveCoinsParams
+  GetLiveCoinsParams,
 } from '../types';
 
 import { HTTPClient } from '../infrastructure/http/http-client';
@@ -20,18 +20,18 @@ import {
   validateFilterCriteria,
   validateContentFilters,
   isValidMintId,
-  ValidationError
+  ValidationError,
 } from '../utils/validation';
 import {
   processStreamFilters,
   getAppliedFilterNames,
-  summarizeFilterCriteria
+  summarizeFilterCriteria,
 } from '../utils/stream-helpers';
 import {
   mapToStreamError,
   createContextualError,
   StreamError,
-  ConnectionError
+  ConnectionError,
 } from '../utils/error-mapping';
 
 export const DEFAULT_STREAM_OPTIONS: Partial<StreamOptions> = {
@@ -70,13 +70,11 @@ export class PumpFunClient {
     // Initialize logger
     this.logger = new Logger(validatedConfig.loggerConfig);
 
-  
     // Initialize HTTP client
     this.httpClient = new HTTPClient({
       baseURL: validatedConfig.baseURL,
       timeout: validatedConfig.timeout,
       headers: {
-        'User-Agent': 'PumpFun-API-Client/2.0.0',
         Accept: 'application/json',
         ...(validatedConfig.apiKey && { Authorization: `Bearer ${validatedConfig.apiKey}` }),
         ...(validatedConfig.authToken && { 'X-Auth-Token': validatedConfig.authToken }),
@@ -139,7 +137,6 @@ export class PumpFunClient {
       });
 
       return streams;
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('Failed to fetch live streams', {
@@ -174,7 +171,6 @@ export class PumpFunClient {
       });
 
       return clips;
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('Failed to get stream clips', {
@@ -202,7 +198,6 @@ export class PumpFunClient {
       });
 
       return streamInfo || null;
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('Failed to get live stream info', {
@@ -268,7 +263,6 @@ export class PumpFunClient {
       });
 
       return result;
-
     } catch (error) {
       const pumpFunError = mapToStreamError(error, 'filterStreams');
       this.logger.error('Failed to filter streams', {
@@ -328,7 +322,7 @@ export class PumpFunClient {
         dateRange,
         hasUrl,
         sortBy = 'created_at',
-        sortOrder = 'DESC'
+        sortOrder = 'DESC',
       } = effectiveFilters;
 
       // Helper function to apply filters to clips
@@ -373,7 +367,9 @@ export class PumpFunClient {
           const startDate = new Date(dateRange.start);
           const endDate = new Date(dateRange.end);
           filtered = filtered.filter(clip => {
-            if (!clip.created_at) return false;
+            if (!clip.created_at) {
+              return false;
+            }
             const clipDate = new Date(clip.created_at);
             return clipDate >= startDate && clipDate <= endDate;
           });
@@ -414,7 +410,9 @@ export class PumpFunClient {
 
           return sortOrder === 'ASC' ? aValue - bValue : bValue - aValue;
         });
-        if (sortBy) filtersApplied++;
+        if (sortBy) {
+          filtersApplied++;
+        }
 
         return filtered;
       };
@@ -438,7 +436,11 @@ export class PumpFunClient {
       if (contentType === 'all' || contentType === 'previous_streams') {
         if (includePreviousStreams) {
           try {
-            const previousStreams = await this.getStreamClips(mintId, 'COMPLETE', maxPreviousStreams);
+            const previousStreams = await this.getStreamClips(
+              mintId,
+              'COMPLETE',
+              maxPreviousStreams
+            );
             const filteredPrevious = applyContentFilters(previousStreams);
 
             result.previousStreams = filteredPrevious;
@@ -488,9 +490,10 @@ export class PumpFunClient {
       }
 
       // Set total count
-      result.totalCount = result.contentSummary.clipsCount +
-                        result.contentSummary.previousStreamsCount +
-                        result.contentSummary.highlightsCount;
+      result.totalCount =
+        result.contentSummary.clipsCount +
+        result.contentSummary.previousStreamsCount +
+        result.contentSummary.highlightsCount;
 
       // Set processing metrics
       result.metrics.processingTimeMs = Date.now() - startTime;
@@ -504,7 +507,6 @@ export class PumpFunClient {
       });
 
       return result;
-
     } catch (error) {
       const pumpFunError = mapToStreamError(error, 'getStreamContent');
       this.logger.error('Failed to get stream content', {
@@ -516,10 +518,7 @@ export class PumpFunClient {
     }
   }
 
-  public async connectToStream(
-    mintId: string,
-    options?: StreamOptions
-  ): Promise<StreamConnection> {
+  public async connectToStream(mintId: string, options?: StreamOptions): Promise<StreamConnection> {
     this.ensureInitialized();
 
     if (!isValidMintId(mintId)) {
@@ -623,7 +622,6 @@ export class PumpFunClient {
       });
 
       return connection;
-
     } catch (error) {
       const connectionTime = Date.now() - startTime;
       this.logger.error('Stream connection failed', {

@@ -25,7 +25,6 @@ const DEFAULT_CONFIG: Partial<AxiosRequestConfig> = {
   timeout: 10000, // 10 seconds
   headers: {
     'Content-Type': 'application/json',
-    'User-Agent': 'pumpfun-api/1.0.0',
   },
 };
 
@@ -55,7 +54,7 @@ export class HTTPClient {
     };
 
     this.client = axios.create({
-      baseURL: config.baseURL ?? process.env.PUMPFUN_API_BASE_URL,
+      baseURL: config.baseURL,
       timeout: config.timeout ?? 10000,
       headers: {
         ...DEFAULT_CONFIG.headers,
@@ -353,7 +352,6 @@ export class HTTPClient {
     return response.data;
   }
 }
-
 
 export function createHTTPClient(config?: HTTPClientConfig): HTTPClient {
   return new HTTPClient(config);

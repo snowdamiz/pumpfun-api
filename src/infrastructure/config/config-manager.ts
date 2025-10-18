@@ -25,18 +25,14 @@ export class ConfigurationManager {
   private static readonly MIN_BURST = 1;
 
   initializeConfig(inputConfig?: ClientConfig): ValidatedConfig {
-    // Load configuration from environment variables first
-    const envConfig = this.loadEnvironmentConfig();
-
     // Filter out undefined values from config
     const filteredConfig = inputConfig
       ? Object.fromEntries(Object.entries(inputConfig).filter(([_, value]) => value !== undefined))
       : {};
 
-    // Merge configuration: defaults < environment variables < explicit config
+    // Merge configuration: defaults < explicit config
     const mergedConfig = {
       ...DEFAULT_CLIENT_CONFIG,
-      ...envConfig,
       ...filteredConfig,
     };
 
@@ -51,17 +47,14 @@ export class ConfigurationManager {
       authToken: mergedConfig.authToken,
       loggerConfig: {
         ...DEFAULT_LOGGER_CONFIG,
-        ...envConfig.loggerConfig,
         ...inputConfig?.loggerConfig,
       },
       rateLimitConfig: {
         ...DEFAULT_RATE_LIMIT_CONFIG,
-        ...envConfig.rateLimitConfig,
         ...inputConfig?.rateLimitConfig,
       },
       retryConfig: {
         ...DEFAULT_RETRY_CONFIG,
-        ...envConfig.retryConfig,
         ...inputConfig?.retryConfig,
       },
     };
@@ -78,184 +71,11 @@ export class ConfigurationManager {
       hasApiKey: !!this.config.apiKey,
       hasAuthToken: !!this.config.authToken,
       sources: {
-        environment: !!envConfig.baseURL || !!envConfig.timeout,
         explicit: !!inputConfig?.baseURL || !!inputConfig?.timeout,
       },
     });
 
     return this.config;
-  }
-
-  private loadEnvironmentConfig(): Partial<ClientConfig> {
-    const envConfig: Partial<ClientConfig> = {};
-
-    // Basic configuration
-    if (process.env.PUMPFUN_API_BASE_URL) {
-      const baseURL = process.env.PUMPFUN_API_BASE_URL.trim();
-      if (baseURL) {
-        envConfig.baseURL = baseURL;
-      }
-    }
-
-    if (process.env.PUMPFUN_LIVESTREAM_API_URL) {
-      const livestreamURL = process.env.PUMPFUN_LIVESTREAM_API_URL.trim();
-      if (livestreamURL) {
-        envConfig.livestreamURL = livestreamURL;
-      }
-    }
-
-    if (process.env.PUMPFUN_API_WS_URL) {
-      const wsURL = process.env.PUMPFUN_API_WS_URL.trim();
-      if (wsURL) {
-        envConfig.wsURL = wsURL;
-      }
-    }
-
-    // API credentials
-    if (process.env.PUMPFUN_API_KEY) {
-      const apiKey = process.env.PUMPFUN_API_KEY.trim();
-      if (apiKey) {
-        envConfig.apiKey = apiKey;
-      }
-    }
-
-    if (process.env.PUMPFUN_API_AUTH_TOKEN) {
-      const authToken = process.env.PUMPFUN_API_AUTH_TOKEN.trim();
-      if (authToken) {
-        envConfig.authToken = authToken;
-      }
-    }
-
-    // Timeout configuration (with legacy support)
-    if (process.env.PUMPFUN_API_TIMEOUT) {
-      const timeout = parseInt(process.env.PUMPFUN_API_TIMEOUT, 10);
-      if (!isNaN(timeout) && timeout > 0) {
-        envConfig.timeout = timeout;
-      }
-    } else if (process.env.TIMEOUT_MS) {
-      // Legacy support
-      const timeout = parseInt(process.env.TIMEOUT_MS, 10);
-      if (!isNaN(timeout) && timeout > 0) {
-        envConfig.timeout = timeout;
-      }
-    }
-
-    // Logger configuration
-    const loggerConfig: Partial<import('../../types').LoggerConfig> = {};
-    if (process.env.PUMPFUN_LOG_LEVEL) {
-      const level = process.env.PUMPFUN_LOG_LEVEL.trim().toUpperCase() as LogLevel;
-      if (Object.values(LogLevel).includes(level)) {
-        loggerConfig.level = level;
-      }
-    } else if (process.env.LOG_LEVEL) {
-      // Legacy support
-      const level = process.env.LOG_LEVEL.trim().toUpperCase() as LogLevel;
-      if (Object.values(LogLevel).includes(level)) {
-        loggerConfig.level = level;
-      }
-    }
-
-    if (process.env.PUMPFUN_LOG_CONSOLE !== undefined) {
-      loggerConfig.enableConsole = process.env.PUMPFUN_LOG_CONSOLE === 'true';
-    }
-    if (process.env.PUMPFUN_LOG_COLORS !== undefined) {
-      loggerConfig.enableColors = process.env.PUMPFUN_LOG_COLORS === 'true';
-    }
-    if (process.env.PUMPFUN_LOG_FILE !== undefined) {
-      loggerConfig.enableFile = process.env.PUMPFUN_LOG_FILE === 'true';
-    } else if (process.env.ENABLE_RESPONSE_LOGGING !== undefined) {
-      // Legacy support
-      loggerConfig.enableFile = process.env.ENABLE_RESPONSE_LOGGING === 'true';
-    }
-    if (process.env.PUMPFUN_LOG_FILE_PATH) {
-      loggerConfig.filePath = process.env.PUMPFUN_LOG_FILE_PATH;
-    } else if (process.env.LOG_FILE_PATH) {
-      // Legacy support
-      loggerConfig.filePath = process.env.LOG_FILE_PATH;
-    }
-    if (Object.keys(loggerConfig).length > 0) {
-      envConfig.loggerConfig = loggerConfig;
-    }
-
-    // Rate limit configuration
-    const rateLimitConfig: Partial<import('../../types').RateLimitConfig> = {};
-    if (process.env.PUMPFUN_RATE_LIMIT_REQUESTS) {
-      const requests = parseInt(process.env.PUMPFUN_RATE_LIMIT_REQUESTS, 10);
-      if (!isNaN(requests) && requests > 0) {
-        rateLimitConfig.maxRequestsPerWindow = requests;
-      }
-    } else if (process.env.PUMPFUN_RATE_LIMIT) {
-      // Legacy support
-      const requests = parseInt(process.env.PUMPFUN_RATE_LIMIT, 10);
-      if (!isNaN(requests) && requests > 0) {
-        rateLimitConfig.maxRequestsPerWindow = requests;
-      }
-    }
-
-    if (process.env.PUMPFUN_RATE_LIMIT_WINDOW_MS) {
-      const windowMs = parseInt(process.env.PUMPFUN_RATE_LIMIT_WINDOW_MS, 10);
-      if (!isNaN(windowMs) && windowMs > 0) {
-        rateLimitConfig.windowMs = windowMs;
-      }
-    }
-    if (process.env.PUMPFUN_RATE_LIMIT_RETRY_AFTER !== undefined) {
-      rateLimitConfig.enableRetryAfter = process.env.PUMPFUN_RATE_LIMIT_RETRY_AFTER === 'true';
-    }
-    if (process.env.PUMPFUN_RATE_LIMIT_SLIDING_WINDOW !== undefined) {
-      rateLimitConfig.enableSlidingWindow =
-        process.env.PUMPFUN_RATE_LIMIT_SLIDING_WINDOW === 'true';
-    }
-    if (process.env.PUMPFUN_RATE_LIMIT_BURST_PROTECTION !== undefined) {
-      rateLimitConfig.enableBurstProtection =
-        process.env.PUMPFUN_RATE_LIMIT_BURST_PROTECTION === 'true';
-    }
-    if (process.env.PUMPFUN_RATE_LIMIT_MAX_BURST) {
-      const maxBurst = parseInt(process.env.PUMPFUN_RATE_LIMIT_MAX_BURST, 10);
-      if (!isNaN(maxBurst) && maxBurst > 0) {
-        rateLimitConfig.maxBurst = maxBurst;
-      }
-    }
-    if (Object.keys(rateLimitConfig).length > 0) {
-      envConfig.rateLimitConfig = rateLimitConfig;
-    }
-
-    // Retry configuration
-    const retryConfig: Partial<import('../../types').RetryConfig> = {};
-    if (process.env.PUMPFUN_RETRY_MAX_RETRIES) {
-      const maxRetries = parseInt(process.env.PUMPFUN_RETRY_MAX_RETRIES, 10);
-      if (!isNaN(maxRetries) && maxRetries >= 0) {
-        retryConfig.maxRetries = maxRetries;
-      }
-    }
-    if (process.env.PUMPFUN_RETRY_BASE_DELAY) {
-      const baseDelay = parseInt(process.env.PUMPFUN_RETRY_BASE_DELAY, 10);
-      if (!isNaN(baseDelay) && baseDelay > 0) {
-        retryConfig.baseDelay = baseDelay;
-      }
-    } else if (process.env.RETRY_BASE_DELAY) {
-      // Legacy support
-      const baseDelay = parseInt(process.env.RETRY_BASE_DELAY, 10);
-      if (!isNaN(baseDelay) && baseDelay > 0) {
-        retryConfig.baseDelay = baseDelay;
-      }
-    }
-    if (process.env.PUMPFUN_RETRY_MAX_DELAY) {
-      const maxDelay = parseInt(process.env.PUMPFUN_RETRY_MAX_DELAY, 10);
-      if (!isNaN(maxDelay) && maxDelay > 0) {
-        retryConfig.maxDelay = maxDelay;
-      }
-    }
-    if (process.env.PUMPFUN_RETRY_BACKOFF_FACTOR) {
-      const backoffFactor = parseFloat(process.env.PUMPFUN_RETRY_BACKOFF_FACTOR);
-      if (!isNaN(backoffFactor) && backoffFactor > 0) {
-        retryConfig.backoffFactor = backoffFactor;
-      }
-    }
-    if (Object.keys(retryConfig).length > 0) {
-      envConfig.retryConfig = retryConfig;
-    }
-
-    return envConfig;
   }
 
   private validateConfig(config: Partial<ClientConfig>): void {
@@ -547,20 +367,6 @@ export class ConfigurationManager {
   }
 
   detectConfigSource(): string {
-    const hasEnvVars = Object.keys(process.env).some(
-      key =>
-        key.startsWith('PUMPFUN_') ||
-        key === 'TIMEOUT_MS' ||
-        key === 'LOG_LEVEL' ||
-        key === 'ENABLE_RESPONSE_LOGGING' ||
-        key === 'LOG_FILE_PATH' ||
-        key === 'RETRY_BASE_DELAY' ||
-        key === 'PUMPFUN_RATE_LIMIT'
-    );
-
-    if (hasEnvVars) {
-      return 'Environment variables detected';
-    }
     return 'Default configuration';
   }
 }

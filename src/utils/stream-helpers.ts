@@ -5,11 +5,15 @@ export function processStreamFilters(streams: LiveCoin[], criteria: FilterCriter
 
   // Filter by participant count
   if (criteria.minParticipants !== undefined) {
-    filtered = filtered.filter(stream => (stream.num_participants ?? 0) >= criteria.minParticipants!);
+    filtered = filtered.filter(
+      stream => (stream.num_participants ?? 0) >= criteria.minParticipants!
+    );
   }
 
   if (criteria.maxParticipants !== undefined) {
-    filtered = filtered.filter(stream => (stream.num_participants ?? 0) <= criteria.maxParticipants!);
+    filtered = filtered.filter(
+      stream => (stream.num_participants ?? 0) <= criteria.maxParticipants!
+    );
   }
 
   // Filter by market cap range
@@ -64,13 +68,14 @@ export function processStreamFilters(streams: LiveCoin[], criteria: FilterCriter
       });
     }
     if (criteria.contentQuality.minTitleLength !== undefined) {
-      filtered = filtered.filter(stream =>
-        (stream.livestream_title?.length ?? 0) >= criteria.contentQuality!.minTitleLength!
+      filtered = filtered.filter(
+        stream => (stream.livestream_title?.length ?? 0) >= criteria.contentQuality!.minTitleLength!
       );
     }
     if (criteria.contentQuality.minDescriptionLength !== undefined) {
-      filtered = filtered.filter(stream =>
-        (stream.description?.length ?? 0) >= criteria.contentQuality!.minDescriptionLength!
+      filtered = filtered.filter(
+        stream =>
+          (stream.description?.length ?? 0) >= criteria.contentQuality!.minDescriptionLength!
       );
     }
   }
@@ -93,7 +98,8 @@ export function processStreamFilters(streams: LiveCoin[], criteria: FilterCriter
     }
     if (criteria.textPatterns.excludePatterns && criteria.textPatterns.excludePatterns.length > 0) {
       filtered = filtered.filter(stream => {
-        const allText = `${stream.name} ${stream.symbol} ${stream.description || ''} ${stream.livestream_title || ''}`.toLowerCase();
+        const allText =
+          `${stream.name} ${stream.symbol} ${stream.description || ''} ${stream.livestream_title || ''}`.toLowerCase();
         return !criteria.textPatterns!.excludePatterns!.some(pattern =>
           allText.includes(pattern.toLowerCase())
         );

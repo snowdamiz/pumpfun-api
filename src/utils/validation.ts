@@ -62,10 +62,16 @@ export function validateFilterCriteria(criteria: FilterCriteria): void {
   }
 
   if (criteria.contentQuality) {
-    if (criteria.contentQuality.minTitleLength !== undefined && criteria.contentQuality.minTitleLength < 0) {
+    if (
+      criteria.contentQuality.minTitleLength !== undefined &&
+      criteria.contentQuality.minTitleLength < 0
+    ) {
       throw new ValidationError('contentQuality.minTitleLength must be non-negative');
     }
-    if (criteria.contentQuality.minDescriptionLength !== undefined && criteria.contentQuality.minDescriptionLength < 0) {
+    if (
+      criteria.contentQuality.minDescriptionLength !== undefined &&
+      criteria.contentQuality.minDescriptionLength < 0
+    ) {
       throw new ValidationError('contentQuality.minDescriptionLength must be non-negative');
     }
   }
@@ -137,8 +143,13 @@ export function validateContentFilters(filters: ContentFilters): void {
     }
   }
 
-  if (filters.sortBy && !['created_at', 'duration', 'view_count', 'stream_start'].includes(filters.sortBy)) {
-    throw new ValidationError('sortBy must be one of: created_at, duration, view_count, stream_start');
+  if (
+    filters.sortBy &&
+    !['created_at', 'duration', 'view_count', 'stream_start'].includes(filters.sortBy)
+  ) {
+    throw new ValidationError(
+      'sortBy must be one of: created_at, duration, view_count, stream_start'
+    );
   }
 
   if (filters.sortOrder && !['ASC', 'DESC'].includes(filters.sortOrder)) {
@@ -147,4 +158,3 @@ export function validateContentFilters(filters: ContentFilters): void {
 }
 
 export { ValidationError };
-

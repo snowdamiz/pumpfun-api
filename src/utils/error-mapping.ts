@@ -26,12 +26,10 @@ export function mapToStreamError(error: any, _context?: string): StreamError {
           ['Check your API credentials', 'Verify your authentication token']
         );
       case 403:
-        return new StreamError(
-          'Access forbidden',
-          'FORBIDDEN',
-          { status, originalError: error },
-          ['Check your permissions', 'Verify you have access to this resource']
-        );
+        return new StreamError('Access forbidden', 'FORBIDDEN', { status, originalError: error }, [
+          'Check your permissions',
+          'Verify you have access to this resource',
+        ]);
       case 404:
         return new StreamError(
           'Resource not found',
@@ -49,27 +47,24 @@ export function mapToStreamError(error: any, _context?: string): StreamError {
       case 500:
       case 502:
       case 503:
-        return new StreamError(
-          'Server error',
-          'SERVER_ERROR',
-          { status, originalError: error },
-          ['Try again later', 'Contact support if the issue persists']
-        );
+        return new StreamError('Server error', 'SERVER_ERROR', { status, originalError: error }, [
+          'Try again later',
+          'Contact support if the issue persists',
+        ]);
       default:
-        return new StreamError(
-          message || `HTTP ${status} error`,
-          'HTTP_ERROR',
-          { status, originalError: error }
-        );
+        return new StreamError(message || `HTTP ${status} error`, 'HTTP_ERROR', {
+          status,
+          originalError: error,
+        });
     }
   }
 
   // Handle network errors
   if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ECONNRESET') {
-    return new ConnectionError(
-      'Network connection failed',
-      { code: error.code, originalError: error }
-    );
+    return new ConnectionError('Network connection failed', {
+      code: error.code,
+      originalError: error,
+    });
   }
 
   // Handle timeout errors
@@ -84,10 +79,9 @@ export function mapToStreamError(error: any, _context?: string): StreamError {
 
   // Handle LiveKit specific errors
   if (error.name?.includes('LiveKit') || error.message?.includes('LiveKit')) {
-    return new ConnectionError(
-      `LiveKit connection error: ${error.message}`,
-      { liveKitError: error }
-    );
+    return new ConnectionError(`LiveKit connection error: ${error.message}`, {
+      liveKitError: error,
+    });
   }
 
   // Handle validation errors from Joi/yup/etc
@@ -151,7 +145,7 @@ export function createContextualError(
   ];
 
   const allSuggestions = [
-    ...contextualSuggestions[context as keyof typeof contextualSuggestions] || [],
+    ...(contextualSuggestions[context as keyof typeof contextualSuggestions] || []),
     ...suggestions,
     ...defaultSuggestions,
   ];

@@ -35,7 +35,7 @@ export type {
   LogContext,
   LogEntry,
 
-// Error classes
+  // Error classes
   PumpFunError,
   NetworkError,
   RateLimitError,
@@ -72,7 +72,7 @@ export {
   DEFAULT_RETRY_CONFIG,
   DEFAULT_RATE_LIMIT_CONFIG,
   DEFAULT_LOGGER_CONFIG,
-  DEFAULT_CLIENT_CONFIG
+  DEFAULT_CLIENT_CONFIG,
 } from './types/types';
 
 // Default export

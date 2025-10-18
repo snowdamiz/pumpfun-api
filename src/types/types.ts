@@ -191,7 +191,9 @@ export class APIError extends Error implements APIErrorInterface {
     return new APIError({ ...data, isRetryable: true });
   }
 
-  static nonRetryable(data: Omit<APIErrorInterface, 'isRetryable'> & { message: string }): APIError {
+  static nonRetryable(
+    data: Omit<APIErrorInterface, 'isRetryable'> & { message: string }
+  ): APIError {
     return new APIError({ ...data, isRetryable: false });
   }
 }
