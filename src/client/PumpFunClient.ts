@@ -72,12 +72,9 @@ export class PumpFunClient {
 
     // Initialize HTTP client
     this.httpClient = new HTTPClient({
-      baseURL: validatedConfig.baseURL,
       timeout: validatedConfig.timeout,
       headers: {
         Accept: 'application/json',
-        ...(validatedConfig.apiKey && { Authorization: `Bearer ${validatedConfig.apiKey}` }),
-        ...(validatedConfig.authToken && { 'X-Auth-Token': validatedConfig.authToken }),
       },
       retryConfig: validatedConfig.retryConfig,
     });

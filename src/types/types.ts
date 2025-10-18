@@ -233,15 +233,10 @@ export const NUMERIC_CONSTANTS = {
 } as const;
 
 export interface ClientConfig {
-  baseURL?: string;
-  livestreamURL?: string;
   timeout?: number;
   retryConfig?: Partial<RetryConfig>;
   loggerConfig?: Partial<LoggerConfig>;
   rateLimitConfig?: Partial<RateLimitConfig>;
-  wsURL?: string;
-  apiKey?: string;
-  authToken?: string;
 }
 
 export interface RetryConfig {
@@ -288,8 +283,6 @@ export interface ValidatedConfig {
   livestreamURL: string;
   timeout: number;
   wsURL: string;
-  apiKey?: string;
-  authToken?: string;
   loggerConfig?: Partial<typeof DEFAULT_LOGGER_CONFIG>;
   rateLimitConfig?: Partial<typeof DEFAULT_RATE_LIMIT_CONFIG>;
   retryConfig?: Partial<typeof DEFAULT_RETRY_CONFIG>;
@@ -305,7 +298,6 @@ export interface PerformanceMetrics {
 }
 
 export interface HTTPClientConfig {
-  baseURL?: string;
   timeout?: number;
   headers?: Record<string, string>;
   retryConfig?: Partial<RetryConfig>;
@@ -350,15 +342,19 @@ export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
   logFilePath: undefined,
 };
 
-export const DEFAULT_CLIENT_CONFIG: Required<
-  Omit<ClientConfig, 'retryConfig' | 'loggerConfig' | 'rateLimitConfig'>
-> = {
+// Internal configuration with URLs (not exposed in ClientConfig)
+export const DEFAULT_CLIENT_CONFIG = {
   baseURL: 'https://frontend-api-v3.pump.fun',
   livestreamURL: 'https://livestream-api.pump.fun',
   timeout: 10000,
   wsURL: 'wss://stream.pump.fun',
-  apiKey: '',
-  authToken: '',
+};
+
+// Exposed configuration (only timeout is configurable)
+export const DEFAULT_CLIENT_CONFIG_EXPOSED: Required<
+  Omit<ClientConfig, 'retryConfig' | 'loggerConfig' | 'rateLimitConfig'>
+> = {
+  timeout: 10000,
 };
 
 export interface StreamConnection {

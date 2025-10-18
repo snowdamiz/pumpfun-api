@@ -42,7 +42,6 @@ import { createClient } from '@120356aa/pump-api';
 
 // Create a client instance
 const client = createClient({
-  baseURL: 'https://frontend-api-v3.pump.fun',
   timeout: 10000,
 });
 
@@ -61,16 +60,17 @@ console.log(`Found ${liveStreams.streams.length} live streams`);
 
 ```typescript
 interface ClientConfig {
-  baseURL?: string;           // Default: 'https://frontend-api-v3.pump.fun'
-  livestreamURL?: string;     // Default: 'https://livestream-api.pump.fun'
-  timeout?: number;           // Default: 10000 (10 seconds)
-  apiKey?: string;           // Optional API key
-  authToken?: string;        // Optional auth token
-  retryConfig?: Partial<RetryConfig>;
-  loggerConfig?: Partial<LoggerConfig>;
-  rateLimitConfig?: Partial<RateLimitConfig>;
+  timeout?: number;                    // Default: 10000 (10 seconds)
+  retryConfig?: Partial<RetryConfig>;   // Optional retry configuration
+  loggerConfig?: Partial<LoggerConfig>; // Optional logger configuration
+  rateLimitConfig?: Partial<RateLimitConfig>; // Optional rate limiting configuration
 }
 ```
+
+**Note:** The library uses hardcoded endpoints and does not require authentication. The following URLs are used internally:
+- API Endpoint: `https://frontend-api-v3.pump.fun`
+- Livestream API: `https://livestream-api.pump.fun`
+- WebSocket: `wss://stream.pump.fun`
 
 ### Main API Methods
 
@@ -308,8 +308,7 @@ import {
   PumpFunError,
   NetworkError,
   RateLimitError,
-  ValidationError,
-  AuthenticationError
+  ValidationError
 } from '@120356aa/pump-api';
 
 try {
@@ -335,8 +334,6 @@ try {
 - **`PumpFunError`**: Base error class for all PumpFun errors
 - **`NetworkError`**: Network-related errors (connection issues, DNS failures)
 - **`RateLimitError`**: Rate limit exceeded
-- **`AuthenticationError`**: Authentication failures
-- **`AuthorizationError`**: Permission denied
 - **`ValidationError`**: Invalid parameters or request format
 - **`NotFoundError`**: Resource not found
 - **`ServerError`**: Server-side errors
@@ -369,9 +366,7 @@ const client = createClient({
 
 ```typescript
 const client = createClient({
-  timeout: 15000,
-  apiKey: process.env.PUMPFUN_API_KEY,
-  authToken: process.env.PUMPFUN_AUTH_TOKEN
+  timeout: 15000
 });
 ```
 
@@ -379,8 +374,6 @@ const client = createClient({
 
 ```typescript
 const client = createClient({
-  baseURL: 'https://api.pump.fun',
-  livestreamURL: 'https://streams.pump.fun',
   timeout: 20000,
   retryConfig: {
     maxRetries: 5,

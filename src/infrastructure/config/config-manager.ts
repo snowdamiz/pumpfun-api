@@ -2,6 +2,7 @@ import {
   ClientConfig,
   ValidatedConfig,
   DEFAULT_CLIENT_CONFIG,
+  DEFAULT_CLIENT_CONFIG_EXPOSED,
   DEFAULT_LOGGER_CONFIG,
   DEFAULT_RATE_LIMIT_CONFIG,
   DEFAULT_RETRY_CONFIG,
@@ -32,19 +33,17 @@ export class ConfigurationManager {
 
     // Merge configuration: defaults < explicit config
     const mergedConfig = {
-      ...DEFAULT_CLIENT_CONFIG,
+      ...DEFAULT_CLIENT_CONFIG_EXPOSED,
       ...filteredConfig,
     };
 
     this.validateConfig(mergedConfig);
 
     this.config = {
-      baseURL: mergedConfig.baseURL,
-      livestreamURL: mergedConfig.livestreamURL,
+      baseURL: DEFAULT_CLIENT_CONFIG.baseURL,
+      livestreamURL: DEFAULT_CLIENT_CONFIG.livestreamURL,
       timeout: mergedConfig.timeout,
-      wsURL: mergedConfig.wsURL,
-      apiKey: mergedConfig.apiKey,
-      authToken: mergedConfig.authToken,
+      wsURL: DEFAULT_CLIENT_CONFIG.wsURL,
       loggerConfig: {
         ...DEFAULT_LOGGER_CONFIG,
         ...inputConfig?.loggerConfig,
@@ -68,10 +67,8 @@ export class ConfigurationManager {
       baseURL: this.config.baseURL,
       timeout: this.config.timeout,
       wsURL: this.config.wsURL,
-      hasApiKey: !!this.config.apiKey,
-      hasAuthToken: !!this.config.authToken,
       sources: {
-        explicit: !!inputConfig?.baseURL || !!inputConfig?.timeout,
+        explicit: !!inputConfig?.timeout,
       },
     });
 
@@ -82,31 +79,7 @@ export class ConfigurationManager {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Basic configuration validation
-    if (config.baseURL !== undefined) {
-      try {
-        new URL(config.baseURL);
-        if (!config.baseURL.startsWith('http://') && !config.baseURL.startsWith('https://')) {
-          errors.push('Invalid baseURL protocol: must start with http:// or https://');
-        }
-      } catch {
-        errors.push(`Invalid baseURL format: ${config.baseURL}`);
-      }
-    }
-
-    if (config.livestreamURL !== undefined) {
-      try {
-        new URL(config.livestreamURL);
-        if (
-          !config.livestreamURL.startsWith('http://') &&
-          !config.livestreamURL.startsWith('https://')
-        ) {
-          errors.push('Invalid livestreamURL protocol: must start with http:// or https://');
-        }
-      } catch {
-        errors.push(`Invalid livestreamURL format: ${config.livestreamURL}`);
-      }
-    }
+    // Basic configuration validation - only timeout is configurable
 
     if (config.timeout !== undefined) {
       if (typeof config.timeout !== 'number' || isNaN(config.timeout)) {
@@ -120,17 +93,7 @@ export class ConfigurationManager {
       }
     }
 
-    if (config.wsURL !== undefined) {
-      try {
-        new URL(config.wsURL);
-        if (!config.wsURL.startsWith('ws://') && !config.wsURL.startsWith('wss://')) {
-          errors.push('wsURL must start with ws:// or wss://');
-        }
-      } catch {
-        errors.push(`Invalid wsURL format: ${config.wsURL}`);
-      }
-    }
-
+    
     // Retry configuration validation
     if (config.retryConfig) {
       const retryConfig = config.retryConfig;

@@ -1,6 +1,6 @@
 {
   "name": "@120356aa/pump-api",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "TypeScript client library for PumpFun streaming data API",
   "main": "./dist/index.js",

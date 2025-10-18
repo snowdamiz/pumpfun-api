@@ -6,6 +6,7 @@ import {
   HTTPClientConfig,
   DEFAULT_RETRY_CONFIG,
   DEFAULT_RATE_LIMIT_CONFIG,
+  DEFAULT_CLIENT_CONFIG,
   APIError,
 } from '../../types';
 
@@ -54,7 +55,7 @@ export class HTTPClient {
     };
 
     this.client = axios.create({
-      baseURL: config.baseURL,
+      baseURL: DEFAULT_CLIENT_CONFIG.baseURL,
       timeout: config.timeout ?? 10000,
       headers: {
         ...DEFAULT_CONFIG.headers,
